@@ -1,0 +1,24 @@
+# サイト設定（パスワードを含む）
+sites/*.json
+!sites/_template.json
+
+# 環境変数
+.env
+
+# 出力ファイル
+output/images/
+output/*.json
+output/*.html
+
+# スクレイピングデータ
+scraped_data/
+
+# ブラウザデータ
+.browser_data/
+
+# ログ
+logs/
+
+# Python
+__pycache__/
+*.pyc

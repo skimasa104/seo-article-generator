@@ -1,0 +1,149 @@
+/* ========================================
+   SEO記事共通CSS
+   WordPressの「カスタムCSS & JS」に貼り付けて使用
+   全ジャンル（AGA/ED/脱毛等）で共通
+   ======================================== */
+
+/* --- 概要テーブル・詳細テーブル（2列: th | td） --- */
+.clinic-summary-table,
+.clinic-detail-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0;
+  font-size: 14px;
+}
+.clinic-summary-table th,
+.clinic-detail-table th {
+  width: 130px;
+  min-width: 130px;
+  background: #f5f5f5;
+  font-weight: bold;
+  text-align: left;
+  vertical-align: top;
+  padding: 12px 16px;
+  border: 1px solid #ddd;
+  white-space: nowrap;
+}
+.clinic-summary-table td,
+.clinic-detail-table td {
+  padding: 12px 16px;
+  border: 1px solid #ddd;
+  vertical-align: top;
+  line-height: 1.7;
+}
+
+/* --- 比較テーブル（複数列: thead付き） --- */
+.treatment-compare-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0;
+  font-size: 14px;
+}
+.treatment-compare-table th {
+  background: #f5f5f5;
+  font-weight: bold;
+  text-align: center;
+  padding: 12px 16px;
+  border: 1px solid #ddd;
+}
+.treatment-compare-table td {
+  padding: 12px 16px;
+  border: 1px solid #ddd;
+  vertical-align: top;
+  line-height: 1.7;
+}
+
+/* --- Googleマップ --- */
+.clinic-map {
+  margin: 1em 0;
+}
+.clinic-map iframe {
+  width: 100%;
+  height: 300px;
+  border: 0;
+}
+
+/* --- 公式サイトスクリーンショット --- */
+.clinic-screenshot {
+  margin: 1em 0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.clinic-screenshot img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* --- 口コミ吹き出し --- */
+.review-section {
+  margin: 1.5em 0;
+}
+.review-section h4 {
+  font-size: 15px;
+  margin: 0 0 12px;
+  color: #333;
+}
+.review-bubble {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 12px 0;
+}
+.review-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #e0e0e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+  color: #888;
+}
+.review-body {
+  position: relative;
+  background: #f7f7f7;
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #444;
+  flex: 1;
+}
+.review-body::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: 14px;
+  border-width: 6px 8px 6px 0;
+  border-style: solid;
+  border-color: transparent #f7f7f7 transparent transparent;
+}
+.review-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  font-size: 12px;
+  color: #888;
+}
+.review-stars {
+  color: #f5a623;
+  letter-spacing: 1px;
+}
+
+/* --- strong 蛍光マーカー強調 --- */
+p strong {
+  background: linear-gradient(transparent 60%, #fff9c4 60%);
+  background-size: 0% 100%;
+  background-repeat: no-repeat;
+  font-weight: bold;
+  padding: 0 2px;
+  transition: background-size 0.8s ease;
+}
+p strong.is-visible {
+  background-size: 100% 100%;
+}
