@@ -58,6 +58,10 @@ def run():
     if not keyword:
         return jsonify({"error": "keyword is required"}), 400
 
+    genre = data.get("genre", "").strip()
+    if not genre:
+        return jsonify({"error": "genre is required"}), 400
+
     site = data.get("site", "sites/aurora_clinic.json")
     category = data.get("category", "")
     title = data.get("title", "")
@@ -73,6 +77,7 @@ def run():
     jobs[job_id] = {
         "id": job_id,
         "keyword": keyword,
+        "genre": genre,
         "site": site,
         "category": category,
         "status": "running",
@@ -86,6 +91,7 @@ def run():
             result = run_pipeline(
                 keyword=keyword,
                 site_config=site_path,
+                genre_id=genre,
                 category=category,
                 title=title,
             )

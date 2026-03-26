@@ -30,85 +30,127 @@ SERPER_API_URL = "https://google.serper.dev/search"
 
 
 # ========================================
-# 除外パターン
+# 除外判定
 # ========================================
-EXCLUDE_DOMAIN_PATTERNS = [
-    # 大手AGAクリニック
-    "agaskin.net", "agahairclinic.or.jp", "clinic-bh.com",
-    "clinicfor.life", "dmmclinic.com", "gorilla.clinic",
-    "agaskin-woman.site", "hairmedical.com", "rs-clinic.com",
-    "asc.clinic", "b-line-c.com", "yokohamachuoh-mens.com",
-    "nido-clinic.com", "tokyobeauty.jp",
-    "sbc-aga.jp", "will-agaclinic.com", "eastcl.com",
-    "agacare.clinic", "aga-yobou.jp", "menshealth-tokyo.com",
-    # 大手脱毛クリニック
-    "rizeclinic.com", "aletheia-clinic.com", "tcb-beauty.net",
-    "s-b-c.net", "reginaclinic.jp", "frey-a.com", "eminal-clinic.jp",
-    # 大手ED
-    "fit-clinic.com",
-    # 総合病院・医療法人・行政
-    ".or.jp", ".ac.jp", ".go.jp",
+
+# 明らかに記事コンテンツではないサイト（ドメインで即除外）
+NON_ARTICLE_DOMAINS = [
     # Google系
     "google.com", "google.co.jp",
     # SNS・動画
     "youtube.com", "twitter.com", "x.com", "instagram.com",
-    "facebook.com", "tiktok.com", "ameblo.jp",
+    "facebook.com", "tiktok.com",
     # EC・ポータル
-    "amazon.co.jp", "rakuten.co.jp", "yahoo.co.jp",
-    # 地図・予約
-    "hotpepper.jp", "epark.jp", "caloo.jp",
+    "amazon.co.jp", "rakuten.co.jp",
     # Wikipedia
     "wikipedia.org",
     # 求人
-    "indeed.com", "recruit.co.jp",
+    "indeed.com",
+    # 地図
+    "maps.google.com",
 ]
 
-EXCLUDE_PATH_PATTERNS = [
-    "/access", "/price", "/doctor", "/about", "/contact",
-    "/recruit", "/privacy", "/sitemap",
+# title/snippetに含まれていたら「第三者の記事コンテンツ」と判定するキーワード
+ARTICLE_SIGNALS = [
+    "おすすめ", "比較", "ランキング", "選び方", "口コミ", "評判",
+    "人気", "厳選", "まとめ", "徹底解説", "完全ガイド", "選",
+    "メリット", "デメリット", "違い", "効果", "費用", "相場",
+    "体験談", "レビュー", "紹介", "解説", "方法", "やり方",
+    "注意点", "ポイント", "コツ", "始め方", "についてを",
+]
+
+# title/snippetに含まれていたら「公式サイト」と判定するキーワード
+OFFICIAL_SIGNALS = [
+    "【公式】", "｜公式", "|公式", "公式サイト", "公式ホームページ",
+    "ご予約", "ご相談", "診療のご案内", "当院について", "医師紹介",
+    "アクセス・診療時間", "初めての方へ", "よくあるご質問",
+    "求人情報", "採用情報", "スタッフ募集",
+]
+
+# snippetに以下のうち2つ以上含まれたら「公式サイト」と判定
+OFFICIAL_COMBO_SIGNALS = [
+    "tel", "0120-",
+    "住所",
+    "診療時間", "受付時間", "営業時間",
+    "アクセス",
+    "〒",
+    "当院", "当クリニック",
 ]
 
 
-# ========================================
-# フィルタリング
-# ========================================
-def is_clinic_official(url: str) -> bool:
-    """クリニック公式HPかどうかを判定"""
-    parsed = urlparse(url)
-    domain = parsed.netloc.lower()
-    path = parsed.path.lower()
-
-    for pattern in EXCLUDE_DOMAIN_PATTERNS:
+def is_non_article_domain(domain: str) -> bool:
+    """明らかに記事コンテンツではないサイトかをドメインで判定"""
+    for pattern in NON_ARTICLE_DOMAINS:
         if pattern in domain:
             return True
+    return False
 
-    for pattern in EXCLUDE_PATH_PATTERNS:
-        if path.endswith(pattern) or path.endswith(pattern + "/"):
+
+def is_article_content(title: str, snippet: str) -> bool:
+    """title+snippetから第三者の記事コンテンツかどうかを判定
+
+    判定ロジック:
+    1. 公式サイトシグナル（単独で確定）があれば → 記事ではない
+    2. 公式サイトコンボシグナル（2つ以上一致）があれば → 記事ではない
+    3. 記事シグナルがあれば → 記事である
+    4. どちらもなければ → snippetの長さで推定
+    """
+    text = (title + " " + snippet).lower()
+
+    # 1. 公式サイトシグナル（単独で確定）
+    for signal in OFFICIAL_SIGNALS:
+        if signal.lower() in text:
+            return False
+
+    # 2. コンボシグナル（2つ以上一致で公式サイト判定）
+    #    snippetにTEL+住所、診療時間+〒 等が同時にあれば公式HP
+    combo_count = sum(1 for s in OFFICIAL_COMBO_SIGNALS if s.lower() in text)
+    if combo_count >= 2:
+        return False
+
+    # 3. 記事シグナルチェック
+    for signal in ARTICLE_SIGNALS:
+        if signal in text:
             return True
 
-    parts = domain.replace("www.", "").split(".")
-    name_part = parts[0] if parts else ""
-    if any(w in name_part for w in ["clinic", "beauty", "medical", "hospital", "derm", "hifuka", "skin"]):
-        path_depth = len([p for p in path.strip("/").split("/") if p])
-        if path_depth <= 1:
-            return True
+    # 4. どちらのシグナルもない場合:
+    # snippetが長く、説明的な内容なら記事の可能性が高い
+    if len(snippet) > 80:
+        return True
 
+    # 短いsnippet＋シグナルなし → 公式サイトの可能性が高い
     return False
 
 
 def filter_urls(urls: list[dict], count: int = 3) -> list[dict]:
-    """URLリストからアフィリエイト/メディア記事をフィルタリング"""
+    """URLリストから第三者の記事コンテンツをフィルタリング
+
+    上位から順に判定し、記事コンテンツがcount件集まるまで進む。
+    """
     results = []
     for item in urls:
         url = item["url"]
-        if is_clinic_official(url):
+        domain = item.get("domain", urlparse(url).netloc.lower())
+        title = item.get("title", "")
+        snippet = item.get("snippet", "")
+
+        # 1. 明らかに非記事サイト（SNS、動画、EC等）はドメインで即除外
+        if is_non_article_domain(domain):
             item["excluded"] = True
-            item["reason"] = "クリニック公式HP"
+            item["reason"] = f"非記事サイト（{domain}）"
             continue
+
+        # 2. title+snippetで記事コンテンツかどうかを判定
+        if not is_article_content(title, snippet):
+            item["excluded"] = True
+            item["reason"] = "公式サイト/非記事コンテンツと判定"
+            continue
+
         item["excluded"] = False
         results.append(item)
         if len(results) >= count:
             break
+
     return results
 
 
@@ -156,11 +198,14 @@ def search_google(keyword: str, api_key: str, max_results: int = 20) -> list[dic
             continue
         seen_domains.add(domain)
 
+        snippet = item.get("snippet", "")
+
         results.append({
             "rank": len(results) + 1,
             "title": title,
             "url": url,
             "domain": domain,
+            "snippet": snippet,
         })
 
         if len(results) >= max_results:
@@ -224,9 +269,12 @@ def main():
         for item in all_results:
             excluded = item.get("excluded", False)
             reason = item.get("reason", "")
-            mark = "  [除外]" if excluded else ""
+            mark = f"  [除外: {reason}]" if excluded else "  [採用]"
             print(f"  {item['rank']}. {item['title']}")
-            print(f"     {item['url']}{mark} {reason}")
+            print(f"     {item['url']}{mark}")
+            snippet = item.get("snippet", "")
+            if snippet:
+                print(f"     → {snippet[:80]}...")
         print()
 
     # フィルタ結果表示

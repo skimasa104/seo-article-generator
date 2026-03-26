@@ -5,14 +5,15 @@ SEO記事自動生成パイプライン（統合スクリプト）
 キーワードとサイト設定を受け取り、以下を一気通貫で実行する:
   Step 0: Google検索 → 上位記事URL取得
   Step 1: 競合記事スクレイピング
-  Step 2-4: Claude APIで記事HTML生成（TODO: 実装予定）
+  Step 2: タグ構成設計（Claude API）
+  Step 3: 本文HTML生成（Claude API）
   Step 5: 公式サイトスクリーンショット
   Step 6: AI画像生成
   Step 7: WordPress投稿
 
 使い方:
-  python pipeline.py --keyword "AGA 横浜" --site sites/aurora_clinic.json
-  python pipeline.py --keyword "AGA 横浜" --site sites/aurora_clinic.json --category "AGA"
+  python pipeline.py --keyword "AGA 横浜" --genre aga --site sites/aurora_clinic.json
+  python pipeline.py --keyword "AGA 横浜" --genre aga --site sites/aurora_clinic.json --category "AGA"
 """
 
 import argparse
@@ -35,7 +36,7 @@ def log(msg: str):
     print(f"[{ts}] {msg}")
 
 
-def run_step(name: str, cmd: list[str], timeout: int = 300) -> dict:
+def run_step(name, cmd, timeout=300):
     """パイプラインの各ステップを実行"""
     log(f"▶ {name} 開始")
     start = time.time()
@@ -66,7 +67,7 @@ def run_step(name: str, cmd: list[str], timeout: int = 300) -> dict:
         return {"status": "exception", "error": str(e)}
 
 
-def run_pipeline(keyword: str, site_config: str, category: str = "", title: str = "") -> dict:
+def run_pipeline(keyword, site_config, genre_id, category="", title=""):
     """パイプライン全体を実行"""
 
     keyword_slug = keyword.replace(" ", "_")
@@ -122,25 +123,33 @@ def run_pipeline(keyword: str, site_config: str, category: str = "", title: str 
         return results
 
     # ==========================================
-    # Step 2-4: Claude APIで記事HTML生成
+    # Step 2: タグ構成設計（Claude API）
     # ==========================================
-    # TODO: Claude API連携で自動生成
-    # 現在は手動で作成済みのHTMLがある前提
-    html_path = os.path.join(OUTPUT_DIR, f"{keyword_slug}_記事.html")
-
-    if not os.path.exists(html_path):
-        log(f"  ⚠ 記事HTMLが見つかりません: {html_path}")
-        log(f"    → Step 2-4 (記事生成) は未実装のため、手動で作成してください")
-        results["steps"]["generate_article"] = {
-            "status": "skipped",
-            "message": "記事HTMLが見つかりません。手動作成が必要です。",
-            "expected_path": html_path,
-        }
-        results["final_status"] = "waiting_for_article"
+    step = run_step(
+        "Step 2: タグ構成設計",
+        [PYTHON, "generate_article.py", "--keyword", keyword, "--genre", genre_id, "--step", "2"],
+        timeout=300,
+    )
+    results["steps"]["tag_structure"] = step
+    if step["status"] != "ok":
+        results["final_status"] = "failed_at_tag_structure"
         return results
 
+    # ==========================================
+    # Step 3: 本文HTML生成（Claude API）
+    # ==========================================
+    step = run_step(
+        "Step 3: 本文HTML生成",
+        [PYTHON, "generate_article.py", "--keyword", keyword, "--genre", genre_id, "--step", "3"],
+        timeout=900,
+    )
+    results["steps"]["generate_html"] = step
+    if step["status"] != "ok":
+        results["final_status"] = "failed_at_generate_html"
+        return results
+
+    html_path = os.path.join(OUTPUT_DIR, f"{keyword_slug}_記事.html")
     log(f"  記事HTML: {html_path}")
-    results["steps"]["generate_article"] = {"status": "ok", "path": html_path}
 
     # ==========================================
     # Step 5: 公式サイトスクリーンショット
@@ -211,6 +220,7 @@ def run_pipeline(keyword: str, site_config: str, category: str = "", title: str 
 def main():
     parser = argparse.ArgumentParser(description="SEO記事自動生成パイプライン")
     parser.add_argument("--keyword", required=True, help="検索キーワード")
+    parser.add_argument("--genre", required=True, help="ジャンルID（例: aga, ed, hair_removal）")
     parser.add_argument("--site", required=True, help="サイト設定JSONのパス")
     parser.add_argument("--category", default="", help="WordPressカテゴリ")
     parser.add_argument("--title", default="", help="記事タイトル（省略時は自動）")
@@ -219,6 +229,7 @@ def main():
     results = run_pipeline(
         keyword=args.keyword,
         site_config=args.site,
+        genre_id=args.genre,
         category=args.category,
         title=args.title,
     )
