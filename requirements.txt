@@ -1,0 +1,8 @@
+beautifulsoup4
+Flask
+google-genai
+lxml
+Pillow
+playwright
+python-dotenv
+requests

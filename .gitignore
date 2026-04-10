@@ -9,6 +9,8 @@ sites/*.json
 output/images/
 output/*.json
 output/*.html
+output/*/
+output/*_タグ構成.md
 
 # スクレイピングデータ
 scraped_data/
@@ -26,3 +28,10 @@ venv/
 
 # Claude Code
 .claude/
+
+# ローカル開発用
+.vscode/
+runtime_state/
+site_style_cache/
+.map_geocode_cache.json
+サーバー起動

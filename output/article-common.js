@@ -6,7 +6,7 @@
 
 /* --- strong 蛍光マーカー スクロールアニメーション --- */
 document.addEventListener("DOMContentLoaded", function () {
-  var targets = document.querySelectorAll("p strong");
+  var targets = document.querySelectorAll("p strong, li strong");
   if (!targets.length) return;
 
   var observer = new IntersectionObserver(

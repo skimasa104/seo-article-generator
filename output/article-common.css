@@ -11,18 +11,21 @@
   border-collapse: collapse;
   margin: 1em 0;
   font-size: 14px;
+  table-layout: auto !important;
+  background: #fff;
 }
 .clinic-summary-table th,
 .clinic-detail-table th {
-  width: 130px;
-  min-width: 130px;
+  width: 32%;
+  min-width: 160px;
   background: #f5f5f5;
   font-weight: bold;
   text-align: left;
   vertical-align: top;
   padding: 12px 16px;
   border: 1px solid #ddd;
-  white-space: nowrap;
+  white-space: normal;
+  word-break: keep-all;
 }
 .clinic-summary-table td,
 .clinic-detail-table td {
@@ -30,6 +33,8 @@
   border: 1px solid #ddd;
   vertical-align: top;
   line-height: 1.7;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 /* --- 比較テーブル（複数列: thead付き） --- */
@@ -38,6 +43,8 @@
   border-collapse: collapse;
   margin: 1em 0;
   font-size: 14px;
+  table-layout: auto !important;
+  background: #fff;
 }
 .treatment-compare-table th {
   background: #f5f5f5;
@@ -51,6 +58,7 @@
   border: 1px solid #ddd;
   vertical-align: top;
   line-height: 1.7;
+  overflow-wrap: anywhere;
 }
 
 /* --- Googleマップ --- */
@@ -135,15 +143,169 @@
   letter-spacing: 1px;
 }
 
-/* --- strong 蛍光マーカー強調 --- */
-p strong {
-  background: linear-gradient(transparent 60%, #fff9c4 60%);
-  background-size: 0% 100%;
-  background-repeat: no-repeat;
-  font-weight: bold;
-  padding: 0 2px;
-  transition: background-size 0.8s ease;
+/* --- FAQ --- */
+.faq-section {
+  margin: 1.5em 0 2em;
 }
-p strong.is-visible {
-  background-size: 100% 100%;
+.faq-item {
+  margin: 0 0 1.5em;
+}
+.faq-item:last-child {
+  margin-bottom: 0;
+}
+.faq-question {
+  margin: 0 0 0.75em;
+  padding-left: 0.8em;
+  border-left: 3px solid #e7defa;
+  line-height: 1.5;
+}
+.faq-answer {
+  margin-left: 0;
+}
+.faq-answer > p:first-child {
+  margin-top: 0;
+}
+.faq-answer > p:last-child {
+  margin-bottom: 0;
+}
+
+/* --- 説明ブロック見出し・リスト余白 --- */
+.consultation-comparison > div,
+.side-effect-understanding > div,
+.cost-planning > div,
+.clinic-selection-tips > div {
+  margin: 1.2em 0 1.45em;
+}
+.consultation-comparison h4,
+.side-effect-understanding h4,
+.cost-planning h4,
+.clinic-selection-tips h4 {
+  margin: 0 0 0.85em;
+  padding-left: 0.8em;
+  border-left: 3px solid #e7defa;
+  line-height: 1.5;
+}
+.consultation-comparison ul,
+.side-effect-understanding ul,
+.cost-planning ul,
+.clinic-selection-tips ul {
+  margin: 0.4em 0 0;
+  padding-left: 1.25em;
+}
+.consultation-comparison li,
+.side-effect-understanding li,
+.cost-planning li,
+.clinic-selection-tips li {
+  margin: 0 0 0.55em;
+  line-height: 1.85;
+}
+.consultation-comparison li:last-child,
+.side-effect-understanding li:last-child,
+.cost-planning li:last-child,
+.clinic-selection-tips li:last-child {
+  margin-bottom: 0;
+}
+
+/* --- 一覧ボックス --- */
+.clinic-index-box {
+  margin: 1.25em 0 1.75em;
+  padding: 18px 20px;
+  border: 1px solid #dbe7f3;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #f8fbff 0%, #eef6ff 100%);
+}
+.clinic-index-title {
+  margin: 0 0 12px;
+  font-size: 15px;
+  font-weight: bold;
+  color: #244c74;
+}
+.clinic-index-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.clinic-index-list li {
+  margin: 0;
+}
+.clinic-index-list a {
+  display: block;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid #d6e4f2;
+  color: #234a72;
+  text-decoration: none;
+  font-size: 14px;
+  line-height: 1.5;
+  font-weight: 600;
+}
+.clinic-index-list a:hover {
+  background: #f3f8fe;
+}
+
+@media (max-width: 767px) {
+  .clinic-index-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --- 記事末尾CTA --- */
+.article-final-cta {
+  margin: 2em 0 1em;
+  padding: 20px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #f8fbff 0%, #eef6ff 100%);
+  border: 1px solid #dbe7f3;
+}
+.article-final-cta p:last-of-type {
+  margin-bottom: 1em;
+}
+
+/* --- strong 蛍光マーカー強調 --- */
+p strong,
+li strong {
+  color: inherit;
+  background-image: linear-gradient(transparent 56%, rgba(255, 241, 168, 0.92) 56%);
+  background-size: 100% 100% !important;
+  background-repeat: no-repeat !important;
+  border-bottom: 2px solid #efd36f;
+  font-weight: 700 !important;
+  font-size: 1.08em !important;
+  line-height: 1.75;
+  padding: 0 0.18em 0.08em;
+  border-radius: 0.2em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  transition: filter 0.25s ease, border-color 0.25s ease;
+}
+p strong.is-visible,
+li strong.is-visible {
+  filter: saturate(1.05);
+  border-bottom-color: #e0be49;
+}
+
+@media (max-width: 767px) {
+  .clinic-summary-table,
+  .clinic-detail-table,
+  .treatment-compare-table {
+    font-size: 13px;
+  }
+
+  .clinic-summary-table th,
+  .clinic-detail-table th,
+  .clinic-summary-table td,
+  .clinic-detail-table td,
+  .treatment-compare-table th,
+  .treatment-compare-table td {
+    padding: 10px 12px;
+  }
+
+  .clinic-summary-table th,
+  .clinic-detail-table th {
+    min-width: 128px;
+  }
 }

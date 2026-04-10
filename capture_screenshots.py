@@ -6,13 +6,10 @@
 
 使い方:
   # URLリストJSONを指定して実行
-  python3.12 capture_screenshots.py --html output/aga_横浜_記事.html --urls urls.json
+  python3.12 capture_screenshots.py --html output/aga_横浜/aga_横浜_記事.html --urls urls.json
 
-  # URLリストなし（Google検索で公式サイトを自動特定）
-  python3.12 capture_screenshots.py --html output/aga_横浜_記事.html --keyword "AGA 横浜"
-
-  # URLリスト自動生成（手動確認用）
-  python3.12 capture_screenshots.py --html output/aga_横浜_記事.html --generate-urls
+  # URLリストなし（同じkeywordフォルダの urls.json を優先利用し、なければ公式サイトを自動特定）
+  python3.12 capture_screenshots.py --html output/aga_横浜/aga_横浜_記事.html
 
 urls.json の形式:
   {
@@ -29,6 +26,18 @@ import sys
 import time
 import urllib.parse
 
+from bs4 import BeautifulSoup
+
+from article_audit import extract_clinic_names
+from env_utils import load_project_env
+from official_site_utils import (
+    extract_lookup_name_variants,
+    find_official_url,
+    is_banned_domain,
+    normalize_clinic_lookup_name,
+)
+from output_utils import ensure_keyword_images_dir
+
 try:
     from playwright.sync_api import sync_playwright
 except ImportError:
@@ -40,66 +49,63 @@ except ImportError:
 # ========================================
 # 設定
 # ========================================
-OUTPUT_DIR = "output/images"
 VIEWPORT_WIDTH = 1200
 VIEWPORT_HEIGHT = 800
 SCREENSHOT_TIMEOUT = 15000  # ページロードのタイムアウト (ms)
+load_project_env()
 
 
 # ========================================
 # HTML解析
 # ========================================
 def extract_h3_names(html_path: str) -> list[str]:
-    """HTMLファイルからH3見出し（クリニック/商材名）を抽出する"""
+    """HTMLファイルからクリニックH3見出しのみ抽出する"""
     with open(html_path, "r", encoding="utf-8") as f:
         content = f.read()
-
-    h3_pattern = re.compile(r"<h3>(.*?)</h3>", re.DOTALL)
-    names = []
-    for match in h3_pattern.finditer(content):
-        text = re.sub(r"<[^>]+>", "", match.group(1)).strip()
-        # 「選び方」「FAQ」などのH3は除外（H2直下のH3のみ対象）
-        # アフィカセットのプレースホルダーが直後にあるH3のみ対象にする
-        start = match.end()
-        next_content = content[start:start + 200]
-        if "アフィカセット" in next_content or "後で作成" in next_content:
-            names.append(text)
-
-    return names
+    return extract_clinic_names(content)
 
 
-# ========================================
-# URL自動検索
-# ========================================
-def search_official_url(page, name: str) -> str | None:
-    """Google検索でクリニック/商材の公式サイトURLを取得する"""
-    query = f"{name} 公式サイト"
-    search_url = f"https://www.google.com/search?q={urllib.parse.quote(query)}"
+def get_default_urls_path(html_path: str) -> str:
+    html_dir = os.path.dirname(html_path)
+    keyword_slug = os.path.splitext(os.path.basename(html_path))[0].replace("_記事", "")
+    return os.path.join(html_dir, f"{keyword_slug}_urls.json")
 
-    try:
-        page.goto(search_url, wait_until="domcontentloaded", timeout=SCREENSHOT_TIMEOUT)
-        time.sleep(2)
 
-        # 検索結果から最初のリンクを取得
-        # Google検索結果のリンク要素を取得
-        links = page.query_selector_all("div#search a[href^='http']")
+def resolve_existing_url(url_map: dict[str, str], target_name: str) -> str | None:
+    direct = url_map.get(target_name)
+    if direct:
+        if is_banned_domain(direct):
+            print(f"  Ignoring cached non-official URL for {target_name}: {direct}")
+        else:
+            return direct
 
-        for link in links:
-            href = link.get_attribute("href")
-            if not href:
-                continue
-            # 広告やGoogle自身のリンクを除外
-            if "google.com" in href or "youtube.com" in href:
-                continue
-            # Wikipedia等も除外
-            if "wikipedia.org" in href:
-                continue
-            return href
-
-    except Exception as e:
-        print(f"    Search error for {name}: {e}")
-
+    target_variants = extract_lookup_name_variants(target_name)
+    normalized_variants = [normalize_clinic_lookup_name(variant) for variant in target_variants]
+    normalized_pairs = [
+        (key, normalize_clinic_lookup_name(key), value)
+        for key, value in url_map.items()
+        if value
+    ]
+    for normalized_target in normalized_variants:
+        for _, normalized_key, value in normalized_pairs:
+            if normalized_key == normalized_target and not is_banned_domain(value):
+                return value
+    for normalized_target in normalized_variants:
+        for _, normalized_key, value in normalized_pairs:
+            if (
+                (normalized_target in normalized_key or normalized_key in normalized_target)
+                and not is_banned_domain(value)
+            ):
+                return value
     return None
+
+
+def build_screenshot_basename(name: str) -> str:
+    """スクリーンショット画像名用に短い院名ベースを返す。"""
+    base = re.split(r"\s*[|｜]\s*", name, maxsplit=1)[0].strip()
+    safe_name = re.sub(r"[^\w\-]", "_", base)
+    safe_name = re.sub(r"_+", "_", safe_name).strip("_")
+    return safe_name or "clinic"
 
 
 # ========================================
@@ -108,7 +114,10 @@ def search_official_url(page, name: str) -> str | None:
 def capture_screenshot(page, url: str, output_path: str) -> bool:
     """指定URLのスクリーンショットを取得する"""
     try:
-        page.goto(url, wait_until="load", timeout=30000)
+        try:
+            page.goto(url, wait_until="load", timeout=30000)
+        except Exception:
+            page.goto(url, wait_until="domcontentloaded", timeout=30000)
         time.sleep(2)  # 動的コンテンツの読み込み待ち
 
         # Cookie同意バナー等を閉じる試み
@@ -150,57 +159,124 @@ def capture_screenshot(page, url: str, output_path: str) -> bool:
 # ========================================
 # HTMLへの挿入
 # ========================================
-def insert_screenshots_into_html(html_path: str, screenshots: dict[str, str]):
-    """スクリーンショットをHTMLのアフィカセット部分に挿入する"""
+def insert_screenshots_into_html(html_path: str, screenshots: dict[str, str], url_map: dict[str, str]):
+    """スクリーンショットのsrc更新と公式サイトボタン差し替えを行う。"""
     with open(html_path, "r", encoding="utf-8") as f:
         content = f.read()
-
-    # アフィカセットプレースホルダーを全て抽出
-    all_placeholders = re.findall(
-        r"\{\{後で作成:アフィカセット\s*[—\-]\s*(.+?)\s*\}\}", content
-    )
+    soup = BeautifulSoup(content, "lxml")
 
     for name, img_path in screenshots.items():
-        # 相対パスに変換
         rel_path = os.path.relpath(img_path, os.path.dirname(html_path))
+        official_url = url_map.get(name, "#")
+        heading = soup.find("h3", string=lambda text: text and text.strip() == name)
+        if heading is None:
+            continue
 
-        img_tag = (
-            f'<div class="clinic-screenshot" style="margin:1em 0;border:1px solid #ddd;border-radius:4px;overflow:hidden;">\n'
-            f'<img src="{rel_path}" alt="{name}の公式サイト" '
-            f'width="{VIEWPORT_WIDTH}" height="{VIEWPORT_HEIGHT}" loading="lazy" '
-            f'style="width:100%;height:auto;display:block;">\n'
-            f'</div>'
-        )
+        section_nodes = []
+        node = heading.find_next_sibling()
+        while node and not (getattr(node, "name", None) == "h3" and (node.get("id") or "").startswith("clinic-")) and getattr(node, "name", None) != "h2":
+            section_nodes.append(node)
+            node = node.find_next_sibling()
 
-        # 完全一致で検索
-        placeholder_pattern = re.compile(
-            r"\{\{後で作成:アフィカセット\s*[—\-]\s*" + re.escape(name) + r"\s*\}\}"
-        )
+        screenshot_div = None
+        button_wrap = None
+        placeholder_node = None
+        for section_node in section_nodes:
+            if getattr(section_node, "name", None) == "div" and "clinic-screenshot" in (section_node.get("class") or []):
+                screenshot_div = section_node
+            if getattr(section_node, "name", None) == "p" and "official-site-button-wrap" in (section_node.get("class") or []):
+                button_wrap = section_node
+            if getattr(section_node, "string", None) and "後で作成:アフィカセット" in section_node.string:
+                placeholder_node = section_node
 
-        if placeholder_pattern.search(content):
-            content = placeholder_pattern.sub(img_tag, content)
-            print(f"  Inserted screenshot for: {name}")
+        if screenshot_div:
+            img = screenshot_div.find("img")
+            if img is None:
+                img = soup.new_tag("img")
+                screenshot_div.append(img)
+            img["src"] = rel_path
+            img["alt"] = f"{name}の公式サイト"
+            img["width"] = "1200"
+            img["height"] = "800"
+            img["loading"] = "lazy"
+            print(f"  Updated screenshot path for: {name}")
         else:
-            # H3名とプレースホルダー名が異なる場合、部分一致で探す
-            # 例: H3「AGAヘアクリニック（AHCメディカルサロン横浜）」
-            #     プレースホルダー「AGAヘアクリニック」
-            matched = False
-            for ph_name in all_placeholders:
-                if ph_name in name or name in ph_name:
-                    fallback_pattern = re.compile(
-                        r"\{\{後で作成:アフィカセット\s*[—\-]\s*"
-                        + re.escape(ph_name) + r"\s*\}\}"
-                    )
-                    if fallback_pattern.search(content):
-                        content = fallback_pattern.sub(img_tag, content)
-                        print(f"  Inserted screenshot for: {name} (matched placeholder: {ph_name})")
-                        matched = True
-                        break
-            if not matched:
-                print(f"  Warning: Placeholder not found for: {name}")
+            screenshot_div = soup.new_tag("div")
+            screenshot_div["class"] = ["clinic-screenshot"]
+            img = soup.new_tag("img")
+            img["src"] = rel_path
+            img["alt"] = f"{name}の公式サイト"
+            img["width"] = "1200"
+            img["height"] = "800"
+            img["loading"] = "lazy"
+            screenshot_div.append(img)
+            if button_wrap is not None:
+                button_wrap.insert_before(screenshot_div)
+            else:
+                heading.insert_after(screenshot_div)
+            print(f"  Inserted screenshot block for: {name}")
+
+        if button_wrap is None and placeholder_node is not None:
+            button_wrap = soup.new_tag("p")
+            button_wrap["class"] = ["official-site-button-wrap"]
+            button_wrap["style"] = "margin:1em 0 1.5em;text-align:center;"
+            placeholder_node.replace_with(button_wrap)
+
+        if button_wrap is None:
+            button_wrap = soup.new_tag("p")
+            button_wrap["class"] = ["official-site-button-wrap"]
+            button_wrap["style"] = "margin:1em 0 1.5em;text-align:center;"
+            if screenshot_div is not None:
+                screenshot_div.insert_after(button_wrap)
+            else:
+                heading.insert_after(button_wrap)
+
+        if button_wrap is not None:
+            button_wrap.clear()
+            anchor = soup.new_tag("a")
+            anchor["href"] = official_url
+            anchor["target"] = "_blank"
+            anchor["rel"] = "noopener noreferrer sponsored"
+            anchor["style"] = "display:inline-block;background:#0f6cbd;color:#fff;padding:14px 32px;border-radius:999px;text-decoration:none;font-size:15px;font-weight:bold;"
+            anchor.string = f"{name}の公式サイトを見る"
+            button_wrap.append(anchor)
+            print(f"  Updated official site button for: {name}")
+
+    if soup.body is not None:
+        updated_html = soup.body.decode_contents().strip()
+    else:
+        updated_html = str(soup)
+
+    # 旧アフィカセット用プレースホルダーが残る記事との後方互換
+    placeholder_names = re.findall(r"\{\{後で作成:アフィカセット\s*[—\-]\s*(.+?)\s*\}\}", updated_html)
+    for placeholder_name in placeholder_names:
+        matched_name = None
+        candidate_names = sorted(set(list(url_map.keys()) + list(screenshots.keys())), key=len, reverse=True)
+        for name in candidate_names:
+            if placeholder_name in name or name in placeholder_name:
+                matched_name = name
+                break
+        if not matched_name:
+            continue
+
+        official_url = url_map.get(matched_name)
+        if not official_url:
+            continue
+
+        button_html = (
+            f'<p class="official-site-button-wrap" style="margin:1em 0 1.5em;text-align:center;">'
+            f'<a href="{official_url}" target="_blank" rel="noopener noreferrer sponsored" '
+            f'style="display:inline-block;background:#0f6cbd;color:#fff;padding:14px 32px;border-radius:999px;text-decoration:none;font-size:15px;font-weight:bold;">'
+            f'{matched_name}の公式サイトを見る</a></p>'
+        )
+        pattern = re.compile(
+            r"\{\{後で作成:アフィカセット\s*[—\-]\s*" + re.escape(placeholder_name) + r"\s*\}\}"
+        )
+        updated_html = pattern.sub(button_html, updated_html)
+        print(f"  Replaced affiliate placeholder: {placeholder_name} -> {matched_name}")
 
     with open(html_path, "w", encoding="utf-8") as f:
-        f.write(content)
+        f.write(updated_html)
 
 
 # ========================================
@@ -235,22 +311,26 @@ def main():
     # URLリストテンプレート生成モード
     if args.generate_urls:
         template = {name: "" for name in names}
-        keyword_slug = os.path.splitext(os.path.basename(args.html))[0]
-        output_json = f"output/{keyword_slug}_urls.json"
+        html_dir = os.path.dirname(args.html)
+        keyword_slug = os.path.splitext(os.path.basename(args.html))[0].replace("_記事", "")
+        output_json = os.path.join(html_dir, f"{keyword_slug}_urls.json")
         with open(output_json, "w", encoding="utf-8") as f:
             json.dump(template, f, ensure_ascii=False, indent=2)
         print(f"\nURL template generated: {output_json}")
         print("Fill in the URLs and run again with --urls option.")
         return
 
-    # URLリスト読み込み
     url_map = {}
-    if args.urls:
-        with open(args.urls, "r", encoding="utf-8") as f:
+    urls_path = args.urls or get_default_urls_path(args.html)
+    if os.path.exists(urls_path):
+        with open(urls_path, "r", encoding="utf-8") as f:
             url_map = json.load(f)
+        print(f"\nLoaded URL map: {urls_path}")
 
     # 出力ディレクトリ作成
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    html_dir = os.path.dirname(args.html)
+    keyword = os.path.splitext(os.path.basename(args.html))[0].replace("_記事", "").replace("_", " ")
+    output_dir = ensure_keyword_images_dir(keyword)
 
     # Playwright起動
     with sync_playwright() as p:
@@ -276,24 +356,30 @@ def main():
             print(f"\n--- {name} ---")
 
             # URL取得
-            url = url_map.get(name)
+            url = resolve_existing_url(url_map, name)
+            if url:
+                url_map[name] = url
 
             if not url:
                 # URLリストにない場合はGoogle検索で自動取得
                 print(f"  Searching for official site...")
-                url = search_official_url(page, name)
+                url, candidates = find_official_url(name)
                 if url:
                     print(f"  Found: {url}")
                     url_map[name] = url
                 else:
-                    print(f"  Could not find official site. Skipping.")
+                    if candidates:
+                        best = candidates[0]
+                        print(f"  Could not confidently identify official site. Best guess was skipped: {best.get('url')} (score={best.get('score')})")
+                    else:
+                        print(f"  Could not find official site. Skipping.")
                     results.append((name, None, False))
                     continue
 
             # スクリーンショット取得
-            safe_name = re.sub(r'[^\w\-]', '_', name)
+            safe_name = build_screenshot_basename(name)
             filename = f"screenshot_{safe_name}.png"
-            filepath = os.path.join(OUTPUT_DIR, filename)
+            filepath = os.path.join(output_dir, filename)
 
             print(f"  Capturing: {url}")
             success = capture_screenshot(page, url, filepath)
@@ -319,17 +405,17 @@ def main():
             print(f"          {url}")
 
     # 自動検索で見つけたURLを保存
-    if not args.urls and url_map:
-        keyword_slug = os.path.splitext(os.path.basename(args.html))[0]
-        urls_output = f"output/{keyword_slug}_urls.json"
+    if url_map:
+        urls_output = get_default_urls_path(args.html)
         with open(urls_output, "w", encoding="utf-8") as f:
             json.dump(url_map, f, ensure_ascii=False, indent=2)
         print(f"\nDiscovered URLs saved to: {urls_output}")
-        print("You can re-run with --urls to skip search next time.")
+        if not args.urls:
+            print("You can re-run with --urls to skip search next time.")
 
     # HTML挿入
     if not args.skip_insert and screenshots:
-        insert_screenshots_into_html(args.html, screenshots)
+        insert_screenshots_into_html(args.html, screenshots, url_map)
 
     print("\nDone!")
 

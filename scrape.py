@@ -13,7 +13,7 @@ import re
 import requests
 from bs4 import BeautifulSoup, NavigableString
 
-OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "scraped_data")
+from output_utils import ensure_keyword_scraped_dir
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -282,10 +282,10 @@ def extract_article(url):
 
 def save_results(keyword, articles):
     """結果をファイルに保存"""
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    output_dir = ensure_keyword_scraped_dir(keyword)
 
     for i, article in enumerate(articles, 1):
-        filename = os.path.join(OUTPUT_DIR, f"article_{i}_structure.md")
+        filename = os.path.join(output_dir, f"article_{i}_structure.md")
         with open(filename, "w", encoding="utf-8") as f:
             f.write(f"# 競合記事 {i} タグ構成分析\n\n")
             f.write(f"**URL**: {article['url']}\n")
@@ -339,7 +339,7 @@ def save_results(keyword, articles):
         print(f"   💾 保存: {filename}")
 
     # サマリーJSON
-    summary_file = os.path.join(OUTPUT_DIR, "summary.json")
+    summary_file = os.path.join(output_dir, "summary.json")
     summary = {
         "keyword": keyword,
         "articles": [
@@ -423,7 +423,7 @@ def main():
     save_results(keyword, articles)
 
     print(f"\n✅ 完了！ {len(articles)} 記事を取得しました")
-    print(f"   保存先: {OUTPUT_DIR}/")
+    print(f"   保存先: {ensure_keyword_scraped_dir(keyword)}/")
 
 
 if __name__ == "__main__":

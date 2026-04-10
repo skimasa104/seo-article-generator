@@ -1,5 +1,7 @@
 {
   "site_url": "https://your-site.com",
   "username": "your-username",
-  "app_password": "xxxx xxxx xxxx xxxx xxxx xxxx"
+  "app_password": "xxxx xxxx xxxx xxxx xxxx xxxx",
+  "rest_api_base": "https://your-site.com/wp-json/wp/v2",
+  "skip_wordpress": false
 }
