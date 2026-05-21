@@ -1,13 +1,15 @@
 {
   "genre_id": "aga",
   "genre_name": "AGA治療",
-  "article_type": "クリニック比較",
+  "article_type": "検索意図に応じて可変",
+  "default_article_type": "クリニック比較",
+  "supported_article_types": ["クリニック比較", "解説記事", "費用解説記事", "対処法記事", "コラム記事"],
 
   "shortcodes": {
     "早見表": "[sc name=\"aga-hayamihyou\" ][/sc]",
     "口コミ": "口コミブロック（必要な場合のみ、本文内に直接HTML出力）",
     "一覧ボックス": "一覧ボックス（クリニック{count}選アンカーリンク付き一覧を本文内に直接HTML出力）",
-    "比較テーブル": "{{後で作成:クリニック比較テーブル}}"
+    "比較テーブル": "比較テーブル（本文内に直接HTML出力。後置換の記法は使わない）"
   },
 
   "summary_table": {

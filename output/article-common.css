@@ -4,61 +4,333 @@
    全ジャンル（AGA/ED/脱毛等）で共通
    ======================================== */
 
+/* ============================================================
+   .ndm-article: 記事本文の独立スコープ
+   テーマの装飾を打ち消し、記事内 CSS だけが効く状態にする
+   ============================================================ */
+.ndm-article {
+  color: #243446 !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif !important;
+  font-size: 16px !important;
+  line-height: 1.85 !important;
+  word-break: break-word;
+}
+.ndm-article *,
+.ndm-article *::before,
+.ndm-article *::after {
+  box-sizing: border-box;
+}
+
+/* --- 段落 --- */
+.ndm-article p {
+  margin: 1em 0 !important;
+  padding: 0 !important;
+  font-size: 16px !important;
+  line-height: 1.85 !important;
+  color: #243446 !important;
+  background: none !important;
+  border: 0 !important;
+}
+
+/* --- 見出しベース（H2/H3の最終見た目は後段の専用ルールで定義） --- */
+.ndm-article h2,
+.ndm-article h3,
+.ndm-article h4,
+.ndm-article h5,
+.ndm-article h6 {
+  color: #1e3a8a !important;
+  background: none !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+}
+.ndm-article h4 {
+  margin: 1.4em 0 0.6em !important;
+  padding: 0 !important;
+  font-size: 16px !important;
+  line-height: 1.6 !important;
+  font-weight: 700 !important;
+  color: #1e3a8a !important;
+  background: none !important;
+  border: 0 !important;
+}
+.ndm-article h5,
+.ndm-article h6 {
+  margin: 1em 0 0.5em !important;
+  padding: 0 !important;
+  font-weight: 700 !important;
+  color: #1e3a8a !important;
+  background: none !important;
+  border: 0 !important;
+}
+
+/* --- リスト --- */
+.ndm-article ul {
+  list-style: disc outside !important;
+  margin: 1em 0 !important;
+  padding-left: 1.4em !important;
+}
+.ndm-article ol {
+  list-style: decimal outside !important;
+  margin: 1em 0 !important;
+  padding-left: 1.4em !important;
+}
+.ndm-article li {
+  margin: 0.4em 0 !important;
+  line-height: 1.85 !important;
+  color: #243446 !important;
+  background: none !important;
+}
+
+/* --- リンク・強調 --- */
+.ndm-article a:not(.btn):not(.cl-btn):not(.official-site-button):not([class*="__btn"]):not([style*="background"]) {
+  color: #2563eb !important;
+  text-decoration: underline;
+  word-break: break-all;
+}
+.ndm-article a:not(.btn):not(.cl-btn):not(.official-site-button):not([class*="__btn"]):not([style*="background"]):hover {
+  text-decoration: none;
+}
+.ndm-article a.btn,
+.ndm-article a.cl-btn,
+.ndm-article a.official-site-button,
+.ndm-article a[class*="__btn"],
+.ndm-article .official-site-button-wrap a,
+.ndm-article div[style*="text-align:center"] > a[style*="background"] {
+  color: #fff !important;
+  text-decoration: none !important;
+  word-break: keep-all !important;
+}
+.ndm-article .official-site-button-wrap a,
+.ndm-article div[style*="text-align:center"] > a[style*="background"] {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: min(100%, 420px) !important;
+  max-width: 100%;
+  padding: 14px 24px !important;
+  line-height: 1.5 !important;
+  text-align: center !important;
+  white-space: normal !important;
+  overflow-wrap: break-word !important;
+}
+.ndm-article strong,
+.ndm-article b {
+  font-weight: 700 !important;
+  background: linear-gradient(transparent 60%, #fef08a 60%) !important;
+  padding: 0 2px !important;
+  color: #243446 !important;
+}
+
+/* --- メディア --- */
+.ndm-article img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+.ndm-article figure {
+  margin: 1em 0;
+}
+.ndm-article iframe {
+  max-width: 100%;
+  border: 0;
+}
+
+/* --- 区切り線・引用 --- */
+.ndm-article hr {
+  border: 0 !important;
+  border-top: 1px solid #d1d5db !important;
+  margin: 2em 0 !important;
+}
+.ndm-article blockquote {
+  margin: 1em 0;
+  padding: 0.8em 1em;
+  border-left: 4px solid #d1d5db;
+  background: #f9fafb;
+  color: #4b5563;
+}
+
+/* --- テーブル基本（個別 class はこの後の定義で上書き） --- */
+.ndm-article table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+}
+.ndm-article th,
+.ndm-article td {
+  vertical-align: top;
+}
+
 /* --- 概要テーブル・詳細テーブル（2列: th | td） --- */
 .clinic-summary-table,
 .clinic-detail-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 1em 0;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 1.2em 0;
   font-size: 14px;
-  table-layout: auto !important;
+  table-layout: fixed !important;
   background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(30, 58, 138, 0.08), 0 2px 4px rgba(30, 58, 138, 0.04);
+  border: 1px solid #dbeafe;
 }
 .clinic-summary-table th,
 .clinic-detail-table th {
-  width: 32%;
-  min-width: 160px;
-  background: #f5f5f5;
-  font-weight: bold;
+  width: 34%;
+  min-width: 0;
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  color: #1e3a8a;
+  font-weight: 700;
   text-align: left;
   vertical-align: top;
-  padding: 12px 16px;
-  border: 1px solid #ddd;
-  white-space: normal;
-  word-break: keep-all;
+  padding: 14px 18px;
+  border-bottom: 1px solid #dbeafe;
+  border-right: 2px solid #93c5fd;
+  white-space: normal !important;
+  word-break: normal !important;
+  overflow-wrap: anywhere !important;
+  writing-mode: horizontal-tb;
 }
 .clinic-summary-table td,
 .clinic-detail-table td {
-  padding: 12px 16px;
-  border: 1px solid #ddd;
+  padding: 14px 18px;
+  border-bottom: 1px solid #e5e7eb;
   vertical-align: top;
-  line-height: 1.7;
-  white-space: normal;
-  overflow-wrap: anywhere;
+  line-height: 1.75;
+  min-width: 0;
+  white-space: normal !important;
+  word-break: normal !important;
+  overflow-wrap: anywhere !important;
+  writing-mode: horizontal-tb;
+  background: #fff;
+}
+.clinic-summary-table tr:last-child th,
+.clinic-summary-table tr:last-child td,
+.clinic-detail-table tr:last-child th,
+.clinic-detail-table tr:last-child td {
+  border-bottom: 0;
+}
+.clinic-summary-table tr:hover td,
+.clinic-detail-table tr:hover td {
+  background: #fafbff;
+}
+.clinic-summary-table th:first-child,
+.clinic-detail-table th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%) !important;
+  box-shadow: 2px 0 0 #93c5fd;
 }
 
 /* --- 比較テーブル（複数列: thead付き） --- */
-.treatment-compare-table {
+/* 注: `.comparison-table` は <div> ラッパー専用。`<table>` に同名クラスが乗っているケースがあり、その場合は table レイアウトを壊さないよう `div.` で限定する */
+.table-scroll,
+div.comparison-table,
+.comparison-table-container {
+  display: block;
   width: 100%;
-  border-collapse: collapse;
+  max-width: 100%;
+  overflow-x: auto !important;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
   margin: 1em 0;
+}
+
+.treatment-compare-table {
+  width: max-content;
+  min-width: 680px;
+  max-width: none;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 0;
   font-size: 14px;
   table-layout: auto !important;
   background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 6px 16px rgba(30, 58, 138, 0.1);
+  border: 1px solid #dbeafe;
+}
+.treatment-compare-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%) !important;
+  color: #fff !important;
+  border-color: #2563eb !important;
 }
 .treatment-compare-table th {
-  background: #f5f5f5;
-  font-weight: bold;
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  color: #1e3a8a;
+  font-weight: 700;
   text-align: center;
-  padding: 12px 16px;
-  border: 1px solid #ddd;
+  padding: 14px 18px;
+  border-bottom: 1px solid #dbeafe;
+  border-right: 1px solid #dbeafe;
+  min-width: 96px;
+  white-space: nowrap !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  line-break: auto;
+  writing-mode: horizontal-tb;
 }
 .treatment-compare-table td {
-  padding: 12px 16px;
-  border: 1px solid #ddd;
+  padding: 14px 18px;
+  border-bottom: 1px solid #e5e7eb;
+  border-right: 1px solid #e5e7eb;
   vertical-align: top;
-  line-height: 1.7;
-  overflow-wrap: anywhere;
+  line-height: 1.75;
+  min-width: 100px;
+  white-space: nowrap !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  line-break: auto;
+  writing-mode: horizontal-tb;
+  background: #fff;
+}
+.treatment-compare-table tbody tr:nth-child(even) td {
+  background: #f9fbff;
+}
+.treatment-compare-table tbody tr:hover td {
+  background: #eef5ff !important;
+}
+.treatment-compare-table tbody tr:last-child th,
+.treatment-compare-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.treatment-compare-table th:last-child,
+.treatment-compare-table td:last-child {
+  border-right: 0;
+}
+.treatment-compare-table a {
+  display: inline-block;
+  white-space: nowrap !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+}
+.treatment-compare-table th:last-child,
+.treatment-compare-table td:last-child {
+  min-width: 180px;
+}
+.treatment-compare-table th:first-child,
+.treatment-compare-table td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 150px;
+  background: #fff !important;
+  text-align: left;
+  box-shadow: 1px 0 0 #ddd;
+}
+.treatment-compare-table thead th:first-child {
+  z-index: 3;
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%) !important;
+  color: #fff !important;
 }
 
 /* --- Googleマップ --- */
@@ -69,6 +341,17 @@
   width: 100%;
   height: 300px;
   border: 0;
+}
+
+/* --- 複数院マップ（clinic-maps-multi / clinic-multi-map 両対応） --- */
+.clinic-maps-multi .clinic-map,
+.clinic-multi-map .clinic-map {
+  margin: 0;
+}
+.clinic-maps-multi .clinic-map-item p,
+.clinic-multi-map-label {
+  line-height: 1.55;
+  color: #243446;
 }
 
 /* --- 公式サイトスクリーンショット --- */
@@ -82,6 +365,31 @@
   width: 100%;
   height: auto;
   display: block;
+}
+
+.official-site-button-wrap {
+  margin: 1em 0 1.5em;
+  text-align: center;
+}
+.official-site-button-wrap a {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: min(100%, 420px) !important;
+  max-width: 100%;
+  padding: 14px 24px !important;
+  border-radius: 999px;
+  border: 1px solid #0b5aa0;
+  background: linear-gradient(135deg, #1780d4 0%, #0f6cbd 100%) !important;
+  box-shadow: 0 8px 18px rgba(15, 108, 189, 0.22);
+  line-height: 1.5;
+  text-align: center;
+  white-space: normal;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+.official-site-button-wrap a:hover {
+  filter: brightness(1.04);
 }
 
 /* --- 口コミ吹き出し --- */
@@ -100,16 +408,36 @@
   margin: 12px 0;
 }
 .review-avatar {
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
-  background: #e0e0e0;
+  background: linear-gradient(135deg, #6366f1 0%, #ec4899 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 18px;
   flex-shrink: 0;
-  color: #888;
+  color: #fff;
+  box-shadow: 0 4px 10px rgba(99, 102, 241, 0.28);
+  overflow: hidden;
+}
+.review-avatar svg {
+  width: 30px;
+  height: 30px;
+  color: #fff;
+  fill: currentColor;
+}
+.review-bubble:nth-child(2n) .review-avatar {
+  background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.28);
+}
+.review-bubble:nth-child(3n) .review-avatar {
+  background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+  box-shadow: 0 4px 10px rgba(245, 158, 11, 0.28);
+}
+.review-bubble:nth-child(4n) .review-avatar {
+  background: linear-gradient(135deg, #8b5cf6 0%, #06b6d4 100%);
+  box-shadow: 0 4px 10px rgba(139, 92, 246, 0.28);
 }
 .review-body {
   position: relative;
@@ -206,50 +534,381 @@
   margin-bottom: 0;
 }
 
-/* --- 一覧ボックス --- */
-.clinic-index-box {
-  margin: 1.25em 0 1.75em;
-  padding: 18px 20px;
-  border: 1px solid #dbe7f3;
-  border-radius: 14px;
-  background: linear-gradient(180deg, #f8fbff 0%, #eef6ff 100%);
+/* --- 仮データ明記のアンケート風図表 --- */
+.mock-survey-block {
+  position: relative;
+  margin: 1.5em 0 2em;
+  padding: 20px;
+  border: 1px solid #e4ddd4;
+  border-radius: 2px;
+  background: #fdfbf8;
+  overflow: hidden;
 }
-.clinic-index-title {
-  margin: 0 0 12px;
-  font-size: 15px;
-  font-weight: bold;
-  color: #244c74;
+.mock-survey-block::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto auto;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(236, 201, 159, 0.14) 0%, rgba(236, 201, 159, 0) 72%);
+  pointer-events: none;
 }
-.clinic-index-list {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px 14px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+.mock-survey-kicker {
+  margin: 0 0 8px;
+  color: #7a6552;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
-.clinic-index-list li {
-  margin: 0;
-}
-.clinic-index-list a {
-  display: block;
-  padding: 10px 14px;
-  border-radius: 10px;
-  background: #fff;
-  border: 1px solid #d6e4f2;
-  color: #234a72;
-  text-decoration: none;
-  font-size: 14px;
+.mock-survey-title {
+  margin: 0 0 8px;
+  color: #352c24;
+  font-size: 20px;
   line-height: 1.5;
-  font-weight: 600;
 }
-.clinic-index-list a:hover {
-  background: #f3f8fe;
+.mock-survey-note {
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  border-left: 3px solid #b88b63;
+  background: #f7f1ea;
+  color: #5f5143;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.mock-survey-section {
+  margin: 0 0 18px;
+  padding: 16px;
+  border: 1px solid #e7dfd5;
+  border-radius: 2px;
+  background: #fff;
+}
+.mock-survey-section:last-child {
+  margin-bottom: 0;
+}
+.mock-survey-question {
+  margin: 0 0 14px;
+  color: #40352c;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.6;
+}
+.mock-survey-question-note {
+  margin: -4px 0 12px;
+  color: #76675a;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.mock-survey-bars {
+  display: grid;
+  gap: 10px;
+}
+.mock-survey-bar-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 280px) 64px minmax(140px, 1fr);
+  gap: 10px 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid #eee7de;
+  border-radius: 2px;
+  background: #fcfaf7;
+}
+.mock-survey-bar-row.is-top {
+  border-color: #d8c7b4;
+  background: #f8f2ea;
+}
+.mock-survey-rank {
+  display: inline-flex;
+  width: 40px;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  border-radius: 2px;
+  background: #ede3d7;
+  color: #6b5846;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+.mock-survey-bar-row.is-top .mock-survey-rank {
+  background: #6b5846;
+  color: #fffdf9;
+}
+.mock-survey-label {
+  color: #45382d;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+.mock-survey-meter {
+  position: relative;
+  height: 12px;
+  border-radius: 2px;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.45) 0 1px, transparent 1px 20%),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.45) 20% 21%, transparent 21% 40%),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.45) 40% 41%, transparent 41% 60%),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.45) 60% 61%, transparent 61% 80%),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.45) 80% 81%, transparent 81% 100%),
+    #e8ddd0;
+  overflow: hidden;
+}
+.mock-survey-fill {
+  position: relative;
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #866448 0%, #5f4633 100%);
+}
+.mock-survey-fill::after {
+  content: "";
+  position: absolute;
+  inset: 2px 8px 2px auto;
+  width: 18px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.2);
+}
+.mock-survey-value {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  color: #5f5143;
+  white-space: nowrap;
+}
+.mock-survey-value strong {
+  font-size: 18px;
+  line-height: 1;
+}
+.mock-survey-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+.mock-survey-card {
+  padding: 16px 14px;
+  border: 1px solid #e7dfd5;
+  border-radius: 2px;
+  background: #fff;
+}
+.mock-survey-card-title {
+  margin: 0 0 12px;
+  color: #45382d;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.6;
+}
+.mock-survey-donut {
+  --survey-pct: 50;
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 116px;
+  height: 116px;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at center, #fff 0 38px, transparent 39px),
+    conic-gradient(#6f533d 0 calc(var(--survey-pct) * 1%), #e7ddd1 calc(var(--survey-pct) * 1%) 100%);
+}
+.mock-survey-donut-inner {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: #fff;
+  color: #6c5a49;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.4;
+  text-align: center;
+  box-shadow: inset 0 0 0 1px #ece3d7;
+}
+.mock-survey-percent {
+  margin: 0 0 4px;
+  color: #40352c;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+}
+.mock-survey-card-meter {
+  height: 8px;
+  margin: 0 auto 10px;
+  border-radius: 2px;
+  background: #e8ddd0;
+  overflow: hidden;
+}
+.mock-survey-card-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #866448 0%, #5f4633 100%);
+}
+.mock-survey-caption {
+  margin: 0;
+  color: #6f6153;
+  font-size: 11px;
+  line-height: 1.7;
+  text-align: center;
+}
+.mock-survey-summary {
+  display: grid;
+  gap: 10px;
+}
+.mock-survey-summary-item {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 12px 0;
+  border-top: 1px solid #ece4da;
+}
+.mock-survey-summary-item:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+.mock-survey-summary-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 0;
+  border-radius: 2px;
+  background: #ece2d6;
+  color: #5f5143;
+  font-size: 12px;
+  font-weight: 800;
+}
+.mock-survey-summary-title {
+  margin: 0 0 4px;
+  color: #40352c;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.6;
+}
+.mock-survey-summary-text {
+  color: #5f5143;
+  font-size: 13px;
+  line-height: 1.7;
 }
 
 @media (max-width: 767px) {
-  .clinic-index-list {
+  .mock-survey-block {
+    padding: 14px;
+    border-radius: 2px;
+  }
+  .mock-survey-title {
+    font-size: 18px;
+  }
+  .mock-survey-question-note,
+  .mock-survey-note,
+  .mock-survey-summary-text {
+    font-size: 12px;
+  }
+  .mock-survey-bar-row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 8px;
+    padding: 12px;
+  }
+  .mock-survey-meter {
+    grid-column: 1 / -1;
+  }
+  .mock-survey-rank {
+    font-size: 10px;
+    width: 38px;
+  }
+  .mock-survey-label {
+    font-size: 13px;
+  }
+  .mock-survey-value {
+    justify-content: flex-end;
+  }
+  .mock-survey-value strong {
+    font-size: 17px;
+  }
+  .mock-survey-grid {
     grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .mock-survey-card {
+    padding: 14px 12px;
+  }
+  .mock-survey-card-title {
+    font-size: 12px;
+  }
+  .mock-survey-percent {
+    font-size: 20px;
+  }
+  .mock-survey-summary-item {
+    grid-template-columns: 50px minmax(0, 1fr);
+  }
+  .mock-survey-summary-title {
+    font-size: 13px;
+  }
+}
+
+/* --- SWELL 目次トグル --- */
+.p-toc {
+  margin: 1.25em 0 1.75em;
+  border: 1px solid #dbe3ef;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #fbfdff 0%, #f4f8fc 100%);
+  overflow: hidden;
+}
+.p-toc__ttl {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+}
+.p-toc__ttl[role="button"] {
+  outline: none;
+}
+.p-toc__ttl[role="button"]:focus-visible {
+  box-shadow: inset 0 0 0 2px #8db7e4;
+}
+.seo-toc-toggle-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid #d6e4f2;
+  color: #2b5078;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+.seo-toc-toggle-label::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg) translateY(-1px);
+  transition: transform 0.2s ease;
+}
+.p-toc.is-open .seo-toc-toggle-label::after {
+  transform: rotate(-135deg) translateY(-1px);
+}
+.p-toc:not(.is-open) .p-toc__list,
+.p-toc:not(.is-open) ol,
+.p-toc:not(.is-open) ul {
+  display: none;
+}
+.p-toc.is-open .p-toc__list,
+.p-toc.is-open ol,
+.p-toc.is-open ul {
+  display: block;
+}
+
+@media (max-width: 767px) {
+  .p-toc__ttl {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 
@@ -261,8 +920,55 @@
   background: linear-gradient(180deg, #f8fbff 0%, #eef6ff 100%);
   border: 1px solid #dbe7f3;
 }
+.article-final-cta__eyebrow {
+  margin: 0 0 8px;
+  color: #456789;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+.article-final-cta__title {
+  margin: 0 0 12px;
+  font-size: 22px;
+  line-height: 1.5;
+}
 .article-final-cta p:last-of-type {
   margin-bottom: 1em;
+}
+.article-final-cta.cta-variant-1 {
+  background: linear-gradient(180deg, #f8fbff 0%, #eef6ff 100%);
+  border-color: #dbe7f3;
+}
+.article-final-cta.cta-variant-1 .article-final-cta__eyebrow {
+  color: #56789a;
+}
+.article-final-cta.cta-variant-2 {
+  background: linear-gradient(180deg, #f5fcf7 0%, #ebf8f0 100%);
+  border-color: #cfe7da;
+}
+.article-final-cta.cta-variant-2 .article-final-cta__eyebrow {
+  color: #4c7b63;
+}
+.article-final-cta.cta-variant-3 {
+  background: linear-gradient(180deg, #fffaf2 0%, #fff1dd 100%);
+  border-color: #efd9b2;
+}
+.article-final-cta.cta-variant-3 .article-final-cta__eyebrow {
+  color: #9a6f2f;
+}
+.article-final-cta.cta-variant-4 {
+  background: linear-gradient(180deg, #fff7f7 0%, #ffeef0 100%);
+  border-color: #efcfd7;
+}
+.article-final-cta.cta-variant-4 .article-final-cta__eyebrow {
+  color: #9a5166;
+}
+.article-final-cta.cta-variant-5 {
+  background: linear-gradient(180deg, #f5f8fb 0%, #eaf0f6 100%);
+  border-color: #d5dfe9;
+}
+.article-final-cta.cta-variant-5 .article-final-cta__eyebrow {
+  color: #506273;
 }
 
 /* --- strong 蛍光マーカー強調 --- */
@@ -306,6 +1012,890 @@ li strong.is-visible {
 
   .clinic-summary-table th,
   .clinic-detail-table th {
-    min-width: 128px;
+    width: 40%;
+    min-width: 0;
+  }
+
+  .clinic-summary-table td,
+  .clinic-detail-table td {
+    min-width: 0;
+  }
+
+  .treatment-compare-table {
+    min-width: 720px;
+  }
+
+  .treatment-compare-table th,
+  .treatment-compare-table td {
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .treatment-compare-table th:first-child,
+  .treatment-compare-table td:first-child {
+    min-width: 34vw !important;
+    max-width: 42vw !important;
+    width: 38vw;
+    white-space: normal !important;
+    word-break: break-word !important;
+    overflow-wrap: anywhere !important;
+  }
+  .treatment-compare-table th:first-child a,
+  .treatment-compare-table td:first-child a {
+    display: inline !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+    overflow-wrap: anywhere !important;
+    max-width: 100%;
+  }
+
+  .treatment-compare-table th:last-child,
+  .treatment-compare-table td:last-child {
+    min-width: 160px;
+  }
+
+  .official-site-button-wrap a {
+    width: 100% !important;
+    padding: 14px 18px !important;
+    font-size: 14px !important;
+  }
+  .ndm-article div[style*="text-align:center"] > a[style*="background"] {
+    width: 100% !important;
+    padding: 14px 18px !important;
+    font-size: 14px !important;
+  }
+}
+
+/* --- なんでも向け早見表ショートコード: 外枠ボックスを無効化 --- */
+.ndm-aga-v1,
+.ndm-aga-v2,
+.ndm-aga-v3,
+.ndm-aga-v4,
+.ndm-aga-v5 {
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+@media (max-width: 767px) {
+  .ndm-aga-v1,
+  .ndm-aga-v2,
+  .ndm-aga-v3,
+  .ndm-aga-v4,
+  .ndm-aga-v5 {
+    padding: 0 !important;
+  }
+}
+
+/* ======================================
+   派手なH2見出しデザイン
+   - 早見表セクション (.ndm-aga-v*) のH2は除外
+   - .ndm-article 配下だけに効かせて本文外への漏れを防ぐ
+   ====================================== */
+.ndm-article h2:not([class*="ndm-aga"]) {
+  position: relative;
+  margin: 2.5em 0 1.4em !important;
+  padding: 22px 24px 22px 70px !important;
+  color: #fff !important;
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 55%, #06b6d4 100%) !important;
+  border: 0 !important;
+  border-radius: 12px !important;
+  font-size: 22px !important;
+  font-weight: 800 !important;
+  line-height: 1.5 !important;
+  box-shadow:
+    0 10px 22px rgba(30, 58, 138, 0.22),
+    0 2px 4px rgba(30, 58, 138, 0.12);
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+.ndm-article h2:not([class*="ndm-aga"])::before {
+  content: "";
+  position: absolute;
+  left: 18px;
+  top: 50%;
+  width: 38px;
+  height: 38px;
+  transform: translateY(-50%);
+  background: linear-gradient(135deg, #fde68a 0%, #f59e0b 100%);
+  border-radius: 50%;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.18);
+}
+.ndm-article h2:not([class*="ndm-aga"])::after {
+  content: "✓";
+  position: absolute;
+  left: 18px;
+  top: 50%;
+  width: 38px;
+  height: 38px;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1e3a8a;
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1;
+}
+@media (max-width: 767px) {
+  .ndm-article h2:not([class*="ndm-aga"]) {
+    padding: 18px 18px 18px 60px;
+    font-size: 19px;
+    border-radius: 10px;
+  }
+  .ndm-article h2:not([class*="ndm-aga"])::before,
+  .ndm-article h2:not([class*="ndm-aga"])::after {
+    left: 14px;
+    width: 32px;
+    height: 32px;
+  }
+  .ndm-article h2:not([class*="ndm-aga"])::after {
+    font-size: 18px;
+  }
+}
+
+/* ======================================
+   H3見出しのアクセント
+   ====================================== */
+.ndm-article h3:not([class*="ndm-aga"]):not(.faq-question):not(.clinic-multi-map-label) {
+  position: relative;
+  margin: 2em 0 1em !important;
+  padding: 12px 16px 12px 22px !important;
+  font-size: 19px !important;
+  font-weight: 800 !important;
+  line-height: 1.55 !important;
+  color: #1e3a8a;
+  background: linear-gradient(90deg, #eff6ff 0%, #ffffff 100%) !important;
+  border-left: 6px solid #2563eb !important;
+  border-radius: 0 8px 8px 0 !important;
+}
+.ndm-article h3:not([class*="ndm-aga"]):not(.faq-question):not(.clinic-multi-map-label)::before {
+  content: "";
+  position: absolute;
+  left: -6px;
+  top: 0;
+  width: 6px;
+  height: 100%;
+  background: linear-gradient(180deg, #06b6d4 0%, #2563eb 100%);
+  border-radius: 0 0 0 0;
+}
+
+/* ======================================
+   一覧ボックス（最終版）
+   ====================================== */
+.clinic-index-box {
+  margin: 1.2em 0 1.6em !important;
+  padding: 0 !important;
+  border: 1px solid #b9d1cd !important;
+  border-radius: 12px !important;
+  background: #fff !important;
+  box-shadow: none !important;
+  overflow: hidden !important;
+}
+.clinic-index-box::before {
+  content: none !important;
+  display: none !important;
+}
+.clinic-index-box .clinic-index-title,
+.clinic-index-box .clinic-index-box__title,
+.clinic-index-title,
+.clinic-index-box__title {
+  margin: 0 !important;
+  padding: 12px 16px !important;
+  background: #a9c1bc !important;
+  color: #fff !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  line-height: 1.5 !important;
+  border: 0 !important;
+}
+.clinic-index-box .clinic-index-list,
+.clinic-index-box .clinic-index-box__list,
+.clinic-index-box > ul,
+.clinic-index-box > ol,
+.clinic-index-list,
+.clinic-index-box__list {
+  counter-reset: clinic-index;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin: 0 !important;
+  padding: 14px 16px 16px !important;
+  list-style: none !important;
+}
+.clinic-index-box .clinic-index-list li,
+.clinic-index-box .clinic-index-box__list li,
+.clinic-index-box > ul > li,
+.clinic-index-box > ol > li,
+.clinic-index-list li,
+.clinic-index-box__list li {
+  counter-increment: clinic-index;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 !important;
+  padding: 0 !important;
+  list-style: none !important;
+  background: none !important;
+}
+.clinic-index-box .clinic-index-list li::before,
+.clinic-index-box .clinic-index-box__list li::before,
+.clinic-index-box > ul > li::before,
+.clinic-index-box > ol > li::before,
+.clinic-index-list li::before,
+.clinic-index-box__list li::before {
+  content: counter(clinic-index);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  border-radius: 999px;
+  background: #b8cfcb;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+.clinic-index-box .clinic-index-list a,
+.clinic-index-box .clinic-index-box__list a,
+.clinic-index-box > ul a,
+.clinic-index-box > ol a,
+.clinic-index-list a,
+.clinic-index-box__list a {
+  display: block;
+  min-width: 0;
+  padding: 0 !important;
+  border: 0 !important;
+  background: none !important;
+  color: #456a95 !important;
+  text-decoration: none !important;
+  font-size: 14px !important;
+  line-height: 1.55 !important;
+  font-weight: 700 !important;
+}
+.clinic-index-box .clinic-index-list a:hover,
+.clinic-index-box .clinic-index-box__list a:hover,
+.clinic-index-box > ul a:hover,
+.clinic-index-box > ol a:hover,
+.clinic-index-list a:hover,
+.clinic-index-box__list a:hover {
+  color: #2d527c !important;
+}
+@media (max-width: 767px) {
+  .clinic-index-box .clinic-index-title,
+  .clinic-index-box .clinic-index-box__title,
+  .clinic-index-title,
+  .clinic-index-box__title {
+    padding: 10px 14px !important;
+    font-size: 14px !important;
+  }
+  .clinic-index-box .clinic-index-list,
+  .clinic-index-box .clinic-index-box__list,
+  .clinic-index-box > ul,
+  .clinic-index-box > ol,
+  .clinic-index-list,
+  .clinic-index-box__list {
+    gap: 7px;
+    padding: 12px 14px 14px !important;
+  }
+  .clinic-index-box .clinic-index-list li,
+  .clinic-index-box .clinic-index-box__list li,
+  .clinic-index-box > ul > li,
+  .clinic-index-box > ol > li,
+  .clinic-index-list li,
+  .clinic-index-box__list li {
+    gap: 8px;
+  }
+  .clinic-index-box .clinic-index-list li::before,
+  .clinic-index-box .clinic-index-box__list li::before,
+  .clinic-index-box > ul > li::before,
+  .clinic-index-box > ol > li::before,
+  .clinic-index-list li::before,
+  .clinic-index-box__list li::before {
+    flex-basis: 20px;
+    width: 20px;
+    height: 20px;
+    font-size: 11px;
+  }
+  .clinic-index-box .clinic-index-list a,
+  .clinic-index-box .clinic-index-box__list a,
+  .clinic-index-box > ul a,
+  .clinic-index-box > ol a,
+  .clinic-index-list a,
+  .clinic-index-box__list a {
+    font-size: 13px !important;
+    line-height: 1.5 !important;
+  }
+}
+
+/* ======================================
+   通常リスト（記事本文の<ul>/<ol>）
+   ====================================== */
+article ul:not(.ndm-aga-v1 ul):not(.ndm-aga-v2 ul):not(.ndm-aga-v3 ul):not(.ndm-aga-v4 ul):not(.ndm-aga-v5 ul):not(.clinic-index-box ul),
+.entry-content ul:not(.ndm-aga-v1 ul):not(.ndm-aga-v2 ul):not(.ndm-aga-v3 ul):not(.ndm-aga-v4 ul):not(.ndm-aga-v5 ul):not(.clinic-index-box ul),
+.post_content ul:not(.ndm-aga-v1 ul):not(.ndm-aga-v2 ul):not(.ndm-aga-v3 ul):not(.ndm-aga-v4 ul):not(.ndm-aga-v5 ul):not(.clinic-index-box ul) {
+  list-style: none !important;
+  padding-left: 0 !important;
+  margin: 1em 0;
+}
+article ul:not(.clinic-index-box ul) > li,
+.entry-content ul:not(.clinic-index-box ul) > li,
+.post_content ul:not(.clinic-index-box ul) > li {
+  position: relative;
+  padding: 6px 6px 6px 28px;
+  margin: 4px 0;
+  line-height: 1.85;
+  list-style: none;
+}
+article ul:not(.clinic-index-box ul) > li::before,
+.entry-content ul:not(.clinic-index-box ul) > li::before,
+.post_content ul:not(.clinic-index-box ul) > li::before {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 14px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #06b6d4 0%, #2563eb 100%);
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.25);
+}
+
+/* ======================================
+   複数院マップ（multi-map）
+   ====================================== */
+.clinic-multi-map {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+  margin: 1.2em 0 1.5em;
+}
+.clinic-multi-map-item {
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(30, 58, 138, 0.1);
+  border: 1px solid #dbeafe;
+}
+.clinic-multi-map-label {
+  margin: 0 !important;
+  padding: 10px 14px !important;
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%) !important;
+  color: #fff !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  text-align: center;
+  line-height: 1.4 !important;
+}
+.clinic-multi-map-item .clinic-map {
+  margin: 0;
+}
+.clinic-multi-map-item .clinic-map iframe {
+  display: block;
+  width: 100%;
+  height: 240px;
+  border: 0;
+}
+
+/* ======================================
+   口コミ引用元リンク
+   ====================================== */
+.review-source {
+  margin: 12px 0 0 !important;
+  padding: 10px 14px;
+  background: #f9fafb;
+  border-left: 3px solid #06b6d4;
+  border-radius: 0 6px 6px 0;
+  font-size: 12px;
+  color: #6b7280;
+}
+.review-source small {
+  font-size: 12px;
+}
+.review-source a {
+  color: #0369a1 !important;
+  text-decoration: underline;
+  font-weight: 600;
+}
+.review-source a:hover {
+  color: #0284c7 !important;
+}
+
+/* ======================================
+   なんでも比較表（上位5院）
+   ====================================== */
+.clinic-list-tbl {
+  margin: 1.5em 0 2em;
+  font-family: "Hiragino Sans", "Yu Gothic", sans-serif;
+  color: #243446;
+}
+.clinic-list-tbl * {
+  box-sizing: border-box;
+}
+.clinic-list-tbl__wrap {
+  overflow-x: auto;
+  border-radius: 12px;
+  box-shadow: 0 8px 22px rgba(47, 68, 92, 0.14);
+  border: 1px solid #d9e1eb;
+}
+.clinic-list-tbl table {
+  width: 100%;
+  min-width: 1080px;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: #fff;
+  table-layout: fixed;
+  margin: 0;
+}
+.clinic-list-tbl thead th {
+  background: linear-gradient(135deg, #9bbdc4 0%, #7da9b3 100%);
+  color: #fff;
+  padding: 14px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 0.04em;
+  border-right: 1px solid rgba(255, 255, 255, 0.18);
+}
+.clinic-list-tbl thead th:last-child {
+  border-right: 0;
+}
+.clinic-list-tbl thead th:nth-child(1) {
+  width: 220px;
+}
+.clinic-list-tbl tbody td {
+  padding: 18px 14px;
+  border-bottom: 1px solid #e5ebf2;
+  border-right: 1px solid #e5ebf2;
+  text-align: center;
+  vertical-align: middle;
+  font-size: 13px;
+  line-height: 1.75;
+  color: #475569;
+  background: #fff;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+.clinic-list-tbl tbody td:last-child {
+  border-right: 0;
+}
+.clinic-list-tbl tbody tr:last-child td {
+  border-bottom: 0;
+}
+.clinic-list-tbl tbody tr:nth-child(even) td {
+  background: #fafbfd;
+}
+.clinic-list-tbl tbody tr:hover td {
+  background: #f3f8fa;
+}
+.clinic-list-tbl .cl-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  min-width: 180px;
+}
+.clinic-list-tbl .cl-name {
+  font-size: 12px;
+  color: #0c4a6e;
+  font-weight: 700;
+  line-height: 1.45;
+  text-align: center;
+}
+.clinic-list-tbl .cl-name a {
+  color: #0c4a6e !important;
+  text-decoration: none !important;
+}
+.clinic-list-tbl .cl-logo-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 170px;
+  height: 72px;
+  background: #fff;
+  border: 1px solid #d8dee8;
+  border-radius: 6px;
+  padding: 8px 12px;
+  overflow: hidden;
+}
+.clinic-list-tbl .cl-logo-box img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+.clinic-list-tbl .cl-logo-text {
+  font-weight: 800;
+  color: #0c4a6e;
+  font-size: 15px;
+  line-height: 1.3;
+  text-align: center;
+}
+.clinic-list-tbl .cl-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 26px;
+  background: linear-gradient(135deg, #5fb586 0%, #4a9d72 100%);
+  color: #fff !important;
+  text-decoration: none !important;
+  font-weight: 700;
+  font-size: 13px;
+  border-radius: 4px;
+  box-shadow: 0 2px 6px rgba(95, 181, 134, 0.3);
+}
+.clinic-list-tbl .cl-btn::after {
+  content: "›";
+  font-size: 16px;
+  line-height: 1;
+}
+.clinic-list-tbl .cl-btn:hover {
+  filter: brightness(1.05);
+}
+.clinic-list-tbl .price-em {
+  color: #c53d2f;
+  font-weight: 800;
+  font-size: 13px;
+  display: inline-block;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+.clinic-list-tbl .sub {
+  font-size: 11px;
+  color: #6c7b8d;
+  display: block;
+  line-height: 1.55;
+  margin-top: 2px;
+  word-break: keep-all;
+}
+@media (max-width: 767px) {
+  .clinic-list-tbl table {
+    min-width: 760px;
+  }
+  .clinic-list-tbl .cl-logo-box {
+    width: 140px;
+    height: 60px;
+  }
+  .clinic-list-tbl tbody td {
+    padding: 14px 10px;
+  }
+}
+
+/* ======================================
+   strong（蛍光マーカー風強化）
+   ====================================== */
+article p strong,
+.entry-content p strong,
+.post_content p strong {
+  background: linear-gradient(transparent 55%, #fef08a 55%);
+  font-weight: 800;
+  padding: 0 2px;
+}
+
+/* ============================================================
+   2026-05-14 V1記事の共通アップデート
+   - フォント全体縮小（PC/SP）
+   - H2/H3 縮小
+   - テーブル余白詰め
+   - 公式サイトボタン飛び出し対策
+   - 早見表(.ndm-aga-v1) 余白打ち消し＋ヒーローブロック
+   - エリアジャンプボックス
+   ============================================================ */
+
+/* --- 早見表内のテーブル/段落の余白を打ち消し --- */
+.ndm-aga-v1 .ndm-aga-v1__scroll,
+.ndm-article .ndm-aga-v1 .ndm-aga-v1__scroll {
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1.4 !important;
+}
+.ndm-aga-v1 .ndm-aga-v1__tablewrap,
+.ndm-article .ndm-aga-v1 .ndm-aga-v1__tablewrap {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+.ndm-aga-v1 table,
+.ndm-article .ndm-aga-v1 table {
+  margin: 0 !important;
+}
+
+/* --- 早見表ヒーローブロック（タイトル装飾） --- */
+.ndm-aga-v1__hero {
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  text-align: center;
+  background: linear-gradient(180deg, #eaf3fb 0%, #cfe2f3 100%);
+  border-radius: 4px;
+}
+.ndm-aga-v1__hero .ndm-aga-v1__title {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1.2;
+  font-weight: 900;
+  color: #1a2a40;
+  letter-spacing: -.01em;
+  text-align: center;
+  white-space: nowrap;
+}
+.ndm-aga-v1__hero .ndm-aga-v1__title .em {
+  font-size: 1.55em;
+  font-weight: 900;
+  color: #1565c0;
+  vertical-align: -0.05em;
+  margin: 0 .18em;
+}
+.ndm-aga-v1__hero .ndm-aga-v1__title .small {
+  font-size: .78em;
+  font-weight: 900;
+}
+@media (max-width: 767px) {
+  .ndm-aga-v1__hero {
+    padding: 6px 6px;
+  }
+  .ndm-aga-v1__hero .ndm-aga-v1__title {
+    font-size: 4.6vw;
+  }
+}
+
+/* --- エリアジャンプボックス --- */
+.area-jump-box {
+  margin: 18px 0 24px;
+  padding: 16px 18px 14px;
+  background: #fff;
+  border: 1px solid #d6dee8;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(30, 41, 59, 0.06);
+}
+.area-jump-box__title {
+  margin: 0 0 12px;
+  padding-bottom: 9px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #1e3a5f;
+  text-align: center;
+  border-bottom: 1px solid #e3e8f0;
+}
+.area-jump-box__list {
+  list-style: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+.area-jump-box__list li {
+  position: relative;
+  margin: 0 0 6px !important;
+  padding: 6px 6px 6px 26px !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  list-style: none !important;
+}
+.area-jump-box__list li::before {
+  content: "✓";
+  position: absolute;
+  left: 4px;
+  top: 7px;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ea580c;
+  font-weight: 900;
+  font-size: 14px;
+  background: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+.area-jump-box__list li:last-child {
+  margin-bottom: 0 !important;
+}
+.area-jump-box__type {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e3a5f;
+  line-height: 1.45;
+  margin-bottom: 2px;
+}
+.area-jump-box__link {
+  display: inline-block;
+  font-size: 13px;
+  color: #1565c0 !important;
+  text-decoration: underline !important;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.area-jump-box__link:hover {
+  color: #0a4d99 !important;
+}
+
+/* --- ベース文字サイズ縮小（PC） --- */
+.ndm-article {
+  font-size: 14px !important;
+  line-height: 1.8 !important;
+}
+.ndm-article p {
+  font-size: 14px !important;
+  line-height: 1.8 !important;
+}
+.ndm-article li {
+  font-size: 14px !important;
+  line-height: 1.8 !important;
+}
+.ndm-article h4 {
+  font-size: 14px !important;
+}
+
+/* --- H2/H3 縮小（PC） --- */
+.ndm-article h2:not([class*="ndm-aga"]) {
+  margin: 2.2em 0 1.2em !important;
+  padding: 16px 20px 16px 56px !important;
+  font-size: 18px !important;
+  border-radius: 10px !important;
+}
+.ndm-article h2:not([class*="ndm-aga"])::before,
+.ndm-article h2:not([class*="ndm-aga"])::after {
+  left: 14px;
+  width: 30px;
+  height: 30px;
+}
+.ndm-article h2:not([class*="ndm-aga"])::after {
+  font-size: 18px;
+}
+.ndm-article h3:not([class*="ndm-aga"]):not(.faq-question):not(.clinic-multi-map-label) {
+  margin: 1.8em 0 0.9em !important;
+  padding: 9px 14px 9px 18px !important;
+  font-size: 16px !important;
+  border-left-width: 5px !important;
+}
+
+/* --- テーブル縮小（PC） --- */
+.clinic-summary-table,
+.clinic-detail-table {
+  font-size: 12px !important;
+}
+.clinic-summary-table th,
+.clinic-detail-table th,
+.clinic-summary-table td,
+.clinic-detail-table td {
+  padding: 10px 14px !important;
+  line-height: 1.7 !important;
+}
+
+/* --- 公式サイトボタン（飛び出し対策・強化） --- */
+.official-site-button-wrap {
+  margin: 1em 0 1.5em;
+  text-align: center;
+  max-width: 100%;
+  overflow: hidden;
+}
+.official-site-button-wrap a,
+.official-site-button-wrap a.official-site-button,
+a.official-site-button {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: min(100%, 420px) !important;
+  max-width: calc(100% - 8px) !important;
+  box-sizing: border-box !important;
+  padding: 12px 18px !important;
+  border-radius: 18px !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  line-height: 1.45 !important;
+  text-align: center;
+  white-space: normal !important;
+  word-break: break-all !important;
+  overflow-wrap: anywhere !important;
+  background: #0f6cbd !important;
+  color: #fff !important;
+  text-decoration: none !important;
+}
+.official-site-button-wrap a:hover,
+a.official-site-button:hover {
+  background: #0a5798 !important;
+  color: #fff !important;
+}
+
+/* === スマホサイズ（最大限縮小） === */
+@media (max-width: 767px) {
+  .ndm-article,
+  .ndm-article p,
+  .ndm-article li {
+    font-size: 12px !important;
+    line-height: 1.7 !important;
+  }
+  .ndm-article h4 {
+    font-size: 12px !important;
+  }
+  .ndm-article h2:not([class*="ndm-aga"]) {
+    padding: 11px 12px 11px 42px !important;
+    font-size: 14px !important;
+    border-radius: 8px !important;
+  }
+  .ndm-article h2:not([class*="ndm-aga"])::before,
+  .ndm-article h2:not([class*="ndm-aga"])::after {
+    left: 10px !important;
+    width: 22px !important;
+    height: 22px !important;
+  }
+  .ndm-article h2:not([class*="ndm-aga"])::after {
+    font-size: 13px !important;
+  }
+  .ndm-article h3:not([class*="ndm-aga"]):not(.faq-question):not(.clinic-multi-map-label) {
+    font-size: 13px !important;
+    padding: 6px 10px 6px 12px !important;
+    border-left-width: 4px !important;
+  }
+  .clinic-summary-table,
+  .clinic-detail-table,
+  .treatment-compare-table {
+    font-size: 10px !important;
+  }
+  .clinic-summary-table th,
+  .clinic-detail-table th,
+  .clinic-summary-table td,
+  .clinic-detail-table td,
+  .treatment-compare-table th,
+  .treatment-compare-table td {
+    padding: 6px 8px !important;
+    line-height: 1.55 !important;
+  }
+  .official-site-button-wrap a,
+  a.official-site-button {
+    width: 100% !important;
+    max-width: calc(100% - 4px) !important;
+    padding: 9px 10px !important;
+    font-size: 11px !important;
+    border-radius: 14px !important;
+    line-height: 1.4 !important;
+  }
+  .area-jump-box {
+    padding: 12px 12px 10px;
+    border-radius: 8px;
+  }
+  .area-jump-box__title {
+    font-size: 13px;
+  }
+  .area-jump-box__type {
+    font-size: 14px;
+  }
+  .area-jump-box__link {
+    font-size: 12px;
+  }
+  .area-jump-box__list li {
+    padding: 5px 6px 5px 22px !important;
+  }
+  .area-jump-box__list li::before {
+    left: 3px;
+    top: 6px;
+    font-size: 13px;
   }
 }

@@ -19,12 +19,14 @@ import shutil
 import sys
 import time
 import urllib.parse
+from datetime import datetime
 from pathlib import Path
 
 import requests
 from bs4 import BeautifulSoup
 from env_utils import load_project_env
-from output_utils import ensure_keyword_images_dir, keyword_to_slug
+from output_utils import ensure_keyword_images_dir, keyword_to_slug, resolve_output_key
+from variant_utils import build_variant_profile
 
 try:
     from PIL import Image, ImageDraw, ImageFont
@@ -37,22 +39,18 @@ try:
     from google import genai
     from google.genai import types
 except ImportError:
-    print("Error: google-genai パッケージが必要です。")
-    print("  pip install google-genai")
-    sys.exit(1)
+    genai = None
+    types = None
 
 
 # ========================================
 # 設定
 # ========================================
-MODEL_ID = "gemini-3.1-flash-image-preview"
-TOP_IMAGE_SIZE = "1200x630"
-H2_IMAGE_SIZE = "1200x400"
+MODEL_ID = "gemini-3-pro-image-preview"
 TOP_ASPECT_RATIO = "16:9"
 H2_ASPECT_RATIO = "16:9"
 MAX_IMAGE_RETRIES = 3
-TEXT_RENDER_MODE = "model"
-TOP_IMAGE_GENERATION_VERSION = 1
+IMAGE_GENERATION_VERSION = 3
 MAX_TOP_COPY_LENGTH = 40
 MAX_H2_COPY_LENGTH = 20
 GEMINI_IMAGE_SIZE = "2K"
@@ -70,12 +68,6 @@ DEFAULT_SITE_STYLE = {
     "mood": "誠実、清潔、やわらかい、読みやすい、過度に広告っぽくない",
     "avoid": "ネオンカラー、どぎつい配色、派手な比較広告、情報過多、安っぽい装飾",
 }
-TOP_TEXT_FONT_CANDIDATES = [
-    "/System/Library/Fonts/ヒラギノ角ゴシック W8.ttc",
-    "/System/Library/Fonts/ヒラギノ角ゴシック W6.ttc",
-    "/System/Library/Fonts/Hiragino Sans GB.ttc",
-    "/System/Library/Fonts/Helvetica.ttc",
-]
 load_project_env()
 
 
@@ -95,6 +87,56 @@ def extract_h2_headings(html_path: str) -> list[str]:
         headings.append(text)
 
     return headings
+
+
+def extract_article_visual_context(html_path: str) -> dict:
+    """記事全体と各H2の要点を、画像プロンプト用に軽く抽出する。"""
+    with open(html_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    soup = BeautifulSoup(content, "lxml")
+    context = {
+        "intro_paragraphs": [],
+        "sections": {},
+    }
+
+    root = soup.body or soup
+    for node in root.children:
+        tag_name = getattr(node, "name", None)
+        if tag_name == "h2":
+            break
+        if tag_name == "p":
+            text = normalize_editorial_copy(node.get_text(" ", strip=True))
+            if text:
+                context["intro_paragraphs"].append(text)
+        if len(context["intro_paragraphs"]) >= 2:
+            break
+
+    for h2 in soup.find_all("h2"):
+        heading = normalize_editorial_copy(h2.get_text(" ", strip=True))
+        if not heading:
+            continue
+
+        section = {"h3s": [], "paragraphs": []}
+        node = h2.find_next_sibling()
+        while node and getattr(node, "name", None) != "h2":
+            tag_name = getattr(node, "name", None)
+            if tag_name == "h3":
+                text = normalize_editorial_copy(node.get_text(" ", strip=True))
+                if text:
+                    section["h3s"].append(text)
+            elif tag_name == "p":
+                text = normalize_editorial_copy(node.get_text(" ", strip=True))
+                if text and not text.startswith("※"):
+                    section["paragraphs"].append(text)
+            node = node.find_next_sibling()
+
+        context["sections"][heading] = {
+            "h3s": section["h3s"][:4],
+            "paragraphs": section["paragraphs"][:2],
+        }
+
+    return context
 
 
 def infer_tag_structure_path_from_html(html_path: str) -> str | None:
@@ -127,6 +169,22 @@ def extract_article_title_from_tag_structure(html_path: str) -> str:
         return ""
 
     return normalize_editorial_copy(match.group(1).strip())
+
+
+def extract_article_type_from_tag_structure(html_path: str) -> str:
+    """対応するタグ構成ファイルから記事タイプを抽出する。"""
+    tag_structure_path = infer_tag_structure_path_from_html(html_path)
+    if not tag_structure_path:
+        return ""
+
+    try:
+        with open(tag_structure_path, "r", encoding="utf-8") as f:
+            content = f.read()
+    except OSError:
+        return ""
+
+    match = re.search(r"\*\*記事タイプ\*\*:\s*(.+)", content)
+    return normalize_editorial_copy(match.group(1).strip()) if match else ""
 
 
 # ========================================
@@ -201,6 +259,29 @@ def load_genre_context(keyword_info: dict) -> dict:
         return json.loads(genre_path.read_text(encoding="utf-8"))
     except Exception:
         return {}
+
+
+def resolve_article_type(keyword_info: dict) -> str:
+    """実際のタグ構成を優先して記事タイプを決める。"""
+    explicit_article_type = normalize_editorial_copy(keyword_info.get("article_type", ""))
+    if explicit_article_type:
+        return explicit_article_type
+
+    genre_context = load_genre_context(keyword_info)
+    default_article_type = normalize_editorial_copy(genre_context.get("default_article_type", ""))
+    if default_article_type:
+        return default_article_type
+
+    genre_article_type = normalize_editorial_copy(genre_context.get("article_type", ""))
+    if genre_article_type:
+        return genre_article_type
+
+    keyword_type = keyword_info.get("type", "")
+    if keyword_type in {"おすすめ", "比較", "ランキング"}:
+        return "比較記事"
+    if keyword_type:
+        return "解説記事"
+    return "比較記事"
 
 
 def load_site_style(site_config_path: str | None = None) -> dict:
@@ -485,23 +566,18 @@ def infer_keyword_intent(keyword: str) -> list[str]:
     return intents
 
 
-def build_style_guardrails(allow_editorial_text: bool = False) -> str:
+def build_style_guardrails() -> str:
     """画像全体で共通に使う品質ガードレール"""
-    base = (
+    return (
         "高品質な日本向けWebメディアのサムネイル用ビジュアル。 "
         "清潔感のあるシンプルな医療イラスト。 "
         "写実的な写真、リアル人物写真、映画風、3Dレンダー、情報過多の複雑構図は避ける。 "
         "少人数、少要素、横長で見やすい、整理された構図。 "
         "ただし単調にはせず、視線誘導があり、主役と補助要素の関係が明快な、意図的に設計された構図にする。 "
-        "ロゴ、ウォーターマーク、UI画面、看板の余計な文字は不可。"
+        "ロゴ、ウォーターマーク、UI画面、看板の余計な文字は不可。 "
+        "画像内に入れてよい文字は、こちらが指定する短い日本語見出しのみ。 "
+        "それ以外の文字、ランダムな記号、崩れた文字、英単語、偽テキストは入れない。"
     )
-    if allow_editorial_text:
-        return (
-            base
-            + " 画像内に入れてよい文字は、こちらが指定する短い日本語見出しのみ。 "
-            + "それ以外の文字、ランダムな記号、崩れた文字、英単語、偽テキストは入れない。"
-        )
-    return base + " 文字は一切入れない。"
 
 
 def build_site_visual_direction(site_style: dict, image_role: str) -> str:
@@ -528,9 +604,8 @@ def build_reference_image_direction(reference_image_path: str | None) -> str:
         return ""
     return (
         "参考画像も一緒に渡す。"
-        "その参考画像のキャラクターの線のタッチ、塗り、顔の描き方、シルエット、色のやわらかさ、"
-        "全体の世界観を踏襲する。"
-        "ただし構図や文言をそのままコピーせず、今回の見出し内容に合わせて新しい画像として再構成する。"
+        "参考画像からは配色、トーン、線のやわらかさ、余白の使い方などスタイル面だけを参考にする。"
+        "主役モチーフや章内容は今回の見出しに合わせ、構図や文言を流用しない。"
     )
 
 
@@ -633,10 +708,11 @@ def build_h2_banner_composition(heading: str) -> str:
                 "不安を煽りすぎず、注意点を冷静に整理する章として、注意・確認・安心を両立した構図にする。",
             ]
         )
-    elif any(w in heading_lower for w in ["FAQ", "よくある", "質問"]):
+    elif any(w in heading_lower for w in ["よくある", "質問"]):
         parts.extend(
             [
-                "Q&Aのやり取りや疑問解消が自然に伝わる、軽やかでわかりやすい情報バナーにする。",
+                "疑問解消が自然に伝わる、軽やかでわかりやすい情報バナーにする。",
+                "英語テキストは一切使わない。日本語の吹き出しや疑問符アイコンで表現する。",
             ]
         )
     elif any(w in heading_lower for w in ["まとめ", "結論"]):
@@ -653,6 +729,79 @@ def normalize_editorial_copy(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip().strip("「」\"")
 
 
+def trim_prompt_text(text: str, max_len: int = 140) -> str:
+    text = normalize_editorial_copy(text)
+    if len(text) <= max_len:
+        return text
+    return text[: max_len - 1].rstrip() + "…"
+
+
+def summarize_intro_context(article_context: dict | None) -> str:
+    if not article_context:
+        return ""
+    paragraphs = [trim_prompt_text(p, 100) for p in article_context.get("intro_paragraphs", []) if p]
+    return " / ".join(paragraphs[:2])
+
+
+def summarize_section_context(article_context: dict | None, heading: str) -> str:
+    if not article_context:
+        return ""
+    section = (article_context.get("sections") or {}).get(heading) or {}
+    h3s = [trim_prompt_text(h3, 36) for h3 in section.get("h3s", []) if h3]
+    paragraphs = [trim_prompt_text(p, 90) for p in section.get("paragraphs", []) if p]
+    parts = []
+    if h3s:
+        parts.append("小見出し: " + " / ".join(h3s[:4]))
+    if paragraphs:
+        parts.append("要点: " + " / ".join(paragraphs[:2]))
+    return " ".join(parts)
+
+
+def split_display_text_for_model(text: str, max_lines: int) -> list[str]:
+    text = normalize_editorial_copy(text)
+    if not text:
+        return []
+    tokens = tokenize_text_for_layout(text)
+    if len(tokens) <= 1:
+        return force_balanced_lines(text, max_lines)
+
+    target_len = max(6, round(len(text) / max_lines))
+    lines: list[str] = []
+    current = ""
+
+    for token in tokens:
+        token = token.strip()
+        if not token:
+            continue
+        candidate = current + token if current else token
+        if current and len(candidate) > target_len + 2 and len(lines) < max_lines - 1:
+            lines.append(current.strip())
+            current = token
+        else:
+            current = candidate
+
+    if current:
+        lines.append(current.strip())
+
+    if not lines:
+        return force_balanced_lines(text, max_lines)
+    if len(lines) > max_lines:
+        return force_balanced_lines(text, max_lines)
+    return lines
+
+
+def build_model_text_instruction(lines: list[str]) -> str:
+    if not lines:
+        return ""
+    parts = [
+        "画像内に描画する文字は次の日本語だけに限定する。他の文字、英字、記号列、飾り文字は一切入れない。"
+    ]
+    for idx, line in enumerate(lines, start=1):
+        parts.append(f'{idx}行目: "{line}"')
+    parts.append("行の順番は守り、日本語として自然に読める改行で大きく明瞭に描画する。")
+    return " ".join(parts)
+
+
 def compact_japanese_copy(text: str, max_len: int) -> str:
     """画像用に短く整える。"""
     text = normalize_editorial_copy(text)
@@ -667,7 +816,7 @@ def compact_japanese_copy(text: str, max_len: int) -> str:
         ("費用相場と料金の見方", "費用相場"),
         ("費用相場", "費用相場"),
         ("副作用と注意点", "副作用と注意点"),
-        ("よくある質問", "FAQ"),
+        ("よくある質問", "よくある質問"),
         ("まとめ｜", ""),
         ("まとめ", "まとめ"),
         ("どの治療法を選ぶべきか", "治療法"),
@@ -691,83 +840,70 @@ def compact_japanese_copy(text: str, max_len: int) -> str:
     return text[:max_len]
 
 
-def infer_article_theme_copy(keyword_info: dict, h2_headings: list[str], article_title: str = "") -> str:
-    """トップ画像の短い見出しを決める。"""
-    keyword = re.sub(r"\s+", " ", keyword_info.get("keyword", "")).strip()
-    area = keyword_info.get("area", "").strip()
-    genre = keyword_info.get("genre", "")
-    genre_label_map = {
-        "AGA治療・薄毛治療": "AGA治療",
-        "ED治療": "ED",
-        "医療脱毛": "医療脱毛",
-    }
-    genre_label = genre_label_map.get(genre, "医療")
+def soft_compact_japanese_copy(text: str, max_len: int) -> str:
+    """意味を落としにくい控えめな短縮。主に記事タイトル由来の文言向け。"""
+    text = normalize_editorial_copy(re.sub(r"【[^】]+】", "", text))
+    text = re.sub(r"[｜|].*$", "", text).strip("!！。 ")
+    if len(text) <= max_len:
+        return text
 
-    if article_title:
-        base = article_title
-    elif area and genre_label:
-        if "おすすめ" in keyword:
-            base = f"{area}の{genre_label}おすすめ"
-        elif "比較" in keyword:
-            base = f"{area}の{genre_label}比較"
-        else:
-            base = f"{area}の{genre_label}"
-    elif "おすすめ" in keyword:
-        base = f"{genre_label}おすすめ"
-    elif "比較" in keyword:
-        base = f"{genre_label}比較"
-    elif "副作用" in keyword:
-        base = f"{genre_label}副作用"
-    elif "費用" in keyword or "料金" in keyword:
-        base = f"{genre_label}の費用"
-    elif keyword:
-        base = keyword.replace(" ", " ")
-    elif h2_headings:
-        base = normalize_editorial_copy(h2_headings[0])
-    else:
-        base = genre_label
+    for sep in ["！", "!", "。", "：", ":", "｜", "|"]:
+        if sep in text:
+            candidate = text.split(sep, 1)[0].strip()
+            if candidate and len(candidate) <= max_len:
+                return candidate
 
-    return compact_japanese_copy(base, MAX_TOP_COPY_LENGTH)
+    return text[:max_len].rstrip()
 
 
-def infer_h2_image_copy(heading: str) -> str:
-    """H2見出しから画像用の短いコピーを作る。"""
-    heading = normalize_editorial_copy(heading)
-    presets = [
-        (["一覧", "比較", "ランキング"], "料金比較表"),
-        (["おすすめ", "選"], "おすすめクリニック"),
-        (["選び方", "ポイント", "チェック"], "失敗しない選び方"),
-        (["種類", "効果", "方法"], "治療法と効果"),
-        (["費用", "料金", "相場", "価格"], "費用相場と料金"),
-        (["副作用", "注意点", "リスク"], "副作用と注意点"),
-        (["FAQ", "よくある", "質問"], "よくある質問"),
-        (["まとめ", "結論"], "あなたに合う選び方"),
+def get_h2_display_copy(heading: str) -> str:
+    """H2画像内に描かせる短い見出し。長すぎる原文は意味を保って要約する。"""
+    normalized = normalize_editorial_copy(heading)
+    compact = normalized.replace("？", "").replace("!", "").replace("！", "")
+
+    rule_map = [
+        (["とは", "違い"], "デイリータダラフィルとは"),
+        (["料金", "相場"], "料金相場と価格比較"),
+        (["選び方"], "オンラインクリニックの選び方"),
+        (["おすすめ", "オンラインクリニック"], "安いおすすめオンラインクリニック12院"),
+        (["処方", "流れ"], "オンライン診療の流れ"),
+        (["他のED治療薬", "比較"], "ED治療薬との比較"),
+        (["通販", "個人輸入"], "クリニック処方を選ぶ理由"),
+        (["注意点"], "服用時の注意点"),
+        (["よくある", "質問"], "よくある質問"),
+        (["まとめ", "コスト"], "まとめ"),
     ]
-    for keywords, label in presets:
-        if any(token in heading for token in keywords):
-            return compact_japanese_copy(label, MAX_H2_COPY_LENGTH)
-    return compact_japanese_copy(heading, MAX_H2_COPY_LENGTH)
+    for keywords, label in rule_map:
+        if all(token in compact for token in keywords):
+            return label
+
+    if "まとめ" in compact:
+        return "まとめ"
+    return soft_compact_japanese_copy(compact, 22)
 
 
 def build_top_image_prompt(
     keyword_info: dict,
     h2_headings: list[str],
     article_title: str = "",
+    article_context: dict | None = None,
     site_style: dict | None = None,
     reference_image_path: str | None = None,
+    variant_instruction: str = "",
 ) -> str:
     """トップ画像のプロンプトを生成する"""
     area = keyword_info.get("area", "")
     genre = keyword_info.get("genre", "")
-    genre_visual = keyword_info.get("genre_visual", "医療")
-    allow_editorial_text = TEXT_RENDER_MODE == "model"
-    style_guardrails = build_style_guardrails(allow_editorial_text=allow_editorial_text)
+    style_guardrails = build_style_guardrails()
     genre_direction = build_genre_visual_direction(keyword_info)
-    genre_context = load_genre_context(keyword_info)
-    article_type = genre_context.get("article_type", "比較記事")
+    article_type = resolve_article_type(keyword_info)
     search_intents = " / ".join(infer_keyword_intent(keyword_info.get("keyword", "")))
     heading_context = " / ".join(h2_headings[:3]) if h2_headings else ""
+    intro_context = summarize_intro_context(article_context)
     title_copy, subtitle_copy = get_top_image_copy(keyword_info, h2_headings, article_title)
+    text_lines = split_display_text_for_model(title_copy, 2)
+    if subtitle_copy:
+        text_lines.extend(split_display_text_for_model(subtitle_copy, 1))
     site_style = site_style or DEFAULT_SITE_STYLE
     site_direction = build_site_visual_direction(site_style, "top")
     reference_direction = build_reference_image_direction(reference_image_path)
@@ -783,6 +919,7 @@ def build_top_image_prompt(
         site_direction,
         reference_direction,
         composition_direction,
+        f"記事タイトル: {article_title or keyword_info.get('keyword', '')}。",
         "構図はシンプルで、横長サムネとしてひと目で内容が伝わることを最優先にする。",
         "要素は多くても3つまで。人物は0〜2人まで。背景は簡潔にし、情報を詰め込みすぎない。",
         "リアル写真風ではなく、シンプルで清潔感のある日本向け医療イラストにする。",
@@ -791,7 +928,11 @@ def build_top_image_prompt(
         "配色は白やオフホワイトを基調に、淡いラベンダーややさしいニュアンスカラーを上品に使う。",
         "比率は16:9、サムネイルとして読みやすい明快な構図。",
         "魅力的で洗練されて見えることを重視するが、情報量ではなく構図の巧さで見せる。",
+        "記事全体のテーマと無関係な汎用医療イラスト、意味のないタブレット持ちポーズ、抽象的すぎる素材集っぽい絵は避ける。",
     ]
+
+    if variant_instruction:
+        prompt_parts.append(f"今回の別編集版向け調整: {variant_instruction}")
 
     if area:
         prompt_parts.append(
@@ -802,29 +943,13 @@ def build_top_image_prompt(
         prompt_parts.append(
             f"記事の主な内容: {heading_context}。"
         )
+    if intro_context:
+        prompt_parts.append(
+            f"導入で伝えている要点: {intro_context}。"
+        )
 
-    if allow_editorial_text:
-        prompt_parts.extend(
-            [
-                "画像内に日本語文字を入れる。メイン見出しと補足見出しの2段構成にしてよい。",
-                "余計な文字、意味不明な文字列、英字の飾り文字は入れない。",
-                "必ず自然な日本語の文字として描画する。文字化け、崩れた漢字、意味不明な記号列は不可。",
-                "日本語以外の文字は使わない。英語アルファベット風の装飾文字も入れない。",
-                "日本のWebメディアのサムネイルらしい、太く読みやすい日本語タイポグラフィにする。",
-                "メイン見出しは大きく、補足見出しはやや小さく、上下または左右で読みやすく整理する。",
-                f'メイン見出し: "{title_copy}"',
-                f'補足見出し: "{subtitle_copy}"',
-                f'上記の文字列を省略せず、そのまま正確に日本語で描画する。メイン見出しは「{title_copy}」、補足見出しは「{subtitle_copy}」。',
-                "文字は自然に改行してよいが、日本語として読める配置にする。",
-            ]
-        )
-    else:
-        prompt_parts.append(
-            "Reserve some clean negative space where a title could be overlaid later, but do not draw any actual text."
-        )
-        prompt_parts.append(
-            "If signs, labels, documents, screens, or packaging appear, they must remain blank and unreadable with no characters."
-        )
+    prompt_parts.append(build_model_text_instruction(text_lines))
+    prompt_parts.append("文字は中央揃えでも左揃えでもよいが、読み順が一目で分かる配置にする。")
 
     return " ".join(prompt_parts)
 
@@ -845,9 +970,9 @@ def infer_heading_focus(heading: str) -> str:
         return (
             "選び方や判断基準を連想できるイメージ。チェック、比較、相談の雰囲気。"
         )
-    if any(w in heading_lower for w in ["質問", "faq", "q&a", "よくある"]):
+    if any(w in heading_lower for w in ["質問", "よくある"]):
         return (
-            "疑問解消やFAQを連想できるシンプルなQ&Aイメージ。"
+            "疑問を解消する安心感のある日本語バナー。吹き出しや疑問符を主役にしたシンプルなアイコン構成。"
         )
     if any(w in heading_lower for w in ["まとめ", "結論", "最後"]):
         return (
@@ -866,7 +991,7 @@ def get_top_image_copy(keyword_info: dict, h2_headings: list[str], article_title
     """トップ画像用のタイトル・サブタイトルを返す。"""
     area = keyword_info.get("area", "").strip()
     genre = keyword_info.get("genre", "")
-    article_type = load_genre_context(keyword_info).get("article_type", "比較記事")
+    article_type = resolve_article_type(keyword_info)
     keyword = keyword_info.get("keyword", "")
 
     genre_label_map = {
@@ -877,15 +1002,20 @@ def get_top_image_copy(keyword_info: dict, h2_headings: list[str], article_title
     genre_label = genre_label_map.get(genre, genre or "医療")
 
     if article_title:
-        parts = [normalize_editorial_copy(part) for part in re.split(r"[｜|]", article_title) if part.strip()]
+        title_seed = normalize_editorial_copy(re.sub(r"【[^】]+】", "", article_title))
+        parts = [
+            normalize_editorial_copy(part)
+            for part in re.split(r"[｜|!！。]", title_seed)
+            if part.strip()
+        ]
         if len(parts) >= 2:
             title = parts[0]
             subtitle = parts[1]
             return (
-                compact_japanese_copy(title, MAX_TOP_COPY_LENGTH),
-                compact_japanese_copy(subtitle, MAX_H2_COPY_LENGTH * 2),
+                soft_compact_japanese_copy(title, MAX_TOP_COPY_LENGTH),
+                soft_compact_japanese_copy(subtitle, MAX_H2_COPY_LENGTH * 2),
             )
-        title = article_title
+        title = title_seed
     elif area and genre_label:
         title = f"{area}×{genre_label}"
     else:
@@ -901,31 +1031,12 @@ def get_top_image_copy(keyword_info: dict, h2_headings: list[str], article_title
     else:
         subtitle = f"{article_type}をわかりやすく解説"
 
-    return compact_japanese_copy(title, MAX_TOP_COPY_LENGTH), compact_japanese_copy(subtitle, MAX_H2_COPY_LENGTH * 2)
-
-
-def load_font(size: int):
-    """利用可能なフォントを読み込む。"""
-    for path in TOP_TEXT_FONT_CANDIDATES:
-        if os.path.exists(path):
-            try:
-                return ImageFont.truetype(path, size=size)
-            except Exception:
-                continue
-    return ImageFont.load_default()
-
-
-def fit_font_size(draw: ImageDraw.ImageDraw, text: str, max_width: int, start_size: int, min_size: int) -> ImageFont.FreeTypeFont:
-    """横幅に収まるフォントサイズを探索する。"""
-    size = start_size
-    while size >= min_size:
-        font = load_font(size)
-        bbox = draw.textbbox((0, 0), text, font=font, stroke_width=max(2, size // 18))
-        width = bbox[2] - bbox[0]
-        if width <= max_width:
-            return font
-        size -= 4
-    return load_font(min_size)
+    title = soft_compact_japanese_copy(title, MAX_TOP_COPY_LENGTH)
+    subtitle = compact_japanese_copy(subtitle, MAX_H2_COPY_LENGTH * 2)
+    if len(title) >= 20 and not subtitle:
+        title_lines = split_display_text_for_model(title, 2)
+        title = "".join(title_lines)
+    return title, subtitle
 
 
 def tokenize_text_for_layout(text: str) -> list[str]:
@@ -934,7 +1045,22 @@ def tokenize_text_for_layout(text: str) -> list[str]:
     if not normalized:
         return []
 
-    separators = ["｜", "|", "・", "、", "。", "：", ":", "×", " ", "　", "で", "を", "の", "と"]
+    break_before_words = [
+        "オンライン",
+        "クリニック",
+        "料金",
+        "費用",
+        "相場",
+        "比較",
+        "選び方",
+        "おすすめ",
+        "質問",
+        "注意点",
+    ]
+    for word in break_before_words:
+        normalized = normalized.replace(word, "\n" + word)
+
+    separators = ["｜", "|", "・", "、", "。", "：", ":", "×", " ", "　", "では", "とは", "から", "まで", "で", "を", "の", "と", "が", "は", "に", "へ", "も"]
     for sep in separators:
         normalized = normalized.replace(sep, sep + "\n")
 
@@ -970,384 +1096,129 @@ def force_balanced_lines(text: str, max_lines: int) -> list[str]:
     if remaining:
         lines.append(remaining)
     return [line for line in lines if line]
-
-
-def wrap_text_lines(
-    draw: ImageDraw.ImageDraw,
-    text: str,
-    font,
-    max_width: int,
-    stroke_width: int,
-    max_lines: int,
-) -> list[str]:
-    """横幅に合わせて自然に改行する。"""
-    tokens = tokenize_text_for_layout(text)
-    if not tokens:
-        return [text]
-
-    lines = []
-    current = ""
-
-    for token in tokens:
-        candidate = current + token if current else token
-        bbox = draw.textbbox((0, 0), candidate, font=font, stroke_width=stroke_width)
-        width = bbox[2] - bbox[0]
-
-        if width <= max_width or not current:
-            current = candidate
-            continue
-
-        lines.append(current.strip())
-        current = token
-
-    if current:
-        lines.append(current.strip())
-
-    if len(lines) > max_lines:
-        balanced = force_balanced_lines(text, max_lines)
-        if len(balanced) <= max_lines:
-            return balanced
-        return lines[:max_lines - 1] + ["".join(lines[max_lines - 1:])]
-    return lines
-
-
-def fit_multiline_font(
-    draw: ImageDraw.ImageDraw,
-    text: str,
-    max_width: int,
-    start_size: int,
-    min_size: int,
-    max_lines: int,
-):
-    """指定行数・横幅に収まるフォントと改行結果を返す。"""
-    size = start_size
-    while size >= min_size:
-        font = load_font(size)
-        stroke_width = max(2, size // 18)
-        lines = wrap_text_lines(draw, text, font, max_width, stroke_width, max_lines)
-        widest = 0
-        for line in lines:
-            bbox = draw.textbbox((0, 0), line, font=font, stroke_width=stroke_width)
-            widest = max(widest, bbox[2] - bbox[0])
-        if widest <= max_width and len(lines) <= max_lines:
-            return font, lines, stroke_width
-        size -= 4
-
-    font = load_font(min_size)
-    stroke_width = max(2, min_size // 18)
-    lines = wrap_text_lines(draw, text, font, max_width, stroke_width, max_lines)
-    return font, lines, stroke_width
-
-
-def audit_overlay_layout(
-    image_size: tuple[int, int],
-    lines: list[str],
-    max_lines: int,
-    text: str,
-    max_width: int,
-    measured_widths: list[int],
-    block_bottom: int,
-    panel_bottom: int,
-) -> list[str]:
-    """文字レイアウトの簡易監査。"""
-    width, height = image_size
-    issues = []
-
-    if width <= height:
-        issues.append("画像が横長ではありません")
-    if len(lines) > max_lines:
-        issues.append("改行数が多すぎます")
-    if any(line_width > max_width for line_width in measured_widths):
-        issues.append("文字幅がパネルを超えています")
-    if block_bottom > panel_bottom:
-        issues.append("テキストブロックがパネルからはみ出しています")
-    if len(text) >= 18 and len(lines) == 1:
-        issues.append("長い文字列が1行のままです")
-
-    return issues
-
-
-def apply_top_image_text_overlay(image_path: str, keyword_info: dict, h2_headings: list[str], article_title: str = "") -> dict:
-    """トップ画像に記事内容が伝わるテキストを後乗せする。"""
-    title, subtitle = get_top_image_copy(keyword_info, h2_headings, article_title)
-
-    image = Image.open(image_path).convert("RGBA")
-    width, height = image.size
-    overlay = Image.new("RGBA", image.size, (0, 0, 0, 0))
-    draw = ImageDraw.Draw(overlay)
-
-    panel_height = int(height * 0.34)
-    panel_y = height - panel_height
-    draw.rounded_rectangle(
-        (int(width * 0.03), panel_y, int(width * 0.97), int(height * 0.96)),
-        radius=24,
-        fill=(255, 255, 255, 210),
-        outline=(140, 108, 180, 120),
-        width=4,
-    )
-
-    title_max_width = int(width * 0.76)
-    subtitle_max_width = int(width * 0.82)
-    title_font, title_lines, stroke_title = fit_multiline_font(
-        draw, title, title_max_width, int(height * 0.15), int(height * 0.07), 2
-    )
-    subtitle_font, subtitle_lines, stroke_sub = fit_multiline_font(
-        draw, subtitle, subtitle_max_width, int(height * 0.075), int(height * 0.042), 2
-    )
-
-    title_line_heights = []
-    title_line_widths = []
-    for line in title_lines:
-        bbox = draw.textbbox((0, 0), line, font=title_font, stroke_width=stroke_title)
-        title_line_widths.append(bbox[2] - bbox[0])
-        title_line_heights.append(bbox[3] - bbox[1])
-
-    subtitle_line_heights = []
-    subtitle_line_widths = []
-    for line in subtitle_lines:
-        bbox = draw.textbbox((0, 0), line, font=subtitle_font, stroke_width=stroke_sub)
-        subtitle_line_widths.append(bbox[2] - bbox[0])
-        subtitle_line_heights.append(bbox[3] - bbox[1])
-
-    title_x = int(width * 0.07)
-    title_y = int(height * 0.655)
-    title_spacing = int(height * 0.012)
-    subtitle_x = int(width * 0.07)
-    subtitle_y = title_y + sum(title_line_heights) + title_spacing * max(len(title_lines) - 1, 0) + int(height * 0.03)
-
-    current_y = title_y
-    for line, line_height in zip(title_lines, title_line_heights):
-        draw.text(
-            (title_x, current_y),
-            line,
-            font=title_font,
-            fill=(255, 255, 255, 255),
-            stroke_width=stroke_title,
-            stroke_fill=(107, 78, 141, 255),
-        )
-        current_y += line_height + title_spacing
-
-    subtitle_spacing = int(height * 0.008)
-    current_y = subtitle_y
-    for line, line_height in zip(subtitle_lines, subtitle_line_heights):
-        draw.text(
-            (subtitle_x, current_y),
-            line,
-            font=subtitle_font,
-            fill=(74, 48, 104, 255),
-            stroke_width=stroke_sub,
-            stroke_fill=(255, 255, 255, 180),
-        )
-        current_y += line_height + subtitle_spacing
-
-    composed = Image.alpha_composite(image, overlay).convert("RGB")
-    composed.save(image_path, format="PNG")
-    issues = []
-    issues.extend(
-        audit_overlay_layout(
-            image.size,
-            title_lines,
-            2,
-            title,
-            title_max_width,
-            title_line_widths,
-            title_y + sum(title_line_heights) + title_spacing * max(len(title_lines) - 1, 0),
-            int(height * 0.96),
-        )
-    )
-    issues.extend(
-        audit_overlay_layout(
-            image.size,
-            subtitle_lines,
-            2,
-            subtitle,
-            subtitle_max_width,
-            subtitle_line_widths,
-            subtitle_y + sum(subtitle_line_heights) + subtitle_spacing * max(len(subtitle_lines) - 1, 0),
-            int(height * 0.96),
-        )
-    )
-    return {
-        "ok": not issues,
-        "issues": issues,
-        "title_lines": title_lines,
-        "subtitle_lines": subtitle_lines,
-    }
-
-
-def apply_h2_image_text_overlay(image_path: str, heading: str) -> dict:
-    """H2画像に見出しテキストを後乗せする。"""
-    image = Image.open(image_path).convert("RGBA")
-    width, height = image.size
-    overlay = Image.new("RGBA", image.size, (0, 0, 0, 0))
-    draw = ImageDraw.Draw(overlay)
-
-    panel_left = int(width * 0.04)
-    panel_top = int(height * 0.54)
-    panel_right = int(width * 0.96)
-    panel_bottom = int(height * 0.95)
-    draw.rounded_rectangle(
-        (panel_left, panel_top, panel_right, panel_bottom),
-        radius=22,
-        fill=(255, 255, 255, 218),
-        outline=(120, 88, 160, 110),
-        width=3,
-    )
-
-    max_width = int(width * 0.84)
-    font, lines, stroke = fit_multiline_font(
-        draw,
-        heading,
-        max_width,
-        int(height * 0.09),
-        int(height * 0.042),
-        3,
-    )
-
-    if len(lines) == 1 and len(heading) >= 16:
-        lines = force_balanced_lines(heading, 2)
-        font, _, stroke = fit_multiline_font(
-            draw,
-            "\n".join(lines),
-            max_width,
-            int(height * 0.085),
-            int(height * 0.04),
-            3,
-        )
-
-    line_heights = []
-    line_widths = []
-    for line in lines:
-        bbox = draw.textbbox((0, 0), line, font=font, stroke_width=stroke)
-        line_widths.append(bbox[2] - bbox[0])
-        line_heights.append(bbox[3] - bbox[1])
-
-    text_x = int(width * 0.07)
-    text_y = int(height * 0.60)
-    line_spacing = int(height * 0.004)
-    current_y = text_y
-    for line, line_height in zip(lines, line_heights):
-        draw.text(
-            (text_x, current_y),
-            line,
-            font=font,
-            fill=(62, 41, 89, 255),
-            stroke_width=stroke,
-            stroke_fill=(255, 255, 255, 190),
-        )
-        current_y += line_height + line_spacing
-
-    composed = Image.alpha_composite(image, overlay).convert("RGB")
-    composed.save(image_path, format="PNG")
-    issues = audit_overlay_layout(
-        image.size,
-        lines,
-        3,
-        heading,
-        max_width,
-        line_widths,
-        text_y + sum(line_heights) + line_spacing * max(len(lines) - 1, 0),
-        panel_bottom,
-    )
-    return {
-        "ok": not issues,
-        "issues": issues,
-        "lines": lines,
-    }
-
-
 def build_h2_image_prompt(
     heading: str,
     keyword_info: dict,
+    article_context: dict | None = None,
     site_style: dict | None = None,
     reference_image_path: str | None = None,
+    heading_index: int = 0,
+    variant_instruction: str = "",
 ) -> str:
     """H2見出し画像のプロンプトを生成する"""
     heading_lower = heading.lower()
-    allow_editorial_text = TEXT_RENDER_MODE == "model"
 
-    # H2の内容に応じたビジュアル方向性
+    # H2の内容に応じたビジュアル方向性（英語キーワードをモデルに渡さない）
     if any(w in heading_lower for w in ["一覧", "比較", "おすすめ", "選"]):
         visual_direction = (
             "複数の選択肢を並べて比較するイメージ。"
             "カードや比較パネルのような整理された見せ方"
         )
+        use_character = True
     elif any(w in heading_lower for w in ["費用", "料金", "相場", "価格"]):
         visual_direction = (
             "費用や料金比較を連想できるイメージ。"
-            "医療費、比較、計算、判断の雰囲気"
+            "コイン、通帳、価格帯の比較パネルなどのアイコンを主役にする。"
+            "人物（医師・患者）は使わない。"
         )
+        use_character = False
     elif any(w in heading_lower for w in ["選び方", "ポイント", "チェック"]):
         visual_direction = (
             "選び方や比較ポイントを連想できるイメージ。"
-            "チェック、判断、比較、相談の雰囲気"
+            "チェックマーク、判断軸、比較リストのアイコンが主役。"
         )
-    elif any(w in heading_lower for w in ["質問", "FAQ", "Q&A", "よくある"]):
+        use_character = True
+    elif any(w in heading_lower for w in ["質問", "よくある"]):
         visual_direction = (
-            "疑問解消やFAQを連想できるイメージ。"
-            "質問、回答、安心感のあるQ&Aの雰囲気"
+            "疑問を解消する安心感のあるイメージ。"
+            "吹き出し、疑問符、回答アイコンを主役にしたシンプルなバナー。"
+            "人物（医師・患者）は使わない。"
+            "画像内に英語テキストは一切入れない。"
         )
+        use_character = False
     elif any(w in heading_lower for w in ["まとめ", "結論", "最後"]):
         visual_direction = (
             "まとめや最終判断を連想できるイメージ。"
-            "前向きな結論と整理された印象"
+            "チェックリスト、矢印、前向きな収束感を表すアイコン構成。"
+            "人物は使わない。"
         )
+        use_character = False
     elif any(w in heading_lower for w in ["治療", "効果", "方法"]):
         visual_direction = (
             "治療法や医療説明を連想できるイメージ。"
-            "医師相談、治療説明、医療サポートの雰囲気"
+            "頭皮・毛髪の回復プロセスを表す図解的なイラスト。"
+            "医師を登場させる場合は横向きや斜め向きのポーズにし、タブレットは持たせない。"
         )
+        use_character = True
     else:
         visual_direction = (
-            "見出し内容に合う、清潔感のある医療イメージ"
+            "見出し内容に合う、清潔感のある医療イラストイメージ"
         )
+        use_character = heading_index % 2 == 0
+
+    # インデックスに応じた構図バリエーション
+    layout_variants = [
+        "主役モチーフを左寄りに配置し、右側にテキスト領域を設ける左寄せ構図。",
+        "主役モチーフを中央に置き、左右対称で整理したセンター構図。",
+        "主役モチーフを右寄りに配置し、左側にテキスト領域を設ける右寄せ構図。",
+    ]
+    layout_direction = layout_variants[heading_index % len(layout_variants)]
 
     genre_visual = keyword_info.get("genre_visual", "医療")
     genre_direction = build_genre_visual_direction(keyword_info)
-    style_guardrails = build_style_guardrails(allow_editorial_text=allow_editorial_text)
-    genre_context = load_genre_context(keyword_info)
-    article_type = genre_context.get("article_type", "比較記事")
+    style_guardrails = build_style_guardrails()
+    article_type = resolve_article_type(keyword_info)
     heading_focus = infer_heading_focus(heading)
-    heading_copy = infer_h2_image_copy(heading)
+    section_context = summarize_section_context(article_context, heading)
+    heading_copy = get_h2_display_copy(heading)
+    text_lines = split_display_text_for_model(heading_copy, 2)
     site_style = site_style or DEFAULT_SITE_STYLE
     site_direction = build_site_visual_direction(site_style, "h2")
     reference_direction = build_reference_image_direction(reference_image_path)
     banner_composition = build_h2_banner_composition(heading)
+
+    character_direction = (
+        "人物（医師・患者）は使わない。アイコンや図表的なモチーフだけを主役にする。 "
+        if not use_character
+        else "人物を使う場合は正面向き立ち姿・タブレット手持ちのポーズは避け、構図に合わせた自然な配置にする。 "
+    )
 
     prompt = (
         f"{style_guardrails} "
         f"日本語SEO記事のH2見出し用バナー画像を作成する。 "
         f"記事タイプ: {article_type}。 "
         f"テーマ: {genre_visual}。 "
-        f"H2見出し: {heading}。 "
+        f"章のテーマ説明: {heading}。 "
         f"ビジュアル方向性: {visual_direction}。 "
         f"必須の構図意図: {heading_focus} "
+        f"{character_direction}"
+        f"{layout_direction} "
         f"{genre_direction} "
         f"{site_direction} "
         f"{reference_direction} "
         f"{banner_composition} "
+        f"{('この章の内容: ' + section_context) if section_context else ''} "
         f"シンプルで清潔感のある日本向け医療イラストにする。 "
         f"要素は少なく、横長バナーとしてひと目で意味が伝わるようにする。 "
         f"背景は簡潔にし、複雑すぎる演出や写実写真風は避ける。 "
         f"白やオフホワイトを基調に、淡いラベンダーや柔らかいニュアンスカラーで上品にまとめる。 "
         f"横長バナー構図。余白を保ち、整理された見た目にする。 "
         f"装飾量ではなく、構図と視線誘導で『少し凝って見える』品質を目指す。 "
+        f"この章の内容と関係ない汎用医療イラストや、別章でも使い回せる曖昧なモチーフは避ける。 "
+        f"画像内に見出し文字を置く場所は1か所だけにする。 "
+        f"カード、比較表、吹き出し、薬パッケージ、画面、ラベル、背景には文字や数字を一切入れない。 "
+        f"長い元見出しは描かず、指定する短い見出しだけを描画する。 "
     )
 
-    if allow_editorial_text:
-        prompt += (
-            f'画像内に日本語文字を入れる。入れてよい文字はこの短い見出しのみ: "{heading_copy}"。 '
-            f'文字は短く、大きく、読みやすく。1〜2行まで。 '
-            f'この文字列をそのまま正確な日本語で描画する: "{heading_copy}"。 '
-            f'崩れた日本語、余計な文字、英字の飾り文字、偽テキストは入れない。'
-        )
-    else:
-        prompt += "看板、ラベル、画面、紙面などに読める文字は入れない。文字なし。"
+    prompt += " " + build_model_text_instruction(text_lines)
+    prompt += " 文字は2行以内で、短い見出しバナーとして明瞭に描画する。"
+    if variant_instruction:
+        prompt += f" 別編集版向けの差分指定: {variant_instruction}"
 
     return prompt
 
 
-def review_generated_image(image_path: str, image_kind: str, copy_text: str) -> dict:
+def review_generated_image(image_path: str, image_kind: str) -> dict:
     """画像の最低限の品質レビュー。"""
     image = Image.open(image_path)
     width, height = image.size
@@ -1356,10 +1227,6 @@ def review_generated_image(image_path: str, image_kind: str, copy_text: str) -> 
         issues.append("画像が横長ではありません")
     if width < 1000:
         issues.append("画像幅が小さすぎます")
-    if image_kind == "top" and len(copy_text) > MAX_TOP_COPY_LENGTH:
-        issues.append("トップ画像コピーが長すぎます")
-    if image_kind == "h2" and len(copy_text) > MAX_H2_COPY_LENGTH:
-        issues.append("H2画像コピーが長すぎます")
     return {"ok": not issues, "issues": issues}
 
 
@@ -1395,14 +1262,24 @@ def get_image_metadata_path(image_path: str) -> str:
     return f"{image_path}.meta.json"
 
 
-def current_top_image_signature() -> dict:
+def current_image_signature(image_kind: str) -> dict:
     return {
-        "image_kind": "top",
+        "image_kind": image_kind,
         "model_id": MODEL_ID,
-        "text_render_mode": TEXT_RENDER_MODE,
+        "text_render_mode": "model",
         "generator_mode": "gemini-native" if is_gemini_native_image_model(MODEL_ID) else "generate-images",
-        "generation_version": TOP_IMAGE_GENERATION_VERSION,
+        "generation_version": IMAGE_GENERATION_VERSION,
     }
+
+
+def file_exists_case_sensitive(filepath: str) -> bool:
+    """大文字小文字を区別してファイルの存在を確認する。
+    macOS の case-insensitive FS でも正確に判定できる。"""
+    path = Path(filepath)
+    parent = path.parent
+    if not parent.exists():
+        return False
+    return path.name in set(os.listdir(str(parent)))
 
 
 def load_image_metadata(image_path: str) -> dict | None:
@@ -1422,15 +1299,15 @@ def save_image_metadata(image_path: str, payload: dict) -> None:
         json.dump(payload, f, ensure_ascii=False, indent=2)
 
 
-def should_regenerate_top_image(image_path: str) -> tuple[bool, str]:
-    if not os.path.exists(image_path):
+def should_regenerate_image(image_path: str, image_kind: str) -> tuple[bool, str]:
+    if not file_exists_case_sensitive(image_path):
         return True, "missing_file"
 
     metadata = load_image_metadata(image_path)
     if not metadata:
         return True, "missing_metadata"
 
-    current_signature = current_top_image_signature()
+    current_signature = current_image_signature(image_kind)
     saved_signature = metadata.get("signature") or {}
     if saved_signature != current_signature:
         return True, "signature_changed"
@@ -1561,12 +1438,95 @@ def generate_with_quality_gate(
 
 
 # ========================================
+# フォールバック画像
+# ========================================
+def wrap_text_for_fallback(draw: ImageDraw.ImageDraw, text: str, font, max_width: int) -> list[str]:
+    words = text.split()
+    if not words:
+        return [text]
+
+    lines = []
+    current = words[0]
+    for word in words[1:]:
+        trial = f"{current} {word}"
+        bbox = draw.textbbox((0, 0), trial, font=font)
+        if (bbox[2] - bbox[0]) <= max_width:
+            current = trial
+            continue
+        lines.append(current)
+        current = word
+    lines.append(current)
+    return lines
+
+
+def create_fallback_top_image(filepath: str, keyword_info: dict, article_title: str = "") -> None:
+    width, height = 1200, 675
+    image = Image.new("RGB", (width, height), "#f7f9fc")
+    draw = ImageDraw.Draw(image)
+
+    for y in range(height):
+        ratio = y / max(height - 1, 1)
+        r1, g1, b1 = (247, 249, 252)
+        r2, g2, b2 = (232, 240, 251)
+        color = (
+            int(r1 + (r2 - r1) * ratio),
+            int(g1 + (g2 - g1) * ratio),
+            int(b1 + (b2 - b1) * ratio),
+        )
+        draw.line([(0, y), (width, y)], fill=color)
+
+    accent = "#4f7db8"
+    secondary = "#9bb7de"
+    draw.rounded_rectangle((72, 72, width - 72, height - 72), radius=36, outline=secondary, width=4, fill="#ffffff")
+    draw.rounded_rectangle((108, 118, 380, 154), radius=18, fill=accent)
+
+    try:
+        title_font = ImageFont.truetype("/System/Library/Fonts/ヒラギノ角ゴシック W6.ttc", 52)
+        body_font = ImageFont.truetype("/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc", 26)
+        badge_font = ImageFont.truetype("/System/Library/Fonts/ヒラギノ角ゴシック W6.ttc", 22)
+    except OSError:
+        title_font = ImageFont.load_default()
+        body_font = ImageFont.load_default()
+        badge_font = ImageFont.load_default()
+
+    draw.text((132, 124), "MEDICAL ARTICLE IMAGE", fill="#ffffff", font=badge_font)
+
+    area = keyword_info.get("area", "").strip()
+    genre = keyword_info.get("genre", "").strip() or "医療記事"
+    title_text = article_title.strip() or f"{area}の{genre}" if area else genre
+    title_text = title_text.replace("！", " ").replace("｜", " ").strip()
+    lines = wrap_text_for_fallback(draw, title_text, title_font, width - 260)
+
+    current_y = 220
+    for line in lines[:3]:
+        draw.text((132, current_y), line, fill="#213047", font=title_font)
+        bbox = draw.textbbox((132, current_y), line, font=title_font)
+        current_y = bbox[3] + 12
+
+    _, subtitle = get_top_image_copy(keyword_info, [], article_title)
+    subtitle = subtitle or "費用・口コミ・アクセスをわかりやすく比較"
+    draw.text((136, current_y + 16), subtitle, fill="#5f6f85", font=body_font)
+
+    draw.rounded_rectangle((132, height - 190, width - 132, height - 126), radius=20, fill="#eef4fb")
+    detail = f"{area} / {genre}" if area else genre
+    draw.text((164, height - 172), detail, fill="#4f647f", font=body_font)
+
+    os.makedirs(os.path.dirname(filepath), exist_ok=True)
+    image.save(filepath, format="PNG")
+
+
+# ========================================
 # HTML挿入
 # ========================================
-def insert_images_into_html(html_path: str, keyword_slug: str, h2_count: int):
-    """生成したH2画像のimgタグをHTMLに挿入する。トップ画像は本文に入れない。"""
+def insert_images_into_html(html_path: str, keyword_slug: str, available_h2_numbers: list[int]):
+    """存在するH2画像だけをHTMLに挿入する。トップ画像は本文に入れない。"""
     with open(html_path, "r", encoding="utf-8") as f:
         content = f.read()
+
+    available_h2 = set(available_h2_numbers)
+    if not available_h2:
+        print("\n  No H2 images available for insertion. Skipping HTML insertion.")
+        return
 
     # H2画像: 各H2の直後に挿入
     h2_pattern = re.compile(r"(<h2>)(.*?)(</h2>)", re.DOTALL)
@@ -1575,6 +1535,8 @@ def insert_images_into_html(html_path: str, keyword_slug: str, h2_count: int):
     def replace_h2(match):
         h2_index[0] += 1
         n = h2_index[0]
+        if n not in available_h2:
+            return match.group(0)
         h2_text = re.sub(r"<[^>]+>", "", match.group(2)).strip()
         img_tag = (
             f'\n<img src="images/{keyword_slug}_h2_{n}.png" '
@@ -1629,6 +1591,9 @@ def main():
     parser.add_argument("--skip-insert", action="store_true", help="HTMLへの画像挿入をスキップ")
     parser.add_argument("--only", type=str, help="特定の画像のみ生成（top, h2_1, h2_2, ...）")
     parser.add_argument("--force", action="store_true", help="既存画像があっても再生成する")
+    parser.add_argument("--output-key", help="出力先の識別キー（省略時はキーワード）")
+    parser.add_argument("--variant-index", type=int, default=1, help="編集バリエーション番号")
+    parser.add_argument("--variant-count", type=int, default=1, help="生成する総バリエーション数")
     args = parser.parse_args()
 
     # API キー確認
@@ -1636,6 +1601,10 @@ def main():
     if not api_key:
         print("Error: GEMINI_API_KEY 環境変数を設定してください。")
         print("  export GEMINI_API_KEY='your-api-key'")
+        sys.exit(1)
+    if genai is None or types is None:
+        print("Error: google-genai パッケージが必要です。")
+        print("  pip install google-genai")
         sys.exit(1)
 
     # HTML確認
@@ -1645,20 +1614,33 @@ def main():
 
     # キーワード解析
     keyword_info = parse_keyword(args.keyword)
-    keyword_slug = keyword_to_slug(args.keyword)
-    output_dir = ensure_keyword_images_dir(args.keyword)
+    output_key = resolve_output_key(args.keyword, args.output_key)
+    keyword_slug = keyword_to_slug(output_key)
+    output_dir = ensure_keyword_images_dir(args.keyword, output_key=output_key)
+    variant_profile = build_variant_profile(args.variant_index, args.variant_count)
+    variant_instruction = variant_profile["image_style"]
 
     print(f"Keyword: {args.keyword}")
     print(f"  Genre: {keyword_info.get('genre', '不明')}")
     print(f"  Area: {keyword_info.get('area', 'なし')}")
+    if args.output_key:
+        print(f"  Output key: {args.output_key}")
+    if args.variant_count > 1:
+        print(f"  Variant: {args.variant_index}/{args.variant_count}")
     # H2見出し抽出
     h2_headings = extract_h2_headings(args.html)
     article_title = extract_article_title_from_tag_structure(args.html)
+    article_type = extract_article_type_from_tag_structure(args.html)
+    article_context = extract_article_visual_context(args.html)
+    if article_type:
+        keyword_info["article_type"] = article_type
     print(f"  H2 headings found: {len(h2_headings)}")
     for i, h in enumerate(h2_headings, 1):
         print(f"    {i}. {h}")
     if article_title:
         print(f"  Article title: {article_title}")
+    if article_type:
+        print(f"  Article type: {article_type}")
 
     # Gemini クライアント初期化
     client = genai.Client(api_key=api_key)
@@ -1678,12 +1660,10 @@ def main():
         if args.force:
             return True
         path = image_path(name)
-        if image_kind == "top":
-            needs_regen, reason = should_regenerate_top_image(path)
-            if needs_regen and os.path.exists(path):
-                print(f"  Regenerate top image: {name} ({reason})")
-            return needs_regen
-        return not os.path.exists(path)
+        needs_regen, reason = should_regenerate_image(path, image_kind)
+        if needs_regen and file_exists_case_sensitive(path):
+            print(f"  Regenerate {image_kind} image: {name} ({reason})")
+        return needs_regen
 
     # トップ画像
     if args.only is None or args.only == "top":
@@ -1694,15 +1674,12 @@ def main():
                 keyword_info,
                 h2_headings,
                 article_title,
+                article_context,
                 site_style,
                 reference_image_path=reference_image_path,
+                variant_instruction=variant_instruction,
             )
-            top_copy = infer_article_theme_copy(keyword_info, h2_headings, article_title)
-            reviewer = (
-                (lambda path, copy_text=top_copy: review_generated_image(path, "top", copy_text))
-                if TEXT_RENDER_MODE == "model"
-                else lambda path: apply_top_image_text_overlay(path, keyword_info, h2_headings, article_title)
-            )
+            reviewer = lambda path: review_generated_image(path, "top")
             success, audit = generate_with_quality_gate(
                 client,
                 prompt,
@@ -1712,14 +1689,25 @@ def main():
                 "top",
                 reviewer,
                 reference_image_path=reference_image_path,
-            )
+                )
             if not success:
                 print(f"  Top image review issues: {audit.get('issues', [])}")
+                create_fallback_top_image(filepath, keyword_info, article_title)
+                save_image_metadata(
+                    filepath,
+                    {
+                        "signature": current_image_signature("top"),
+                        "saved_at": datetime.now().isoformat(),
+                        "audit": {"status": "fallback", "issues": audit.get("issues", [])},
+                    },
+                )
+                print(f"  Fallback top image created: {filename}")
+                success = True
             if success:
                 save_image_metadata(
                     filepath,
                     {
-                        "signature": current_top_image_signature(),
+                        "signature": current_image_signature("top"),
                         "saved_at": datetime.now().isoformat(),
                         "audit": audit,
                     },
@@ -1741,15 +1729,13 @@ def main():
             prompt = build_h2_image_prompt(
                 heading,
                 keyword_info,
+                article_context,
                 site_style,
                 reference_image_path=reference_image_path,
+                heading_index=i - 1,
+                variant_instruction=variant_instruction,
             )
-            h2_copy = infer_h2_image_copy(heading)
-            reviewer = (
-                (lambda path, copy_text=h2_copy: review_generated_image(path, "h2", copy_text))
-                if TEXT_RENDER_MODE == "model"
-                else lambda path, heading=heading: apply_h2_image_text_overlay(path, heading)
-            )
+            reviewer = lambda path: review_generated_image(path, "h2")
             success, audit = generate_with_quality_gate(
                 client,
                 prompt,
@@ -1762,6 +1748,15 @@ def main():
             )
             if not success:
                 print(f"  H2 image review issues: {audit.get('issues', [])}")
+            if success:
+                save_image_metadata(
+                    image_path(filename),
+                    {
+                        "signature": current_image_signature("h2"),
+                        "saved_at": datetime.now().isoformat(),
+                        "audit": audit,
+                    },
+                )
             results.append((h2_key, filename, success, "generated"))
             time.sleep(2)  # レートリミット対策
         else:
@@ -1777,11 +1772,17 @@ def main():
 
     # HTML挿入
     if not args.skip_insert:
-        successful_count = sum(1 for _, _, s, _ in results if s)
-        if successful_count > 0:
-            insert_images_into_html(args.html, keyword_slug, len(h2_headings))
+        available_h2_numbers = []
+        for key, filename, success, _ in results:
+            if not success or not key.startswith("h2_"):
+                continue
+            match = re.match(r"h2_(\d+)", key)
+            if match and file_exists_case_sensitive(image_path(filename)):
+                available_h2_numbers.append(int(match.group(1)))
+        if available_h2_numbers:
+            insert_images_into_html(args.html, keyword_slug, available_h2_numbers)
         else:
-            print("\nNo images generated successfully. Skipping HTML insertion.")
+            print("\nNo H2 images generated successfully. Skipping HTML insertion.")
 
     print("\nDone!")
 

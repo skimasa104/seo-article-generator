@@ -18,10 +18,10 @@ import subprocess
 import sys
 import urllib.error
 import urllib.request
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlunparse
 
 from env_utils import load_project_env
-from output_utils import ensure_keyword_output_dir, keyword_to_slug
+from output_utils import ensure_output_dir_for_key, keyword_to_slug, resolve_output_key
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 SERPER_API_URL = "https://google.serper.dev/search"
@@ -80,6 +80,18 @@ MAJOR_AREAS = [
 
 def normalize_text(text: str) -> str:
     return (text or "").lower()
+
+
+def canonicalize_result_url(url: str) -> str:
+    try:
+        parsed = urlparse(url)
+    except Exception:
+        return url
+    clean = parsed._replace(query="", fragment="")
+    canonical = urlunparse(clean)
+    if canonical.endswith("/") and clean.path not in {"", "/"}:
+        canonical = canonical.rstrip("/")
+    return canonical
 
 
 def is_non_article_domain(domain: str) -> bool:
@@ -150,7 +162,8 @@ def score_article(keyword: str, item: dict) -> tuple[int, list[str]]:
             reasons.append("広いキーワードに対して地域特化")
 
     if re.search(r"/(column|blog|note|media|article)/", url):
-        score += 1
+        score += 4
+        reasons.append("記事URL構造")
 
     if len(snippet) < 40:
         score -= 2
@@ -159,7 +172,10 @@ def score_article(keyword: str, item: dict) -> tuple[int, list[str]]:
     return score, reasons
 
 
-def search_google(keyword: str, api_key: str, max_results: int = RAW_RESULT_COUNT) -> list[dict]:
+def search_google(keyword: str, api_key: str, max_results: int = RAW_RESULT_COUNT) -> tuple[list[dict], dict]:
+    """Serper.dev で Google 検索結果を取得。
+    戻り値は (organic 結果のリスト, 関連情報 dict)。
+    関連情報には people_also_ask / related_searches を含める（SEO 用のサジェストキーワード抽出のため）。"""
     body = json.dumps({
         "q": keyword,
         "gl": "jp",
@@ -180,7 +196,7 @@ def search_google(keyword: str, api_key: str, max_results: int = RAW_RESULT_COUN
     except urllib.error.HTTPError as e:
         print(f"  API Error: {e.code}")
         print(f"  {e.read().decode()[:300]}")
-        return []
+        return [], {}
 
     results = []
     for i, item in enumerate(data.get("organic", []), start=1):
@@ -188,6 +204,7 @@ def search_google(keyword: str, api_key: str, max_results: int = RAW_RESULT_COUN
         title = item.get("title", "")
         if not url or not title:
             continue
+        url = canonicalize_result_url(url)
         results.append({
             "rank": i,
             "title": title,
@@ -197,7 +214,76 @@ def search_google(keyword: str, api_key: str, max_results: int = RAW_RESULT_COUN
         })
         if len(results) >= max_results:
             break
-    return results
+
+    # 関連キーワード・PAA（SEO 設計に使う）
+    paa = []
+    for item in data.get("peopleAlsoAsk", []) or []:
+        q = (item.get("question") or "").strip()
+        if q:
+            paa.append({
+                "question": q,
+                "snippet": (item.get("snippet") or "").strip(),
+            })
+    related = []
+    for item in data.get("relatedSearches", []) or []:
+        q = (item.get("query") or "").strip()
+        if q:
+            related.append(q)
+
+    suggest_info = {
+        "people_also_ask": paa,
+        "related_searches": related,
+    }
+    return results, suggest_info
+
+
+def _ensure_reference_url_first(
+    reference_url: str,
+    filtered: list[dict],
+    all_results: list[dict],
+    count: int,
+) -> list[dict]:
+    """指定された reference_url を filtered リストの先頭に配置する。
+    - filtered 内に既にあれば → 先頭へ移動
+    - all_results にあれば → そこから引き上げて先頭に追加
+    - どちらにも無ければ → 最小情報で entry を作って先頭に追加（scrape は URL があれば実行できる）
+    末尾を切り詰めて count 件を維持する。"""
+    canonical = canonicalize_result_url(reference_url) or reference_url
+
+    def _matches(item: dict) -> bool:
+        u = (item.get("url") or "").strip()
+        return u == reference_url or u == canonical
+
+    # 既に filtered 内
+    for i, item in enumerate(filtered):
+        if _matches(item):
+            if i == 0:
+                return filtered
+            picked = filtered.pop(i)
+            picked.setdefault("score_reasons", []).append("参考URL指定で先頭固定")
+            return [picked] + filtered
+
+    # all_results 内（除外されたが取得済み）
+    for item in all_results:
+        if _matches(item):
+            picked = dict(item)
+            picked["excluded"] = False
+            picked.setdefault("score_reasons", []).append("参考URL指定で先頭固定（スコアに依らず採用）")
+            return [picked] + [it for it in filtered if not _matches(it)][: max(0, count - 1)]
+
+    # 検索結果に無い → 新規エントリ作成
+    parsed_domain = urlparse(canonical).netloc.lower()
+    picked = {
+        "rank": 0,
+        "title": canonical,
+        "url": canonical,
+        "domain": parsed_domain,
+        "snippet": "",
+        "score": 999,
+        "score_reasons": ["参考URL指定で先頭固定（検索結果外から手動指定）"],
+        "excluded": False,
+    }
+    return [picked] + [it for it in filtered if not _matches(it)][: max(0, count - 1)]
 
 
 def filter_urls(keyword: str, urls: list[dict], count: int) -> list[dict]:
@@ -230,8 +316,14 @@ def main():
     parser = argparse.ArgumentParser(description="Google検索キーワードからURL取得")
     parser.add_argument("keyword", help="検索キーワード（例: 'AGA 横浜'）")
     parser.add_argument("--count", type=int, default=DEFAULT_COUNT, help=f"取得するURL数（デフォルト: {DEFAULT_COUNT}）")
+    parser.add_argument("--output-key", help="出力先の識別キー（省略時はキーワード）")
     parser.add_argument("--scrape", action="store_true", help="取得後にscrape.pyを実行")
     parser.add_argument("--show-all", action="store_true", help="raw結果と除外理由を表示")
+    parser.add_argument(
+        "--reference-url",
+        default="",
+        help="構造参照する競合記事URL。指定すると filtered の先頭に強制配置され、scrape の articles[0] になる",
+    )
     args = parser.parse_args()
 
     api_key = os.environ.get("SERPER_API_KEY")
@@ -245,13 +337,25 @@ def main():
     print()
 
     print("Google検索中（Serper.dev API）...")
-    all_results = search_google(keyword, api_key, max_results=RAW_RESULT_COUNT)
+    all_results, suggest_info = search_google(keyword, api_key, max_results=RAW_RESULT_COUNT)
     if not all_results:
         print("検索結果を取得できませんでした。")
         sys.exit(1)
 
-    print(f"検索結果: {len(all_results)} 件取得\n")
+    print(f"検索結果: {len(all_results)} 件取得")
+    if suggest_info.get("people_also_ask"):
+        print(f"  People Also Ask: {len(suggest_info['people_also_ask'])} 件")
+    if suggest_info.get("related_searches"):
+        print(f"  関連キーワード: {len(suggest_info['related_searches'])} 件")
+    print()
     filtered = filter_urls(keyword, all_results, count=args.count)
+
+    # reference_url が指定されたら、その URL を filtered の先頭に強制配置する。
+    # （Step 2 のタグ構成設計で「1位記事」として参照されるのは articles[0]＝scrape は filtered の順序を踏襲するため）
+    reference_url = (args.reference_url or "").strip()
+    if reference_url:
+        filtered = _ensure_reference_url_first(reference_url, filtered, all_results, args.count)
+        print(f"参考URL指定: {reference_url} を先頭に配置しました")
 
     if args.show_all:
         print("=" * 60)
@@ -278,14 +382,17 @@ def main():
         print("対象となる記事が見つかりませんでした。")
         sys.exit(1)
 
-    output_dir = ensure_keyword_output_dir(keyword)
-    keyword_slug = keyword_to_slug(keyword)
+    output_key = resolve_output_key(keyword, args.output_key)
+    output_dir = ensure_output_dir_for_key(output_key)
+    keyword_slug = keyword_to_slug(output_key)
     json_path = os.path.join(output_dir, f"{keyword_slug}_search_results.json")
     save_data = {
         "keyword": keyword,
+        "output_key": output_key,
         "source": "serper_google",
         "filtered": filtered,
         "all_results": all_results,
+        "suggest": suggest_info,
     }
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(save_data, f, ensure_ascii=False, indent=2)

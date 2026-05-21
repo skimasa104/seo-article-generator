@@ -11,6 +11,19 @@ output/*.json
 output/*.html
 output/*/
 output/*_タグ構成.md
+output/*.csv
+output/*.txt
+output/*.md
+output/article-theme-*.css
+
+# macOS
+.DS_Store
+
+# キャッシュ
+.image_upload_cache.json
+
+# Playwright ブラウザバイナリ
+.playwright/
 
 # スクレイピングデータ
 scraped_data/
@@ -35,3 +48,8 @@ runtime_state/
 site_style_cache/
 .map_geocode_cache.json
 サーバー起動
+
+# Google Sheets API 認証情報
+client_secret.json
+token.json
+.gsheets/

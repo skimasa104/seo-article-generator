@@ -24,13 +24,29 @@ import sys
 import time
 import urllib.request
 import urllib.error
+import unicodedata
 from datetime import datetime
 
 from article_audit import validate_article_html
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, NavigableString
 from env_utils import load_project_env
-from output_utils import ensure_common_assets, ensure_keyword_output_dir, keyword_to_slug
+from output_utils import (
+    ensure_common_assets_for_key,
+    ensure_output_dir_for_key,
+    get_output_dir_for_key,
+    keyword_to_slug,
+    resolve_output_key,
+)
 from output_utils import get_keyword_scraped_dir
+from variant_utils import (
+    apply_editorial_variant_to_tag_structure,
+    build_editorial_variant_instruction,
+    build_variant_profile,
+    inline_variant_shortcodes_in_html,
+    is_nandemo_output_key,
+    resolve_variant_embed_html,
+)
+from survey_utils import build_survey_policy, build_survey_prompt_instruction
 
 # ========================================
 # 設定
@@ -39,11 +55,21 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 GENRES_DIR = os.path.join(SCRIPT_DIR, "genres")
 
 CLAUDE_API_URL = "https://api.anthropic.com/v1/messages"
-CLAUDE_MODEL = "claude-sonnet-4-20250514"
+CLAUDE_MODEL_STEP2 = "claude-opus-4-1-20250805"
+CLAUDE_MODEL_STEP3 = "claude-sonnet-4-20250514"
 MAX_TOKENS_STEP2 = 8192
 MAX_TOKENS_STEP3 = 16384
 MAX_SECTION_REPAIR_ATTEMPTS = 2
 CLAUDE_RETRY_DELAYS = [30, 90, 180, 300]
+STEP2_SUMMARY_MAX_CHARS = 12000
+STEP2_STRUCTURE_MAX_CHARS = 14000
+STEP3_SUMMARY_MAX_CHARS = 10000
+STEP3_STRUCTURE_MAX_CHARS = 18000
+STEP3_SECTIONAL_H2_THRESHOLD = 8
+STEP3_SECTION_H3_SPLIT_THRESHOLD = 6
+STEP3_SECTION_H3_CHUNK_SIZE = 4
+STEP3_SECTION_MARKDOWN_SPLIT_THRESHOLD = 5000
+FORBIDDEN_TEMPLATE_PATTERN = re.compile(r"\{\{(?:後で作成|後で挿入|TODO):[^}]*\}\}")
 
 load_project_env()
 
@@ -51,6 +77,18 @@ load_project_env()
 def log(msg: str):
     ts = datetime.now().strftime("%H:%M:%S")
     print(f"[{ts}] {msg}")
+
+
+def find_forbidden_template_markers(text: str) -> list[str]:
+    return FORBIDDEN_TEMPLATE_PATTERN.findall(text or "")
+
+
+def ensure_no_forbidden_template_markers(text: str, context_label: str) -> None:
+    markers = find_forbidden_template_markers(text)
+    if not markers:
+        return
+    preview = " / ".join(markers[:3])
+    raise ValueError(f"{context_label}に未解決のプレースホルダーが残っています: {preview}")
 
 
 def cleanup_generated_html(content: str, keyword_slug: str) -> str:
@@ -80,18 +118,66 @@ def strip_code_fences(content: str) -> str:
     return content.strip()
 
 
+def replace_markdown_bold_literals(content: str) -> str:
+    """HTML断片に紛れた Markdown 強調記法を機械的に除去する。"""
+    content = re.sub(r"\*\*([^<>\n*]+?)\*\*", r"<strong>\1</strong>", content)
+    return content.replace("**", "")
+
+
 def normalize_html_fragment(content: str) -> str:
     """Claudeが返したHTML断片を、余分なラッパーを除去した形に整える。"""
     content = strip_code_fences(content)
     if not content:
         return ""
+    content = replace_markdown_bold_literals(content)
 
     wrapped = f'<div id="__codex_root__">{content}</div>'
     soup = BeautifulSoup(wrapped, "html.parser")
     root = soup.find(id="__codex_root__")
     if root is None:
         return content.strip()
-    return root.decode_contents().strip()
+    normalize_markdown_bold(root)
+    return replace_markdown_bold_literals(root.decode_contents().strip())
+
+
+def strip_h2_tags(fragment: str) -> str:
+    return re.sub(r"(?is)<h2\b[^>]*>.*?</h2>\s*", "", fragment or "").strip()
+
+
+def normalize_markdown_bold(root: BeautifulSoup | object) -> None:
+    """誤って残った Markdown の **強調** を <strong> に変換する。"""
+    bold_pattern = re.compile(r"\*\*(.+?)\*\*")
+    factory = BeautifulSoup("", "html.parser")
+
+    for text_node in list(root.find_all(string=True)):
+        if not isinstance(text_node, NavigableString):
+            continue
+        parent = getattr(text_node, "parent", None)
+        if parent is None or getattr(parent, "name", None) in {"script", "style", "code", "pre"}:
+            continue
+
+        original = str(text_node)
+        if "**" not in original:
+            continue
+
+        cursor = 0
+        replacements: list[object] = []
+        for match in bold_pattern.finditer(original):
+            if match.start() > cursor:
+                replacements.append(NavigableString(original[cursor:match.start()]))
+            strong = factory.new_tag("strong")
+            strong.string = match.group(1)
+            replacements.append(strong)
+            cursor = match.end()
+
+        if not replacements:
+            continue
+        if cursor < len(original):
+            replacements.append(NavigableString(original[cursor:]))
+
+        for replacement in replacements[::-1]:
+            text_node.insert_after(replacement)
+        text_node.extract()
 
 
 def normalize_heading_text(text: str) -> str:
@@ -100,19 +186,33 @@ def normalize_heading_text(text: str) -> str:
     return text.strip()
 
 
-def canonical_h2_key(text: str) -> str:
+def canonical_heading_key(text: str) -> str:
     normalized = normalize_heading_text(text)
     if not normalized:
         return ""
-    if "よくある質問" in normalized or "faq" in normalized.lower():
+    normalized = unicodedata.normalize("NFKC", normalized).lower()
+    normalized = normalized.replace("〜", "-").replace("～", "-")
+    normalized = re.sub(r"[◯○〇]+", "#", normalized)
+    normalized = re.sub(r"\d+(?:\s*[-~]\s*\d+)?", "#", normalized)
+    normalized = re.sub(r"[()（）［］\[\]【】「」『』:：・/／,，、。!！?？\-\s]+", "", normalized)
+    normalized = re.sub(r"#+", "#", normalized)
+    return normalized.strip("#")
+
+
+def canonical_h2_key(text: str) -> str:
+    raw = normalize_heading_text(text)
+    if not raw:
+        return ""
+    normalized = canonical_heading_key(raw)
+    if "よくある質問" in raw or "faq" in raw.lower():
         return "faq"
-    if "まとめ" in normalized:
+    if "まとめ" in raw:
         return "summary"
-    if "オンライン診療" in normalized and "クリニック" in normalized:
+    if "オンライン診療" in raw and "クリニック" in raw:
         return "online_clinic"
-    if "費用相場" in normalized or "料金相場" in normalized:
+    if "費用相場" in raw or "料金相場" in raw:
         return "cost"
-    if "治療方法別" in normalized or "治療法別" in normalized:
+    if "治療方法別" in raw or "治療法別" in raw:
         return "treatment_type"
     return normalized
 
@@ -175,6 +275,44 @@ def extract_section_markdown(tag_structure: str, target_h2: str) -> str:
     return match.group(1).strip() if match else ""
 
 
+def extract_section_intro_markdown(section_markdown: str) -> str:
+    if not section_markdown.strip():
+        return ""
+    parts = re.split(r"^#### \[H3\] ", section_markdown, maxsplit=1, flags=re.MULTILINE)
+    return parts[0].strip()
+
+
+def extract_h3_markdown(section_markdown: str, target_h3: str) -> str:
+    pattern = re.compile(
+        rf"(^#### \[H3\] {re.escape(target_h3)}.*?)(?=^#### \[H3\] |\Z)",
+        re.MULTILINE | re.DOTALL,
+    )
+    match = pattern.search(section_markdown)
+    return match.group(1).strip() if match else ""
+
+
+def chunk_list(items: list[str], chunk_size: int) -> list[list[str]]:
+    if chunk_size <= 0:
+        return [items]
+    return [items[index:index + chunk_size] for index in range(0, len(items), chunk_size)]
+
+
+def should_split_section_by_h3(section_markdown: str, h3s: list[str]) -> bool:
+    return (
+        len(h3s) >= STEP3_SECTION_H3_SPLIT_THRESHOLD
+        or len(section_markdown) >= STEP3_SECTION_MARKDOWN_SPLIT_THRESHOLD
+    )
+
+
+def extract_intro_markdown(tag_structure: str) -> str:
+    pattern = re.compile(
+        r"^## 導入部分\s*(.*?)(?=^## タグ構成|\Z)",
+        re.MULTILINE | re.DOTALL,
+    )
+    match = pattern.search(tag_structure)
+    return match.group(1).strip() if match else ""
+
+
 def extract_actual_headings(html: str) -> tuple[list[str], list[str]]:
     soup = BeautifulSoup(html, "html.parser")
     h2s = [node.get_text(" ", strip=True) for node in soup.find_all("h2")]
@@ -186,13 +324,117 @@ def find_missing_headings(tag_structure: str, html: str) -> tuple[list[str], lis
     expected_h2s, expected_h3s = extract_expected_headings(tag_structure)
     actual_h2s, actual_h3s = extract_actual_headings(html)
     actual_h2_keys = {canonical_h2_key(heading) for heading in actual_h2s}
+    actual_h3_keys = {canonical_heading_key(heading) for heading in actual_h3s}
     missing_h2s = [
         heading
         for heading in expected_h2s
         if canonical_h2_key(heading) not in actual_h2_keys
     ]
-    missing_h3s = [heading for heading in expected_h3s if heading not in actual_h3s]
+    missing_h3s = [
+        heading
+        for heading in expected_h3s
+        if canonical_heading_key(heading) not in actual_h3_keys
+    ]
     return missing_h2s, missing_h3s
+
+
+def compact_text_for_prompt(text: str, max_chars: int) -> tuple[str, bool]:
+    text = (text or "").strip()
+    if len(text) <= max_chars:
+        return text, False
+    marker = "\n...(中略)..."
+    trimmed = text[: max_chars - len(marker)].rstrip()
+    return trimmed + marker, True
+
+
+def compact_structure_for_prompt(structure: str, max_chars: int) -> tuple[str, bool]:
+    structure = (structure or "").strip()
+    if len(structure) <= max_chars:
+        return structure, False
+
+    kept_lines = []
+    section_text_lines = 0
+    section_bullet_lines = 0
+
+    for line in structure.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            if kept_lines and kept_lines[-1] != "":
+                kept_lines.append("")
+            continue
+
+        is_heading = (
+            stripped.startswith("#")
+            or re.match(r"^(title|url|見出し|h[1-6]|本文要約|要点|メタ|description)\b", stripped, re.IGNORECASE)
+        )
+        is_bullet = stripped.startswith(("-", "*", "・")) or bool(re.match(r"^\d+\.", stripped))
+
+        if is_heading:
+            kept_lines.append(line)
+            section_text_lines = 0
+            section_bullet_lines = 0
+        elif is_bullet and section_bullet_lines < 4:
+            kept_lines.append(line)
+            section_bullet_lines += 1
+        elif section_text_lines < 2 and len(stripped) <= 180:
+            kept_lines.append(line)
+            section_text_lines += 1
+
+        candidate = "\n".join(kept_lines).strip()
+        if len(candidate) >= max_chars:
+            break
+
+    compacted = "\n".join(kept_lines).strip()
+    if not compacted:
+        compacted, _ = compact_text_for_prompt(structure, max_chars)
+        return compacted, True
+
+    if len(compacted) > max_chars:
+        compacted = compacted[:max_chars].rstrip()
+
+    if len(compacted) < len(structure):
+        compacted = compacted.rstrip() + "\n...(中略)..."
+
+    return compacted, True
+
+
+def prepare_step2_prompt_context(scraped_data: dict) -> tuple[str, list[str]]:
+    summary_json = json.dumps(scraped_data["summary"], ensure_ascii=False, indent=2)
+    compact_summary, summary_compacted = compact_text_for_prompt(summary_json, STEP2_SUMMARY_MAX_CHARS)
+    if summary_compacted:
+        log(f"  Step2 summary compacted: {len(summary_json):,} -> {len(compact_summary):,} chars")
+
+    compact_structures = []
+    for index, structure in enumerate(scraped_data["structures"], 1):
+        compact_structure, structure_compacted = compact_structure_for_prompt(
+            structure,
+            STEP2_STRUCTURE_MAX_CHARS,
+        )
+        if structure_compacted:
+            log(
+                f"  Step2 article_{index} compacted: "
+                f"{len(structure):,} -> {len(compact_structure):,} chars"
+            )
+        compact_structures.append(compact_structure or "（データなし）")
+    return compact_summary, compact_structures
+
+
+def prepare_step3_prompt_structures(scraped_data: dict) -> str:
+    parts = []
+    for index, structure in enumerate(scraped_data["structures"], 1):
+        if not structure:
+            continue
+        compact_structure, structure_compacted = compact_structure_for_prompt(
+            structure,
+            STEP3_STRUCTURE_MAX_CHARS,
+        )
+        if structure_compacted:
+            log(
+                f"  Step3 article_{index} compacted: "
+                f"{len(structure):,} -> {len(compact_structure):,} chars"
+            )
+        parts.append(f"\n### 記事{index}\n{compact_structure}\n")
+    return "".join(parts)
 
 
 # ========================================
@@ -230,6 +472,26 @@ def load_genre(genre_id: str) -> dict:
         return json.load(f)
 
 
+def _backfill_competitor_summary(summary: dict, keyword: str) -> bool:
+    """summary.json に competitor_summary が無い旧データに対して、その場で再計算する。
+    成功すれば True を返し、呼び出し側でディスクに永続化する。"""
+    if summary.get("competitor_summary"):
+        return False
+    articles = summary.get("articles") or []
+    if not articles:
+        return False
+    try:
+        # scrape.py は bs4 を import するため、未インストール環境（テスト等）では失敗する。
+        # 失敗時は静かにスキップして既存挙動にフォールバック。
+        from scrape import build_competitor_summary
+    except Exception as e:
+        log(f"  競合サマリ再計算スキップ（scrape import 失敗）: {e}")
+        return False
+    target_keyword = summary.get("keyword") or keyword
+    summary["competitor_summary"] = build_competitor_summary(target_keyword, articles)
+    return True
+
+
 def load_scraped_data(keyword: str, scraped_dir: str = None) -> dict:
     """スクレイピングデータを読み込む"""
     scraped_dir = scraped_dir or get_keyword_scraped_dir(keyword)
@@ -243,6 +505,15 @@ def load_scraped_data(keyword: str, scraped_dir: str = None) -> dict:
     with open(summary_path, encoding="utf-8") as f:
         summary = json.load(f)
 
+    # 旧 summary.json には competitor_summary が無いので、その場で計算して永続化する
+    if _backfill_competitor_summary(summary, keyword):
+        try:
+            with open(summary_path, "w", encoding="utf-8") as f:
+                json.dump(summary, f, ensure_ascii=False, indent=2)
+            log("  competitor_summary を再計算して summary.json に保存")
+        except Exception as e:
+            log(f"  competitor_summary 永続化に失敗（メモリ上は反映済み）: {e}")
+
     structures = []
     for i in range(1, 4):
         path = os.path.join(scraped_dir, f"article_{i}_structure.md")
@@ -255,18 +526,197 @@ def load_scraped_data(keyword: str, scraped_dir: str = None) -> dict:
     return {"summary": summary, "structures": structures}
 
 
+def _fetch_suggest_only(keyword: str) -> dict:
+    """旧 search_results.json に suggest が無い場合のバックフィル用。
+    Serper API を最小コールで呼び出して PAA / 関連検索だけ取得する。"""
+    if not keyword:
+        return {}
+    api_key = os.environ.get("SERPER_API_KEY")
+    if not api_key:
+        return {}
+    try:
+        from search_keyword import search_google
+        _, suggest = search_google(keyword, api_key, max_results=10)
+        return suggest or {}
+    except Exception as e:
+        log(f"  suggest 再取得スキップ: {e}")
+        return {}
+
+
+def load_search_suggest(output_key: str) -> dict:
+    """search_keyword.py が保存した検索結果から People Also Ask / 関連検索を取り出す。
+    旧データに suggest が無ければ Serper を再取得して保存する。Step 2 のキーワード設計に使用。"""
+    try:
+        output_dir = get_output_dir_for_key(output_key)
+    except Exception:
+        return {}
+    keyword_slug = keyword_to_slug(output_key)
+    path = os.path.join(output_dir, f"{keyword_slug}_search_results.json")
+    if not os.path.exists(path):
+        return {}
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception:
+        return {}
+    suggest = data.get("suggest") or {}
+
+    # 旧データに suggest が無い場合は Serper を再呼び出ししてバックフィル
+    has_paa = bool(suggest.get("people_also_ask"))
+    has_related = bool(suggest.get("related_searches"))
+    if not has_paa and not has_related:
+        keyword = data.get("keyword") or output_key
+        new_suggest = _fetch_suggest_only(keyword)
+        if new_suggest.get("people_also_ask") or new_suggest.get("related_searches"):
+            suggest = new_suggest
+            data["suggest"] = suggest
+            try:
+                with open(path, "w", encoding="utf-8") as f:
+                    json.dump(data, f, ensure_ascii=False, indent=2)
+                log("  suggest を Serper から再取得して search_results.json に保存")
+            except Exception as e:
+                log(f"  suggest 永続化に失敗（メモリ上は反映済み）: {e}")
+
+    return {
+        "people_also_ask": suggest.get("people_also_ask") or [],
+        "related_searches": suggest.get("related_searches") or [],
+    }
+
+
+def build_seo_brief(summary: dict, suggest: dict, keyword: str) -> str:
+    """競合の集計とサジェストキーワードを Step 2 プロンプト用の人間可読ブリーフに整形する。"""
+    cs = (summary or {}).get("competitor_summary") or {}
+    if not cs and not suggest:
+        return ""
+
+    lines: list[str] = []
+    n = cs.get("competitor_count") or 0
+
+    char_stats = cs.get("char_stats") or {}
+    if char_stats:
+        lines.append(
+            f"- 競合 {n} 記事の文字数: 中央値 {int(char_stats.get('median', 0)):,} / 平均 {int(char_stats.get('avg', 0)):,} / 最大 {int(char_stats.get('max', 0)):,}"
+        )
+    h2_stats = cs.get("h2_count_stats") or {}
+    if h2_stats:
+        lines.append(
+            f"- 競合のH2見出し数: 中央値 {int(h2_stats.get('median', 0))} / 平均 {h2_stats.get('avg', 0)} / 最大 {int(h2_stats.get('max', 0))}"
+        )
+    h3_stats = cs.get("h3_count_stats") or {}
+    if h3_stats:
+        lines.append(
+            f"- 競合のH3見出し数: 中央値 {int(h3_stats.get('median', 0))} / 平均 {h3_stats.get('avg', 0)} / 最大 {int(h3_stats.get('max', 0))}"
+        )
+
+    coverage = cs.get("keyword_coverage") or {}
+    if coverage and n:
+        lines.append(
+            f"- メインキーワード「{keyword}」のH2含有: {coverage.get('articles_with_keyword_in_h2', 0)}/{n} 記事 "
+            f"(各記事のH2のうち平均 {int(coverage.get('h2_keyword_ratio_avg', 0) * 100)}%)"
+        )
+        lines.append(
+            f"- 同 H3含有: {coverage.get('articles_with_keyword_in_h3', 0)}/{n} 記事 "
+            f"(各記事のH3のうち平均 {int(coverage.get('h3_keyword_ratio_avg', 0) * 100)}%)"
+        )
+        lines.append(
+            f"- title 含有: {coverage.get('in_title', 0)}/{n} / meta含有: {coverage.get('in_meta', 0)}/{n} / 導入文含有: {coverage.get('in_intro', 0)}/{n}"
+        )
+
+    must = cs.get("must_include_features") or []
+    if must:
+        lines.append(
+            f"- 70%以上の競合に必ず登場するブロック（必須化対象）: {', '.join(must)}"
+        )
+    common = [f for f in (cs.get("common_features") or []) if f not in must]
+    if common:
+        lines.append(
+            f"- 50%以上の競合に登場するブロック（採用推奨）: {', '.join(common)}"
+        )
+
+    common_h2 = cs.get("common_h2_topics") or []
+    if common_h2:
+        topics = ", ".join(f"{t['phrase']}({t['count']}件)" for t in common_h2[:8])
+        lines.append(f"- 複数競合に共通するH2フレーズ（重複は無視して内容として取り入れる）: {topics}")
+
+    # 1位記事（スコア最上位 ≒ SERP上位）のプロファイル
+    top = cs.get("top_article_profile") or {}
+    if top:
+        lines.append("")
+        lines.append("## 1位記事の構造プロファイル（**主軸の参照ターゲット**）")
+        if top.get("url"):
+            lines.append(f"- URL: {top.get('url')}")
+        lines.append(
+            f"- 全体: 文字数 {int(top.get('total_chars', 0)):,} / H2 {top.get('h2_count', 0)}個 / H3 {top.get('h3_count', 0)}個"
+        )
+        # 導入の構造
+        intro_marks = []
+        intro_marks.append("一覧ボックスあり" if top.get("intro_has_index_box") else "一覧ボックスなし")
+        intro_marks.append("早見表あり" if top.get("intro_has_table") else "早見表なし")
+        if top.get("intro_has_toc"):
+            intro_marks.append("目次あり")
+        lines.append(f"- 導入部: {' / '.join(intro_marks)}")
+        # クリニックや論点H3の典型構造
+        lines.append(
+            f"- H3単位の構造: テーブル平均 {top.get('h3_table_count_avg', 0)}個 / "
+            f"テーブルあり率 {top.get('h3_with_table_pct', 0)}% / "
+            f"H3本文の中央値 {int(top.get('h3_text_length_median', 0)):,}字"
+        )
+        lines.append(
+            f"- H3単位の付帯要素: 口コミブロックあり率 {top.get('h3_with_reviews_pct', 0)}% / "
+            f"公式サイトCTAあり率 {top.get('h3_with_official_button_pct', 0)}% / "
+            f"Googleマップあり率 {top.get('h3_with_map_pct', 0)}%"
+        )
+        # 1位記事の H2 単位ビュー（本記事の H2 設計はここに合わせる）
+        h2_secs = top.get("h2_sections") or []
+        if h2_secs:
+            lines.append("")
+            lines.append("### 1位記事 H2 単位の構造（本記事はこの並びと数を踏襲する）")
+            for i, sec in enumerate(h2_secs, 1):
+                heading = sec.get("heading", "")
+                clen = int(sec.get("content_length", 0) or 0)
+                h3c = int(sec.get("h3_count", 0) or 0)
+                h3avg = int(sec.get("h3_text_length_avg", 0) or 0)
+                # ブロック種別を簡潔に
+                bs = sec.get("block_summary") or {}
+                # ノイズ除去（汎用ブロック）
+                meaningful = {k: v for k, v in bs.items() if k not in {"テキスト", "テキストブロック", "リスト", "リスト型ブロック"}}
+                block_str = " / ".join(f"{k}×{v}" for k, v in sorted(meaningful.items(), key=lambda x: -x[1])[:5])
+                line = f"  {i}. 「{heading}」 — 本文 {clen:,}字 / H3 {h3c}個"
+                if h3c > 0:
+                    line += f"（H3平均 {h3avg:,}字）"
+                if block_str:
+                    line += f" / 機能: {block_str}"
+                lines.append(line)
+
+    paa = (suggest or {}).get("people_also_ask") or []
+    if paa:
+        lines.append(
+            "- People Also Ask（読者がよく検索する関連質問）:"
+        )
+        for q in paa[:6]:
+            lines.append(f"  - {q.get('question','')}")
+    related = (suggest or {}).get("related_searches") or []
+    if related:
+        lines.append(
+            f"- 関連検索キーワード（H2/H3 か本文にできるだけ含める）: {', '.join(related[:10])}"
+        )
+
+    return "\n".join(lines)
+
+
 # ========================================
 # Claude API呼び出し
 # ========================================
 def call_claude(system_prompt: str, user_prompt: str, api_key: str,
-                max_tokens: int = 8192):
+                max_tokens: int = 8192,
+                model: str = CLAUDE_MODEL_STEP3):
     """Claude APIを呼び出す
 
     Returns:
         (content, stop_reason, usage)
     """
     body = json.dumps({
-        "model": CLAUDE_MODEL,
+        "model": model,
         "max_tokens": max_tokens,
         "system": system_prompt,
         "messages": [{"role": "user", "content": user_prompt}],
@@ -321,179 +771,103 @@ def call_claude(system_prompt: str, user_prompt: str, api_key: str,
             sys.exit(1)
 
 
+def accumulate_usage(total: dict, delta: dict) -> None:
+    for key, value in (delta or {}).items():
+        if isinstance(value, int):
+            total[key] = total.get(key, 0) + value
+
+
+def call_claude_until_complete(
+    system_prompt: str,
+    user_prompt: str,
+    api_key: str,
+    *,
+    max_tokens: int,
+    model: str,
+    continuation_log: str,
+    continuation_builder,
+) -> tuple[str, dict]:
+    content, stop_reason, usage = call_claude(
+        system_prompt, user_prompt, api_key, max_tokens=max_tokens, model=model
+    )
+
+    while stop_reason == "max_tokens":
+        log(continuation_log)
+        continuation_prompt = continuation_builder(content)
+        next_content, stop_reason, next_usage = call_claude(
+            system_prompt, continuation_prompt, api_key, max_tokens=max_tokens, model=model
+        )
+        content += next_content
+        accumulate_usage(usage, next_usage)
+
+    return content, usage
+
+
+# ========================================
+# プロンプトの外部ファイル読み込み
+# ========================================
+# 旧仕様: STEP2_SYSTEM / STEP2_USER / STEP3_SYSTEM / STEP3_USER をハードコード保持
+# 新仕様: prompts/step2_system.md などからロード。ルール正本は docs/ARTICLE_RULES.md
+# - {article_rules} プレースホルダーには docs/ARTICLE_RULES.md の全文が注入される
+# - これにより「ルールを書いたのに参照されない」問題を構造的に解消する
+_PROMPTS_DIR = os.path.join(SCRIPT_DIR, "prompts")
+_RULES_PATH = os.path.join(SCRIPT_DIR, "docs", "ARTICLE_RULES.md")
+
+
+def _load_text(path: str) -> str:
+    with open(path, "r", encoding="utf-8") as f:
+        return f.read()
+
+
+def _load_prompt(filename: str) -> str:
+    """prompts/{filename} を読み込み、{article_rules} プレースホルダーに ARTICLE_RULES.md を注入する。"""
+    raw = _load_text(os.path.join(_PROMPTS_DIR, filename))
+    rules = _load_text(_RULES_PATH)
+    # {article_rules} を最初に置換 (str.format より前にやることで、rules 内の中括弧が壊れない)
+    return raw.replace("{article_rules}", rules)
+
+
 # ========================================
 # Step 2: タグ構成設計
 # ========================================
-STEP2_SYSTEM = """あなたはSEO記事の構成設計者です。
-競合記事のスクレイピングデータ（見出し構造・ブロック構成・テキスト内容）を分析し、
-そのキーワードで検索1位を取るための最適な記事構成（タグ構成）を設計してください。
+STEP2_SYSTEM = _load_prompt("step2_system.md")
 
-## あなたの役割
-- まず検索意図を判定し、記事タイプを決める
-- 競合3記事に共通するH2トピックを抽出し、統合・再構成する
-- 競合にないがSEO的に有効なセクション（FAQ等）を追加検討する
-- 各H2/H3の下に配置すべきブロック（テーブル、テキスト、ショートコード等）を定義する
-- 必要な場合のみクリニック/商材の掲載数を決定する
-- 出力はマークダウンで行う（HTMLは出力しない）"""
-
-STEP2_USER = """以下の競合記事データを分析し、「{keyword}」で検索1位を取るためのタグ構成を設計してください。
-
-## 基本情報
-- キーワード: {keyword}
-- ジャンル: {genre_name}
-
-## ジャンル設定
-```json
-{genre_json}
-```
-
-## 競合記事のサマリー
-```json
-{scraped_summary}
-```
-
-## 競合記事の詳細構成
-### 記事1
-{article_1_structure}
-
-### 記事2
-{article_2_structure}
-
-### 記事3
-{article_3_structure}
-
----
-
-## 構成設計の指針
-
-### 0. 検索意図の判定
-- キーワードの主目的を最初に判定する
-- 代表例:
-  - 比較・おすすめ系（例: おすすめ, 比較, ランキング, クリニック）
-  - Know系の解説（例: 副作用, 効果, 原因, 仕組み, いつから, やめると）
-  - 費用・料金系（例: 値段, 相場, 費用, いくら）
-  - 方法・対策系（例: 治し方, 予防, 改善, 対処法）
-- 記事構成は、この検索意図に最適化する
-- どのキーワードでも同じテンプレートを押し込まず、意図に合う見出しだけを採用する
-
-### 1. 競合分析の方法
-- 3記事のH2見出しを横断的に比較し、**共通するトピック**を特定する
-- 共通トピックは必ず含める（検索意図に対する必須要素）
-- 1記事にしかないトピックは、SEO的に有効かどうかを判断して含めるか決める
-- 競合にないがSEO的に差別化できるセクション（FAQ、選び方ガイド等）を追加検討する
-
-### 2. H2の設計
-- 3記事の共通H2トピックを統合・再構成してH2見出しを決める
-- 各H2にどのようなブロック（テキスト、テーブル、ショートコード等）を配置するかを定義する
-- **設計根拠**として「競合のどの見出しを統合/再構成したか」をコメントで明記する
-- H2は検索意図に必要なものだけを採用し、無理に網羅しすぎない
-
-### 3. H3の設計
-- H2の下にH3を配置する場合、その構成も定義する
-- クリニック/商材の個別セクション（H3）は、掲載するすべての見出しを個別に列挙する
-- 「以下同様」「以下繰り返し」「テンプレートで流用」などの省略表現は禁止
-- 各H3ごとにブロック構成を具体化し、Step 3が迷わず本文化できる粒度まで書く
-- 掲載するクリニック/商材名は、比較系またはおすすめ系のときのみ競合データから抽出し、リストアップする
-- Know系や解説系では、H3は論点分解（例: 原因、注意点、対処法、受診目安）を優先する
-
-### 4. クリニック/商材の掲載数
-- これは比較系・おすすめ系のときだけ適用する
-- 3記事の掲載数を確認し、中央値〜やや多めを目安にする
-- 具体的なクリニック/商材名を列挙する
-- 競合で多く取り上げられているものを優先する
-
-### 4.5. 検索意図との整合性
-- キーワードに地域名が含まれない場合、titleタグ・メタディスクリプション・主要H2を特定地域に固定しない
-- 競合が地域特化でも、記事全体の主題はキーワードの検索意図に合わせる
-- 地域情報を使う場合は補足観点に留め、記事全体を地域比較記事にしない
-
-### 5. 導入部分
-- リード文の方向性（検索意図への共感 → 記事で解決できること）
-- 比較系・おすすめ系なら早見表ショートコードと一覧ボックスを配置する
-- Know系・解説系なら、要点整理や結論先出しを優先し、比較向けショートコードを無理に使わない
-
-### 6. まとめセクション
-- 記事全体の要約
-- 比較系ならCTA（早見表ショートコード）
-- Know系なら結論整理と次の行動（受診目安、公式確認など）
-- 注意書き（税込表記・公式サイト確認の旨）
-
-### 7. 情報の抽出
-- 比較系なら、各クリニック/商材の**具体的な情報**（料金、住所、診療時間、特徴等）を抽出してメモとして含める
-- Know系なら、症状・原因・副作用・受診目安・対処法などの論点別ファクトを抽出してメモとして含める
-- この情報はStep 3（本文生成）で使う素材になる
-
-### 8. 禁止事項
-- H3の省略記法（例: 「以下同様」「以下繰り返し」「テンプレートで15院を紹介」）
-- 根拠のない地域固定化
-- Step 3に丸投げする前提の雑な設計
-- 競合本文のコピペに近い羅列
-- 「要確認」前提の設計
-- 比較系でもないのにクリニック一覧を無理に主軸にすること
-- Know系なのに「おすすめ◯選」に寄せること
-
-## 出力形式
-以下のフォーマットで出力してください:
-
-```
-# 「{keyword}」タグ構成設計
-
-**titleタグ**: ...
-**メタディスクリプション**: ...
-**検索意図**: ...（比較/おすすめ系・Know系・費用系・方法系 など）
-**記事タイプ**: ...（比較記事 / 解説記事 / 費用解説記事 / 対処法記事 など）
-**想定文字数**: ...
-
----
-
-## 導入部分
-**構成:**
-1. テキスト（リード文: ...）
-2. 必要に応じたブロック（比較系なら早見表ショートコード、Know系なら要点整理）
-3. 必要に応じたブロック（比較系なら一覧ボックスHTML）
-4. 目次（WordPress自動生成）
-
----
-
-## タグ構成
-
-### [H2] 見出しテキスト
-※この見出しを設計した根拠
-
-**ブロック構成:**
-- テキスト（概要説明）
-- 比較テーブル（カラム: ...）
-- テキスト（補足）
-
-#### [H3] 見出しテキスト
-**ブロック構成:**
-- テキスト（このH3で最初に伝える結論）
-- 詳細テーブル（必要な項目）
-- テキスト（差別化ポイント）
-- 必要なら口コミブロック or 比較補足
-
-#### [H3] 見出しテキスト
-**ブロック構成:**
-- ...
-```
-比較系でない場合は、クリニックごとのテンプレートを無理に使わず、検索意図に適したH2/H3設計にしてください。"""
+STEP2_USER = _load_prompt("step2_user.md")
 
 
-def run_step2(keyword: str, genre: dict, scraped_data: dict, api_key: str) -> str:
+def run_step2(
+    keyword: str,
+    genre: dict,
+    scraped_data: dict,
+    api_key: str,
+    output_key: str | None = None,
+    variant_index: int = 1,
+    variant_count: int = 1,
+    survey_policy: dict | None = None,
+) -> str:
     """Step 2: タグ構成設計"""
     log("Step 2: タグ構成設計 開始")
 
+    resolved_output_key = resolve_output_key(keyword, output_key)
     genre_json = json.dumps(genre, ensure_ascii=False, indent=2)
-    summary_json = json.dumps(scraped_data["summary"], ensure_ascii=False, indent=2)
+    summary_json, compact_structures = prepare_step2_prompt_context(scraped_data)
+    variant_instruction = build_editorial_variant_instruction(variant_index, variant_count)
+    survey_prompt_instruction = build_survey_prompt_instruction(survey_policy or {})
+    suggest = load_search_suggest(resolved_output_key)
+    seo_brief = build_seo_brief(scraped_data.get("summary") or {}, suggest, keyword) or "（競合集計データなし）"
 
     user_prompt = STEP2_USER.format(
         keyword=keyword,
         genre_name=genre.get("genre_name", ""),
         genre_json=genre_json,
         scraped_summary=summary_json,
-        article_1_structure=scraped_data["structures"][0] if len(scraped_data["structures"]) > 0 else "（データなし）",
-        article_2_structure=scraped_data["structures"][1] if len(scraped_data["structures"]) > 1 else "（データなし）",
-        article_3_structure=scraped_data["structures"][2] if len(scraped_data["structures"]) > 2 else "（データなし）",
+        article_1_structure=compact_structures[0] if len(compact_structures) > 0 else "（データなし）",
+        article_2_structure=compact_structures[1] if len(compact_structures) > 1 else "（データなし）",
+        article_3_structure=compact_structures[2] if len(compact_structures) > 2 else "（データなし）",
+        current_year=datetime.now().year,
+        editorial_variant_instruction=variant_instruction,
+        survey_prompt_instruction=survey_prompt_instruction,
+        seo_brief=seo_brief,
     )
 
     total_chars = len(STEP2_SYSTEM) + len(user_prompt)
@@ -501,7 +875,11 @@ def run_step2(keyword: str, genre: dict, scraped_data: dict, api_key: str) -> st
     log("  Claude API 呼び出し中...")
 
     content, stop_reason, usage = call_claude(
-        STEP2_SYSTEM, user_prompt, api_key, max_tokens=MAX_TOKENS_STEP2
+        STEP2_SYSTEM,
+        user_prompt,
+        api_key,
+        max_tokens=MAX_TOKENS_STEP2,
+        model=CLAUDE_MODEL_STEP2,
     )
 
     input_tokens = usage.get("input_tokens", 0)
@@ -511,9 +889,12 @@ def run_step2(keyword: str, genre: dict, scraped_data: dict, api_key: str) -> st
     if stop_reason == "max_tokens":
         log("  ⚠ 出力が途中で切れています（max_tokens到達）")
 
+    content = apply_editorial_variant_to_tag_structure(content, variant_index, variant_count)
+    ensure_no_forbidden_template_markers(content, "タグ構成")
+
     # 保存
-    keyword_slug = keyword_to_slug(keyword)
-    output_dir = ensure_keyword_output_dir(keyword)
+    keyword_slug = keyword_to_slug(resolved_output_key)
+    output_dir = ensure_output_dir_for_key(resolved_output_key)
     tag_path = os.path.join(output_dir, f"{keyword_slug}_タグ構成.md")
     with open(tag_path, "w", encoding="utf-8") as f:
         f.write(content)
@@ -525,231 +906,41 @@ def run_step2(keyword: str, genre: dict, scraped_data: dict, api_key: str) -> st
 # ========================================
 # Step 3: 本文HTML生成
 # ========================================
-STEP3_SYSTEM = """あなたはSEO記事のHTMLライターです。
-タグ構成設計書と競合記事データを受け取り、WordPress用のHTML記事を出力してください。
+STEP3_SYSTEM = _load_prompt("step3_system.md")
 
-## あなたの役割
-- タグ構成設計書に従った構成・見出しでHTML記事を書くこと
-- 競合記事のデータから具体的な情報（料金・住所・診療時間等）を正確に反映すること
-- 検索キーワードで Google 1位を取れる記事を書くこと（情報網羅性・E-E-A-T優先）
-- タグ構成設計書に書かれた検索意図・記事タイプに従って、比較記事にもKnow記事にも対応すること
-
-## 出力ルール
-- HTMLのみ出力する。マークダウンや説明文は一切含めない
-- ```html ``` のコードフェンスで囲まない
-- CSSクラス名だけ付与する（CSSの定義自体は書かない）
-- <style>タグ、<script>タグは含めない
-- ショートコードやプレースホルダーは、タグ構成設計書で必要なものだけ出力する
-- 不明な情報に対して `※要確認` や説明コメントを出力しない。確認できない項目は、その文・行・セルを省略する"""
-
-STEP3_USER = """以下のタグ構成設計書に従って、WordPress用のHTML記事を出力してください。
-
-## 基本情報
-- キーワード: {keyword}
-- キーワードスラッグ: {keyword_slug}（スペースを_に置換）
-- ジャンル: {genre_name}
-
-## ジャンル設定
-```json
-{genre_json}
-```
-
-## タグ構成設計書（Step 2の出力）
-{tag_structure}
-
-## 競合記事の詳細データ（情報ソース）
-{scraped_structures}
-
----
-
-# HTMLルール
-
-以下のルールをすべて守ってHTMLを出力してください。
-
-## 1. 導入部分（H2の前）
-
-タグ構成設計書の「導入部分」に従って以下を配置:
-1. リード文（2段落）
-   - 1段落目: 検索意図への共感
-   - 2段落目: この記事で何がわかるかの提示
-2. タグ構成設計書の導入構成にショートコードがある場合のみ出力
-3. タグ構成設計書の導入構成に一覧ボックスがある場合のみ、`clinic-index-box` の実HTMLを出力
-4. HTMLコメント: `<!-- ↑ここまでが導入部分。この直後にWordPress自動生成の目次が入る -->`
-
-## 2. H2セクション
-
-タグ構成設計書で定義されたH2をそのまま使う。
-各H2の直下にH2見出し画像を配置:
-```
-<img src="images/{keyword_slug}_h2_{{n}}.png" alt="{{H2見出しテキスト}}" width="1200" height="675" loading="lazy">
-```
-- nは1から連番
-- タグ構成設計書で定義されたブロック構成に従う
-- タグ構成設計書にないH2を追加しない
-- タグ構成設計書にあるH2を省略しない
-
-## 3. クリニック/商材 個別セクション（H3）のテンプレート
-
-タグ構成設計書が比較記事・おすすめ記事で、クリニック/商材の個別H3セクションを定義している場合のみ、以下のテンプレートに従って各クリニック/商材を出力する:
-
-```
-<!-- ============================== -->
-<!-- クリニック名 -->
-<!-- ============================== -->
-<h3 id="clinic-xxx">クリニック名</h3>
-
-<div class="clinic-screenshot">
-<img src="images/screenshot_クリニック名.png" alt="クリニック名の公式サイト" width="1200" height="800" loading="lazy">
-</div>
-
-<table class="clinic-summary-table">
-<tbody>
-<tr><th>カラム1</th><td>値</td></tr>
-</tbody>
-</table>
-
-<p>テキスト（3〜4段落。ジャンル設定の text_requirements に含まれる情報を盛り込む）</p>
-
-<table class="clinic-detail-table">
-<tbody>
-<tr><th>カラム1</th><td>値</td></tr>
-</tbody>
-</table>
-
-<div class="review-section">
-<h4>口コミ・評判</h4>
-<div class="review-bubble"><div class="review-avatar"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#999" width="22" height="22"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg></div><div class="review-body"><div class="review-meta"><span class="review-stars">Google口コミ</span><span>口コミ1</span></div>口コミ本文</div></div>
-</div>
-
-<div class="clinic-map">
-<iframe src="https://www.google.com/maps?q=クリニック名&output=embed" allowfullscreen loading="lazy"></iframe>
-</div>
-
-<p class="official-site-button-wrap" style="margin:1em 0 1.5em;text-align:center;"></p>
-```
-
-### 3-1. H3のid命名規則
-- `id="clinic-xxx"` の形式（英字小文字、ハイフン区切り）
-- H2直下の比較テーブルのアンカーリンクと一致させる
-
-### 3-2. オンライン専門クリニック
-店舗を持たないオンライン専門クリニックの場合:
-- Googleマップは挿入しない
-- 代わりに `<!-- クリニック名はオンライン専門のためマップなし -->` のコメントを入れる
-
-### 3-3. 構造の禁止事項
-- 同じクリニック名を記事内で2回以上見出し化しない
-- `.clinic-list` や `.clinic-item` のような追加ラッパーを勝手に作らない
-- `.reviews` や `<blockquote class="review">` の旧口コミUIを出力しない
-- H3クリニックセクションの外で、そのクリニック名をH4見出しとして再掲しない
-- `<div>` の閉じ忘れ・二重閉じをしない
-- H2画像は `.png` プレースホルダーだけを使い、`.jpg` は出力しない
-- トップ画像 `images/{keyword_slug}_top.png` は本文に出力しない
-- Know系・解説系では、上記のクリニック比較テンプレートを無理に使わない
-- H3はタグ構成設計書で定義されたテキストをそのまま使い、省略しない
-
-## 4. テーブルのCSSクラスルール
-
-| 配置場所 | クラス名 |
-|---------|---------|
-| H3セクション内の最初のテーブル | `clinic-summary-table` |
-| H3セクション内の2番目のテーブル | `clinic-detail-table` |
-| H2直下で thead を持つ比較テーブル | `treatment-compare-table` |
-
-- `treatment-compare-table` のみ `<thead>` を付ける
-- `clinic-summary-table` と `clinic-detail-table` は `<tbody>` のみ
-- 比較テーブルは `<div style="overflow-x:auto;">` で囲む
-
-## 5. テキストのライティングルール
-
-### 5-1. 段落の長さ
-- 1パラグラフ **80〜100文字以内**
-- 長くなる場合は `<strong>` で視覚的にカバーする
-
-### 5-2. 文体
-- 事実ベースで書く。「〜と言われています」等の曖昧表現は避ける
-- 各セクションの冒頭1文で結論を述べ、その後に補足する構成
-- 「です・ます」調で統一
-
-### 5-3. strong強調ルール
-**50文字前後に1箇所** の頻度で `<strong>` を使う。短い段落でも最低1箇所は入れる。
-
-強調すべきポイント:
-- 価格情報（「初月○○円」「月々○○円」等）
-- 差別化ポイント（「予約不要」「完全個室」「22時まで」等）
-- 数値を伴う実績（「99.4%」「250万人」等）
-- 制度・サービス名（「全額返金保証」「主治医制度」等）
-
-## 6. 詳細テーブル内の表記ルール
-
-`clinic-detail-table` 内で複数の薬や料金を列挙する場合、読点ではなく `<br>` 改行で表示する。
-
-## 7. Googleマップ埋め込み
-
-```
-<div class="clinic-map">
-<iframe src="https://www.google.com/maps?q=クリニック名&output=embed" allowfullscreen loading="lazy"></iframe>
-</div>
-```
-
-## 8. 口コミのHTMLフォーマット
-
-比較記事で口コミブロックがタグ構成設計書に含まれる場合のみ出力する。
-口コミは競合記事のデータに含まれるものを使う（捏造しない）。
-競合データに口コミが十分にない場合は、口コミブロック自体を省略する。
-年代付きの架空口コミや、作り話の引用文は出力しない。
-口コミUIは `review-section` 形式だけを使う。
-
-## 9. ショートコード
-
-ジャンル設定の `shortcodes` を参照して出力する。
-ただし、タグ構成設計書で不要なショートコードは無理に出力しない。
-
-## 10. まとめセクション
-
-記事末尾に以下を配置:
-1. まとめテキスト（2段落）
-2. タグ構成設計書でCTAやショートコードが指定されている場合のみ出力
-3. 注意書き: `<p><small>※本記事に記載の料金はすべて税込表記です。料金・診療時間・治療内容等は変更される場合がありますので、最新情報は各クリニックの公式サイトをご確認ください。</small></p>`
-
-## 11. 情報の正確性
-
-- 競合記事データの情報は、タグ構成設計書で必要な範囲に限って利用してよい
-- 確認できない情報は書かない。表の行や本文を削る
-- 公式サイトURLが不明な場合は、CTAボタンそのものを出力しない
-- `{{後で作成:...}}` 形式のプレースホルダーは一切出力しない
-- 生成指示文・要確認コメント・説明コメントを本文に残さない
-
-## 12. タグ構成への忠実性
-
-- タグ構成設計書の `検索意図` と `記事タイプ` に合う出力を行う
-- タグ構成設計書で定義されたH2/H3はすべて出力する
-- タグ構成設計書にないH2/H3を勝手に増やさない
-- 比較記事でない場合、比較表・一覧ボックス・口コミ・マップを機械的に挿入しない
-
----
-
-## 出力
-
-タグ構成設計書のH2/H3構成に従い、上記ルールすべてを適用して、WordPress用のHTML記事を出力してください。
-タグ構成設計書にない見出しを勝手に追加したり、定義されている見出しを省略したりしないでください。"""
+STEP3_USER = _load_prompt("step3_user.md")
 
 
-def run_step3(keyword: str, genre: dict, tag_structure: str,
-              scraped_data: dict, api_key: str) -> str:
+def run_step3(
+    keyword: str,
+    genre_id: str | None,
+    genre: dict,
+    tag_structure: str,
+    scraped_data: dict,
+    api_key: str,
+    output_key: str | None = None,
+    variant_index: int = 1,
+    variant_count: int = 1,
+    survey_policy: dict | None = None,
+) -> str:
     """Step 3: 本文HTML生成"""
     log("Step 3: 本文HTML生成 開始")
 
-    keyword_slug = keyword.replace(" ", "_")
+    resolved_output_key = resolve_output_key(keyword, output_key)
+    resolved_genre_id = genre_id or genre.get("genre_id") or "aga"
+    keyword_slug = keyword_to_slug(resolved_output_key)
     genre_json = json.dumps(genre, ensure_ascii=False, indent=2)
-    scraped_summary = json.dumps(scraped_data["summary"], ensure_ascii=False, indent=2)
+    scraped_text = prepare_step3_prompt_structures(scraped_data)
+    scraped_summary_json = json.dumps(scraped_data["summary"], ensure_ascii=False, indent=2)
+    scraped_summary, summary_compacted = compact_text_for_prompt(
+        scraped_summary_json,
+        STEP3_SUMMARY_MAX_CHARS,
+    )
+    if summary_compacted:
+        log(f"  Step3 summary compacted: {len(scraped_summary_json):,} -> {len(scraped_summary):,} chars")
 
-    # 競合記事構成を結合
-    scraped_text = ""
-    for i, structure in enumerate(scraped_data["structures"], 1):
-        if structure:
-            scraped_text += f"\n### 記事{i}\n{structure}\n"
-
+    variant_instruction = build_editorial_variant_instruction(variant_index, variant_count)
+    survey_prompt_instruction = build_survey_prompt_instruction(survey_policy or {})
     user_prompt = STEP3_USER.format(
         keyword=keyword,
         keyword_slug=keyword_slug,
@@ -757,32 +948,242 @@ def run_step3(keyword: str, genre: dict, tag_structure: str,
         genre_json=genre_json,
         tag_structure=tag_structure,
         scraped_structures=scraped_text,
+        current_year=datetime.now().year,
+        editorial_variant_instruction=variant_instruction,
+        survey_prompt_instruction=survey_prompt_instruction,
     )
 
     total_chars = len(STEP3_SYSTEM) + len(user_prompt)
     log(f"  入力: {total_chars:,} 文字")
-    log("  Claude API 呼び出し中（時間がかかります）...")
-
-    content, stop_reason, usage = call_claude(
-        STEP3_SYSTEM, user_prompt, api_key, max_tokens=MAX_TOKENS_STEP3
+    sections = parse_tag_structure_sections(tag_structure)
+    use_sectional_generation = (
+        len(sections) >= STEP3_SECTIONAL_H2_THRESHOLD
+        or len(tag_structure) >= 12000
     )
 
-    # 出力が途中で切れた場合、続きを要求
-    while stop_reason == "max_tokens":
-        log("  出力が途中で切れたため、続きを要求中...")
-        continuation_prompt = "続きを出力してください。前回の出力の末尾:\n" + content[-500:]
-        next_content, stop_reason, next_usage = call_claude(
-            STEP3_SYSTEM, continuation_prompt, api_key, max_tokens=MAX_TOKENS_STEP3
-        )
-        content += next_content
-        # usageを加算
-        for key in next_usage:
-            if key in usage and isinstance(usage[key], int):
-                usage[key] += next_usage[key]
+    if use_sectional_generation:
+        log("  記事が長いため、H2単位の分割生成モードで本文を組み立てます...")
+        usage = {"input_tokens": 0, "output_tokens": 0}
+        content_parts = []
 
-    content = normalize_html_fragment(content)
+        intro_markdown = extract_intro_markdown(tag_structure)
+        intro_prompt = f"""以下の「導入部分」だけをWordPress用HTMLで出力してください。
+
+## 重要
+- この導入パートでは `<h2>` や `<h3>` を使わない
+- タグ構成設計書の導入部分に指定された要素だけを出力する
+- 目次はWordPress側で自動生成されるので出力しない
+- `<!-- ↑ここまでが導入部分。この直後にWordPress自動生成の目次が入る -->` のコメントを最後に入れる
+- ショートコード指定がある場合は、そのまま出力してよい
+- 不明な情報は書かず、プレースホルダーも残さない
+
+## キーワード
+{keyword}
+
+## 導入部分のタグ構成抜粋
+{intro_markdown or "導入指定なし"}
+
+## タグ構成設計書の冒頭
+{tag_structure[:2500]}
+
+## 競合記事の要約
+{scraped_summary}
+"""
+        intro_html, intro_usage = call_claude_until_complete(
+            STEP3_SYSTEM,
+            intro_prompt,
+            api_key,
+            max_tokens=MAX_TOKENS_STEP3,
+            model=CLAUDE_MODEL_STEP3,
+            continuation_log="  導入生成が途中で切れたため、続きを要求中...",
+            continuation_builder=lambda current: (
+                "導入パートの続きを、重複なしでHTMLだけ出力してください。前回の末尾:\n"
+                + current[-500:]
+            ),
+        )
+        accumulate_usage(usage, intro_usage)
+        intro_html = normalize_html_fragment(intro_html)
+        intro_html = re.split(r"(?i)<h2\b", intro_html, maxsplit=1)[0].strip()
+        if intro_html:
+            content_parts.append(intro_html)
+
+        for index, section in enumerate(sections, 1):
+            section_markdown = extract_section_markdown(tag_structure, section["h2"])
+            log(f"  H2分割生成中... ({index}/{len(sections)}: {section['h2']})")
+            if section["h3s"] and should_split_section_by_h3(section_markdown, section["h3s"]):
+                log(
+                    "  H2配下が大きいため、H3チャンク分割モードで生成します... "
+                    f"({len(section['h3s'])}件)"
+                )
+                section_parts = []
+                intro_markdown = extract_section_intro_markdown(section_markdown)
+                intro_prompt = f"""以下の1セクションの「H2直下の導入部分だけ」をHTMLで出力してください。
+
+## 重要
+- 出力はこのH2セクションだけに限定する
+- 最初の行は必ず `<h2>{section["h2"]}</h2>` から始める
+- `<h3>` は一切出力しない
+- H2見出しテキストは1文字も変えない
+- 対象H2の直下に置く説明・比較表・注意書き・ショートコードだけを出力する
+- 不明な情報は削る。推測で埋めない
+- プレースホルダーやコメントは出力しない
+
+## キーワード
+{keyword}
+
+## 対象H2
+{section["h2"]}
+
+## このH2の導入部分のタグ構成抜粋
+{intro_markdown or f"### [H2] {section['h2']}"}
+
+## 競合記事の構造データ
+{scraped_text}
+
+## 競合記事の要約
+{scraped_summary}
+"""
+                intro_html, intro_usage = call_claude_until_complete(
+                    STEP3_SYSTEM,
+                    intro_prompt,
+                    api_key,
+                    max_tokens=MAX_TOKENS_STEP3,
+                    model=CLAUDE_MODEL_STEP3,
+                    continuation_log="  H2導入生成が途中で切れたため、続きを要求中...",
+                    continuation_builder=lambda current, heading=section["h2"]: (
+                        f"前回のH2 `{heading}` 導入部分の続きを、重複なしでHTMLだけ出力してください。末尾:\n"
+                        + current[-500:]
+                    ),
+                )
+                accumulate_usage(usage, intro_usage)
+                intro_html = normalize_html_fragment(intro_html)
+                intro_html = re.split(r"(?i)<h3\b", intro_html, maxsplit=1)[0].strip()
+                if not intro_html:
+                    intro_html = f"<h2>{section['h2']}</h2>"
+                section_parts.append(intro_html)
+
+                h3_chunks = chunk_list(section["h3s"], STEP3_SECTION_H3_CHUNK_SIZE)
+                for chunk_index, h3_chunk in enumerate(h3_chunks, 1):
+                    chunk_markdown = "\n\n".join(
+                        extract_h3_markdown(section_markdown, h3) or f"#### [H3] {h3}"
+                        for h3 in h3_chunk
+                    )
+                    log(
+                        "  H3チャンク生成中... "
+                        f"({chunk_index}/{len(h3_chunks)}: {h3_chunk[0]}"
+                        f"{' ほか' if len(h3_chunk) > 1 else ''})"
+                    )
+                    chunk_prompt = f"""以下のH3サブセクションだけをHTMLで出力してください。
+
+## 重要
+- 出力は指定されたH3サブセクションだけに限定する
+- `<h2>` は出力しない
+- 最初の行は必ず `<h3>{h3_chunk[0]}</h3>` から始める
+- 下記H3をこの順序どおりにすべて含める
+- H3見出しテキストは1文字も変えない
+- 不明な情報は削る。推測で埋めない
+- プレースホルダーやコメントは出力しない
+
+## キーワード
+{keyword}
+
+## 親H2
+{section["h2"]}
+
+## このチャンクで必ず含めるH3
+{chr(10).join("- " + h for h in h3_chunk)}
+
+## このチャンクのタグ構成抜粋
+{chunk_markdown}
+
+## 競合記事の構造データ
+{scraped_text}
+
+## 競合記事の要約
+{scraped_summary}
+"""
+                    chunk_html, chunk_usage = call_claude_until_complete(
+                        STEP3_SYSTEM,
+                        chunk_prompt,
+                        api_key,
+                        max_tokens=MAX_TOKENS_STEP3,
+                        model=CLAUDE_MODEL_STEP3,
+                        continuation_log="  H3チャンク生成が途中で切れたため、続きを要求中...",
+                        continuation_builder=lambda current, heading=h3_chunk[0]: (
+                            f"前回のH3 `{heading}` から始まるチャンクの続きを、重複なしでHTMLだけ出力してください。末尾:\n"
+                            + current[-500:]
+                        ),
+                    )
+                    accumulate_usage(usage, chunk_usage)
+                    chunk_html = normalize_html_fragment(chunk_html)
+                    chunk_html = strip_h2_tags(chunk_html)
+                    if chunk_html:
+                        section_parts.append(chunk_html)
+
+                content_parts.append("\n\n".join(part for part in section_parts if part.strip()))
+                continue
+
+            section_prompt = f"""以下の1セクションだけをHTMLで出力してください。
+
+## 重要
+- 出力はこのH2セクションだけに限定する
+- 最初の行は必ず `<h2>{section["h2"]}</h2>` から始める
+- 下記のH3が指定されている場合は、そのH3をこの順序どおりにすべて含める
+- H2/H3見出しテキストは1文字も変えない
+- タグ構成設計書にあるブロック要件に従う
+- 不明な情報は削る。推測で埋めない
+- プレースホルダーやコメントは出力しない
+
+## キーワード
+{keyword}
+
+## 対象H2
+{section["h2"]}
+
+## このH2配下に必ず含めるH3
+{chr(10).join("- " + h for h in section["h3s"]) if section["h3s"] else "なし"}
+
+## このH2のタグ構成抜粋
+{section_markdown}
+
+## 競合記事の構造データ
+{scraped_text}
+
+## 競合記事の要約
+{scraped_summary}
+"""
+            section_html, section_usage = call_claude_until_complete(
+                STEP3_SYSTEM,
+                section_prompt,
+                api_key,
+                max_tokens=MAX_TOKENS_STEP3,
+                model=CLAUDE_MODEL_STEP3,
+                continuation_log="  セクション生成が途中で切れたため、続きを要求中...",
+                continuation_builder=lambda current, heading=section["h2"]: (
+                    f"前回のH2 `{heading}` セクションの続きを、重複なしでHTMLだけ出力してください。末尾:\n"
+                    + current[-500:]
+                ),
+            )
+            accumulate_usage(usage, section_usage)
+            content_parts.append(normalize_html_fragment(section_html))
+
+        content = "\n\n".join(part for part in content_parts if part.strip())
+    else:
+        log("  Claude API 呼び出し中（時間がかかります）...")
+        content, usage = call_claude_until_complete(
+            STEP3_SYSTEM,
+            user_prompt,
+            api_key,
+            max_tokens=MAX_TOKENS_STEP3,
+            model=CLAUDE_MODEL_STEP3,
+            continuation_log="  出力が途中で切れたため、続きを要求中...",
+            continuation_builder=lambda current: (
+                "続きを出力してください。前回の出力の末尾:\n" + current[-500:]
+            ),
+        )
+        content = normalize_html_fragment(content)
+
     missing_h2s, missing_h3s = find_missing_headings(tag_structure, content)
-    sections = parse_tag_structure_sections(tag_structure)
     section_map = {section["h2"]: section for section in sections}
     h3_to_h2 = {
         h3: section["h2"]
@@ -809,6 +1210,7 @@ def run_step3(keyword: str, genre: dict, tag_structure: str,
 - 出力はこのH2セクションだけに限定する
 - 最初の行は必ず `<h2>{section["h2"]}</h2>` から始める
 - 下記のH3が指定されている場合は、そのH3をこの順序どおりにすべて含める
+- H2/H3見出しテキストは1文字も変えない。数字・期間・括弧・ `◯` などの記号も言い換えない
 - 既存セクションの再出力は禁止
 - `※要確認` や説明コメントを出力しない
 - 比較記事でない場合は、比較記事向けテンプレートを無理に使わない
@@ -829,7 +1231,11 @@ def run_step3(keyword: str, genre: dict, tag_structure: str,
 {content[-2500:]}
 """
         repair_html, repair_stop_reason, repair_usage = call_claude(
-            STEP3_SYSTEM, repair_prompt, api_key, max_tokens=MAX_TOKENS_STEP3
+            STEP3_SYSTEM,
+            repair_prompt,
+            api_key,
+            max_tokens=MAX_TOKENS_STEP3,
+            model=CLAUDE_MODEL_STEP3,
         )
         for key in repair_usage:
             if key in usage and isinstance(usage[key], int):
@@ -842,7 +1248,11 @@ def run_step3(keyword: str, genre: dict, tag_structure: str,
                 + repair_html[-500:]
             )
             next_content, repair_stop_reason, next_usage = call_claude(
-                STEP3_SYSTEM, continuation_prompt, api_key, max_tokens=MAX_TOKENS_STEP3
+                STEP3_SYSTEM,
+                continuation_prompt,
+                api_key,
+                max_tokens=MAX_TOKENS_STEP3,
+                model=CLAUDE_MODEL_STEP3,
             )
             repair_html += next_content
             for key in next_usage:
@@ -860,6 +1270,24 @@ def run_step3(keyword: str, genre: dict, tag_structure: str,
     # 後処理: コードフェンス除去とHTML断片の正規化
     content = normalize_html_fragment(content)
     content = cleanup_generated_html(content, keyword_slug)
+    content = inline_variant_shortcodes_in_html(
+        content,
+        genre_id=resolved_genre_id,
+        output_key=resolved_output_key,
+        variant_index=variant_index,
+    )
+    # validate_article_html は clinic-summary-table / clinic-detail-table のクラスを厳密に要求するが、
+    # Claude の出力はクラス漏れすることがある。バリデーション前に sanitize_article の自動クラス補完を
+    # 走らせて Claude の付け忘れを救う。これにより無駄なリトライ（同じエラーで Claude API 3回分の浪費）を防ぐ。
+    try:
+        from sanitize_article import normalize_table_classes, ensure_table_wrappers
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(content, "lxml")
+        normalize_table_classes(soup)
+        ensure_table_wrappers(soup)
+        content = str(soup)
+    except Exception as e:
+        log(f"  警告: テーブルクラスの自動補完に失敗（バリデーションを続行）: {e}")
     missing_h2s, missing_h3s = find_missing_headings(tag_structure, content)
     if missing_h2s or missing_h3s:
         print("Error: タグ構成どおりに本文を出力し切れていません。")
@@ -876,8 +1304,8 @@ def run_step3(keyword: str, genre: dict, tag_structure: str,
         sys.exit(1)
 
     # 保存
-    output_dir = ensure_keyword_output_dir(keyword)
-    ensure_common_assets(keyword)
+    output_dir = ensure_output_dir_for_key(resolved_output_key)
+    ensure_common_assets_for_key(resolved_output_key)
     html_path = os.path.join(output_dir, f"{keyword_slug}_記事.html")
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(content)
@@ -889,8 +1317,16 @@ def run_step3(keyword: str, genre: dict, tag_structure: str,
 # ========================================
 # メインのオーケストレーション
 # ========================================
-def generate_article(keyword: str, genre_id: str, scraped_dir: str = None,
-                     step: int = None) -> dict:
+def generate_article(
+    keyword: str,
+    genre_id: str,
+    scraped_dir: str = None,
+    step: int = None,
+    output_key: str | None = None,
+    site_config_path: str | None = None,
+    variant_index: int = 1,
+    variant_count: int = 1,
+) -> dict:
     """記事自動生成のメイン関数
 
     Args:
@@ -904,21 +1340,59 @@ def generate_article(keyword: str, genre_id: str, scraped_dir: str = None,
     """
     api_key = load_api_key()
     genre = load_genre(genre_id)
+    resolved_output_key = resolve_output_key(keyword, output_key)
+    shortcodes = dict(genre.get("shortcodes", {}))
+    if shortcodes.get("早見表"):
+        shortcodes["早見表"] = resolve_variant_embed_html(
+            shortcodes["早見表"],
+            genre_id=genre_id,
+            output_key=resolved_output_key,
+            variant_index=variant_index,
+        )
+        genre = {**genre, "shortcodes": shortcodes}
     scraped_data = load_scraped_data(keyword, scraped_dir)
-
-    keyword_slug = keyword_to_slug(keyword)
-    output_dir = ensure_keyword_output_dir(keyword)
+    keyword_slug = keyword_to_slug(resolved_output_key)
+    output_dir = ensure_output_dir_for_key(resolved_output_key)
+    variant_profile = build_variant_profile(variant_index, variant_count)
+    site_url = ""
+    if site_config_path and os.path.exists(site_config_path):
+        try:
+            with open(site_config_path, encoding="utf-8") as f:
+                site_config_data = json.load(f)
+            site_url = site_config_data.get("site_url", "")
+        except Exception:
+            site_url = ""
+    survey_policy = build_survey_policy(
+        keyword,
+        genre_id,
+        is_nandemo=is_nandemo_output_key(resolved_output_key),
+        site_url=site_url,
+        variant_index=variant_index,
+        variant_count=variant_count,
+    )
     result = {
         "keyword": keyword,
+        "output_key": resolved_output_key,
         "genre_id": genre_id,
         "tag_structure_path": None,
         "html_path": None,
+        "variant_profile": variant_profile,
+        "survey_policy": survey_policy,
     }
 
     # Step 2: タグ構成設計
     tag_structure = None
     if step is None or step == 2:
-        tag_structure = run_step2(keyword, genre, scraped_data, api_key)
+        tag_structure = run_step2(
+            keyword,
+            genre,
+            scraped_data,
+            api_key,
+            output_key=resolved_output_key,
+            variant_index=variant_index,
+            variant_count=variant_count,
+            survey_policy=survey_policy,
+        )
         result["tag_structure_path"] = os.path.join(output_dir, f"{keyword_slug}_タグ構成.md")
 
     # Step 3: 本文HTML生成
@@ -932,8 +1406,20 @@ def generate_article(keyword: str, genre_id: str, scraped_dir: str = None,
                 sys.exit(1)
             with open(tag_path, encoding="utf-8") as f:
                 tag_structure = f.read()
+        ensure_no_forbidden_template_markers(tag_structure, "タグ構成")
 
-        run_step3(keyword, genre, tag_structure, scraped_data, api_key)
+        run_step3(
+            keyword,
+            genre_id,
+            genre,
+            tag_structure,
+            scraped_data,
+            api_key,
+            output_key=resolved_output_key,
+            variant_index=variant_index,
+            variant_count=variant_count,
+            survey_policy=survey_policy,
+        )
         result["html_path"] = os.path.join(output_dir, f"{keyword_slug}_記事.html")
 
     log("記事生成 完了")
@@ -951,6 +1437,10 @@ def main():
                         help="実行ステップ（省略時は2→3を連続実行）")
     parser.add_argument("--scraped-dir",
                         help="スクレイピングデータのディレクトリ（デフォルト: scraped_data/）")
+    parser.add_argument("--output-key", help="出力先の識別キー（省略時はキーワード）")
+    parser.add_argument("--site-config-path", help="サイト設定JSONのパス（アンケート/デザイン方針判定に使用）")
+    parser.add_argument("--variant-index", type=int, default=1, help="編集バリエーション番号")
+    parser.add_argument("--variant-count", type=int, default=1, help="生成する総バリエーション数")
 
     args = parser.parse_args()
 
@@ -959,6 +1449,10 @@ def main():
     print(f"  キーワード: {args.keyword}")
     print(f"  ジャンル: {args.genre}")
     print(f"  ステップ: {args.step or '2→3 連続実行'}")
+    if args.output_key:
+        print(f"  出力キー: {args.output_key}")
+    if args.variant_count > 1:
+        print(f"  バリエーション: {args.variant_index}/{args.variant_count}")
     print("=" * 50)
     print()
 
@@ -967,6 +1461,10 @@ def main():
         genre_id=args.genre,
         scraped_dir=args.scraped_dir,
         step=args.step,
+        output_key=args.output_key,
+        site_config_path=args.site_config_path,
+        variant_index=args.variant_index,
+        variant_count=args.variant_count,
     )
 
     print()

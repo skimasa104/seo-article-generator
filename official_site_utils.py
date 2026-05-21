@@ -1,12 +1,15 @@
+import glob
 import json
 import os
 import re
 import urllib.error
 import urllib.parse
 import urllib.request
+from functools import lru_cache
 from typing import Any
 
 from env_utils import load_project_env
+from output_utils import OUTPUT_ROOT
 
 
 SERPER_API_URL = "https://google.serper.dev/search"
@@ -31,13 +34,22 @@ NON_OFFICIAL_DOMAINS = {
     "aga-clinic-navi.com",
     "nakanocentralpark-dentaloffice.com",
     "ranking.goo.ne.jp",
-    "clinicfor.life",
     "newsrelea.se",
     "travelbook.co.jp",
     "gangnamunni.com",
     "kireisearch.jp",
     "kanja.jp",
+    "family-dr.jp",
     "prtimes.jp",
+    "befreee.jp",
+    "lit.link",
+    "doctorsfile.jp",
+    "dmm-corp.com",
+    "metatron-cosme.jp",
+    "wellness.parco.jp",
+    "osaka-c.ed.jp",
+    "www3.osaka-c.ed.jp",
+    "clairvoyancecorp.com",
 }
 
 NON_OFFICIAL_KEYWORDS = [
@@ -86,6 +98,31 @@ BRAND_SUFFIX_PATTERN = re.compile(
     r"^(.+?(?:メディカルクリニック|メディカルサロン|クリニック|医院|病院|皮膚科|内科|外来|サロン|センター))"
 )
 
+OFFICIAL_DOMAIN_HINTS = {
+    "クリニックフォア": {"clinicfor.life"},
+    "clinic for": {"clinicfor.life"},
+    "dmmオンラインクリニック": {"clinic.dmm.com"},
+    "dクリニック": {"d-clinicgroup.jp"},
+    "dr.agaクリニック": {"drskinclinic.jp"},
+    "dr agaクリニック": {"drskinclinic.jp"},
+    "イースト駅前クリニック": {"eastcl.com"},
+    "agaヘアクリニック": {"agahairclinic.or.jp"},
+    "湘南agaクリニック": {"sbc-aga.jp"},
+    "湘南美容クリニック": {"s-b-c.net"},
+    "ゴリラクリニック": {"gorilla.clinic"},
+    "親和クリニック": {"shinwa-clinic.jp"},
+    "ウィルagaクリニック": {"will-agaclinic.com"},
+    "駅前agaクリニック": {"e-aga.jp"},
+    "クレアージュ大阪": {"dclinic-osaka-women.com"},
+    "agaメディカルケアクリニック": {"agacare.clinic"},
+    "agaメディカルケア": {"agacare.clinic"},
+    "スマイルagaクリニック": {"ams-smile.co.jp"},
+    "smile aga clinic": {"ams-smile.co.jp"},
+    "w clinic": {"mens.wclinic-osaka.jp", "wclinic-osaka.jp"},
+    "w clinic men's": {"mens.wclinic-osaka.jp"},
+    "w clinic mens": {"mens.wclinic-osaka.jp"},
+}
+
 load_project_env()
 
 
@@ -118,6 +155,7 @@ def extract_lookup_name_variants(name: str) -> list[str]:
             variants.append(value)
 
     add(base)
+    add(re.sub(r"[（(].*?[）)]", "", base))
     stripped = strip_generic_suffixes(name)
     add(stripped)
 
@@ -129,6 +167,69 @@ def extract_lookup_name_variants(name: str) -> list[str]:
         add(match.group(1))
 
     return variants
+
+
+@lru_cache(maxsize=1)
+def load_known_official_url_cache() -> dict[str, list[str]]:
+    cache: dict[str, list[str]] = {}
+    pattern = os.path.join(OUTPUT_ROOT, "*", "*_urls.json")
+    for path in glob.glob(pattern):
+        try:
+            with open(path, encoding="utf-8") as f:
+                payload = json.load(f)
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(payload, dict):
+            continue
+        reference_urls = {
+            str(raw_url).strip()
+            for raw_name, raw_url in payload.items()
+            if isinstance(raw_name, str)
+            and isinstance(raw_url, str)
+            and "参考元記事" in raw_name
+            and raw_url.strip()
+        }
+        for raw_name, raw_url in payload.items():
+            if not isinstance(raw_name, str) or not isinstance(raw_url, str):
+                continue
+            if "参考元記事" in raw_name:
+                continue
+            url = raw_url.strip()
+            if not url or is_banned_domain(url):
+                continue
+            if url in reference_urls:
+                continue
+            for variant in extract_lookup_name_variants(raw_name):
+                normalized = normalize_text(variant)
+                if not normalized:
+                    continue
+                bucket = cache.setdefault(normalized, [])
+                if url not in bucket:
+                    bucket.append(url)
+    return cache
+
+
+def find_cached_official_url(name: str) -> str | None:
+    cache = load_known_official_url_cache()
+    variants = extract_lookup_name_variants(name)
+    normalized_variants = [normalize_text(variant) for variant in variants if normalize_text(variant)]
+
+    for normalized_variant in normalized_variants:
+        urls = cache.get(normalized_variant) or []
+        if urls:
+            return urls[0]
+
+    for normalized_variant in normalized_variants:
+        for cached_name, urls in cache.items():
+            if not urls:
+                continue
+            if (
+                normalized_variant == cached_name
+                or normalized_variant in cached_name
+                or cached_name in normalized_variant
+            ):
+                return urls[0]
+    return None
 
 
 def tokenize_name(name: str) -> list[str]:
@@ -178,6 +279,28 @@ def is_banned_domain(url: str) -> bool:
     return any(hostname == domain or hostname.endswith(f".{domain}") for domain in NON_OFFICIAL_DOMAINS)
 
 
+def hinted_domains_for_name(name: str) -> set[str]:
+    normalized_candidates = {
+        normalize_text(name),
+        normalize_text(normalize_clinic_lookup_name(name)),
+        normalize_text(strip_generic_suffixes(name)),
+    }
+    hinted: set[str] = set()
+    for key, domains in OFFICIAL_DOMAIN_HINTS.items():
+        normalized_key = normalize_text(key)
+        if any(
+            normalized_key and (
+                normalized_key == candidate
+                or normalized_key in candidate
+                or candidate in normalized_key
+            )
+            for candidate in normalized_candidates
+            if candidate
+        ):
+            hinted.update(domains)
+    return hinted
+
+
 def score_official_candidate(name: str, title: str, snippet: str, url: str) -> int:
     if not url or is_banned_domain(url):
         return -999
@@ -188,6 +311,7 @@ def score_official_candidate(name: str, title: str, snippet: str, url: str) -> i
     hostname = get_hostname(url)
     path = urllib.parse.urlparse(url).path.lower()
     score = 0
+    hinted_domains = hinted_domains_for_name(name)
 
     if normalized_name and normalized_name in normalized_combined:
         score += 6
@@ -215,7 +339,10 @@ def score_official_candidate(name: str, title: str, snippet: str, url: str) -> i
         else:
             score -= 6
 
-    if any(keyword in path for keyword in ["/tag/", "/tags/", "/category/", "/categories/", "/goods/", "/events/", "/introduce/", "/lp/", "/reservation", "/reserva/"]):
+    if hinted_domains and any(hostname == domain or hostname.endswith(f".{domain}") for domain in hinted_domains):
+        score += 12
+
+    if any(keyword in path for keyword in ["/tag/", "/tags/", "/category/", "/categories/", "/goods/", "/events/", "/introduce/", "/lp/", "/reservation", "/reserva/", "/business/", "/salon_search/"]):
         score -= 6
 
     if path in {"", "/"} or path.count("/") <= 2:
@@ -289,6 +416,16 @@ def merge_candidates(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def find_official_url(name: str) -> tuple[str | None, list[dict[str, Any]]]:
+    cached_url = find_cached_official_url(name)
+    if cached_url:
+        return cached_url, [{
+            "url": cached_url,
+            "title": "known official url cache",
+            "snippet": "reused from existing project URL map",
+            "score": MIN_OFFICIAL_SCORE + 20,
+            "query": "cache",
+        }]
+
     queries = build_query_variants(name)
     candidates: list[dict[str, Any]] = []
     for query in queries:

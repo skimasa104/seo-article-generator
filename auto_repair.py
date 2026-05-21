@@ -192,6 +192,15 @@ def _known_repair_action(
             "source": "known_rule",
         }
 
+    generate_html_step = steps.get("generate_html") or {}
+    if final_status == "failed_at_generate_html" or generate_html_step.get("status") == "timeout":
+        return {
+            "action": "set_resume_step",
+            "resume_step": "generate_html",
+            "reason": "本文生成のタイムアウトなので generate_html から再開できるようにします",
+            "source": "known_rule",
+        }
+
     return None
 
 

@@ -25,3 +25,45 @@ document.addEventListener("DOMContentLoaded", function () {
     observer.observe(el);
   });
 });
+
+/* --- SWELL 目次トグル（初期は閉じる） --- */
+document.addEventListener("DOMContentLoaded", function () {
+  var tocs = document.querySelectorAll(".p-toc");
+  if (!tocs.length) return;
+
+  tocs.forEach(function (toc) {
+    var title = toc.querySelector(".p-toc__ttl");
+    if (!title) return;
+
+    toc.classList.remove("is-open");
+    title.setAttribute("role", "button");
+    title.setAttribute("tabindex", "0");
+
+    var label = title.querySelector(".seo-toc-toggle-label");
+    if (!label) {
+      label = document.createElement("span");
+      label.className = "seo-toc-toggle-label";
+      title.appendChild(label);
+    }
+
+    function syncState() {
+      var isOpen = toc.classList.contains("is-open");
+      title.setAttribute("aria-expanded", isOpen ? "true" : "false");
+      label.textContent = isOpen ? "目次を閉じる" : "目次を開く";
+    }
+
+    syncState();
+
+    title.addEventListener("click", function () {
+      // テーマ側のトグル後に状態同期する
+      setTimeout(syncState, 0);
+    });
+
+    title.addEventListener("keydown", function (event) {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      toc.classList.toggle("is-open");
+      syncState();
+    });
+  });
+});

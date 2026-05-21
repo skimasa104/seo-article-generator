@@ -27,6 +27,7 @@ WordPress記事投稿・更新スクリプト
 
 import argparse
 import base64
+import io
 import json
 import mimetypes
 import os
@@ -34,9 +35,10 @@ import re
 import sys
 import urllib.parse
 import xmlrpc.client
+from datetime import datetime
 from html import unescape
 
-from output_utils import OUTPUT_ROOT
+from output_utils import OUTPUT_ROOT, save_variant_status
 
 try:
     import requests
@@ -45,8 +47,84 @@ except ImportError:
     print("  pip install requests")
     sys.exit(1)
 
+try:
+    from PIL import Image
+except ImportError:
+    Image = None
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(line_buffering=True)
+
+
+def strip_iframes_for_post(html: str) -> str:
+    """403回避用に iframe を投稿前HTMLから除去する。"""
+    stripped = re.sub(r"<iframe\b[^>]*>.*?</iframe>", "", html, flags=re.IGNORECASE | re.DOTALL)
+    stripped = re.sub(r'<div class="clinic-map">\s*</div>', "", stripped, flags=re.IGNORECASE)
+    stripped = re.sub(r"\n{3,}", "\n\n", stripped)
+    return stripped
+
+
+def infer_output_key_from_html_path(html_path: str) -> str:
+    basename = os.path.basename(html_path)
+    if basename.endswith("_記事.html"):
+        stem = basename[:-len("_記事.html")]
+    else:
+        stem = os.path.splitext(basename)[0]
+    sentinel = "<<DOUBLE_UNDERSCORE>>"
+    stem = stem.replace("__", sentinel)
+    stem = stem.replace("_", " ")
+    return stem.replace(sentinel, "__")
+
+
+def is_manual_wp_html_path(html_path: str) -> bool:
+    """build_for_wp.py が生成した手動投稿用 HTML かどうか。"""
+    return (html_path or "").endswith("_記事_for-wp.html")
+
+
+def detect_variant_index_from_path(html_path: str) -> int | None:
+    """パスから __nandemo_v(\\d+) を抽出。v1〜v5でなければ None。"""
+    match = re.search(r"__nandemo_v(\d+)", html_path or "")
+    if not match:
+        return None
+    n = int(match.group(1))
+    if 1 <= n <= 5:
+        return n
+    return None
+
+
+def get_variant_theme_css_path(variant_index: int | None) -> str | None:
+    """v2〜v5には対応するテーマCSSパスを返す（v1はベースのみ）。"""
+    if variant_index is None or variant_index == 1:
+        return None
+    path = os.path.join(OUTPUT_ROOT, f"article-theme-v{variant_index}.css")
+    return path if os.path.exists(path) else None
+
 
 # ========================================
+# XML-RPC タイムアウト付きトランスポート
+# ========================================
+class _TimeoutTransport(xmlrpc.client.Transport):
+    def __init__(self, timeout=120, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._timeout = timeout
+
+    def make_connection(self, host):
+        conn = super().make_connection(host)
+        conn.timeout = self._timeout
+        return conn
+
+
+class _TimeoutSafeTransport(xmlrpc.client.SafeTransport):
+    def __init__(self, timeout=120, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._timeout = timeout
+
+    def make_connection(self, host):
+        conn = super().make_connection(host)
+        conn.timeout = self._timeout
+        return conn
+
+
 # WordPress API クライアント
 # ========================================
 class WordPressClient:
@@ -64,7 +142,20 @@ class WordPressClient:
         self.session.auth = self.auth
         self.api_base = self._discover_api_base(rest_api_base)
         self.xmlrpc_url = (xmlrpc_url or f"{self.site_url}/xmlrpc.php").rstrip("/")
-        self.xmlrpc = xmlrpc.client.ServerProxy(self.xmlrpc_url)
+        xmlrpc_transport = (
+            _TimeoutSafeTransport(timeout=120)
+            if self.xmlrpc_url.startswith("https://")
+            else _TimeoutTransport(timeout=120)
+        )
+        self.xmlrpc = xmlrpc.client.ServerProxy(
+            self.xmlrpc_url,
+            transport=xmlrpc_transport,
+            allow_none=True,
+        )
+        self.rest_available = True
+        self.xmlrpc_available = False
+        self.xmlrpc_blog_id = "0"
+        self.connection_mode = "rest"
 
     def _build_api_base_candidates(self) -> list[str]:
         return [
@@ -116,17 +207,73 @@ class WordPressClient:
             )
             if resp.status_code == 200:
                 user = resp.json()
+                self.rest_available = True
+                self.connection_mode = "rest"
                 print(f"  Connected as: {user.get('name', 'unknown')}")
                 return True
-            if resp.status_code == 401 and self._looks_like_rest_response(resp):
-                print("  Connection failed: 401 unauthorized")
-                return False
+            if resp.status_code in (401, 403) and self._looks_like_rest_response(resp):
+                print(f"  REST auth unavailable: {resp.status_code}")
             else:
-                print(f"  Connection failed: {resp.status_code} {resp.text[:200]}")
-                return False
+                print(f"  REST connection failed: {resp.status_code} {resp.text[:200]}")
         except Exception as e:
-            print(f"  Connection error: {e}")
+            print(f"  REST connection error: {e}")
+
+        return self._test_xmlrpc_connection()
+
+    def _test_xmlrpc_connection(self) -> bool:
+        try:
+            blogs = self.xmlrpc.wp.getUsersBlogs(self.auth[0], self.auth[1])
+            if not blogs:
+                print("  XML-RPC auth succeeded but no blogs were returned.")
+                return False
+
+            primary_blog = blogs[0]
+            self.xmlrpc_blog_id = str(primary_blog.get("blogid", "0"))
+            self.rest_available = False
+            self.xmlrpc_available = True
+            self.connection_mode = "xmlrpc"
+            print(
+                "  Connected via XML-RPC as: "
+                f"{primary_blog.get('blogName', primary_blog.get('url', 'unknown'))}"
+            )
+            return True
+        except Exception as e:
+            print(f"  XML-RPC connection error: {e}")
             return False
+
+    def _build_xmlrpc_post_data(
+        self,
+        *,
+        title: str | None = None,
+        content: str | None = None,
+        status: str | None = None,
+        category_ids: list[int] | None = None,
+        featured_media_id: int | None = None,
+        extra_fields: dict | None = None,
+    ) -> dict:
+        post_data = {"post_type": "post"}
+
+        if title is not None:
+            post_data["post_title"] = title
+        if content is not None:
+            post_data["post_content"] = content
+        if status is not None:
+            post_data["post_status"] = status
+        if category_ids:
+            post_data["terms"] = {"category": category_ids}
+        if featured_media_id:
+            post_data["post_thumbnail"] = int(featured_media_id)
+        if extra_fields:
+            post_data.update(extra_fields)
+
+        return post_data
+
+    def _get_post_link_via_xmlrpc(self, post_id: int) -> str:
+        try:
+            post = self.xmlrpc.wp.getPost(self.xmlrpc_blog_id, self.auth[0], self.auth[1], post_id)
+        except Exception:
+            return ""
+        return post.get("link") or post.get("permaLink") or post.get("post_link") or ""
 
     def upload_media(self, file_path: str, alt_text: str = "") -> dict | None:
         """画像をメディアライブラリにアップロードする"""
@@ -142,10 +289,25 @@ class WordPressClient:
         with open(file_path, "rb") as f:
             file_data = f.read()
 
+        upload_filename, mime_type, file_data = optimize_upload_image(
+            file_path=file_path,
+            filename=original_filename,
+            mime_type=mime_type,
+            file_data=file_data,
+        )
+
+        if not self.rest_available and self.xmlrpc_available:
+            return self._upload_media_via_xmlrpc(
+                original_filename=upload_filename,
+                mime_type=mime_type,
+                file_data=file_data,
+                alt_text=alt_text,
+            )
+
         try:
-            filename_candidates = [original_filename]
-            shortened_filename = shorten_upload_filename(original_filename)
-            if shortened_filename != original_filename:
+            filename_candidates = [upload_filename]
+            shortened_filename = shorten_upload_filename(upload_filename)
+            if shortened_filename != upload_filename:
                 filename_candidates.append(shortened_filename)
 
             resp = None
@@ -183,11 +345,14 @@ class WordPressClient:
 
                 # alt テキストを設定
                 if alt_text:
-                    self.session.post(
-                        self._api_url(f"media/{media_id}"),
-                        json={"alt_text": alt_text},
-                        timeout=10,
-                    )
+                    try:
+                        self.session.post(
+                            self._api_url(f"media/{media_id}"),
+                            json={"alt_text": alt_text},
+                            timeout=30,
+                        )
+                    except Exception as e:
+                        print(f"    Alt text update warning: {e}")
 
                 return {
                     "id": media_id,
@@ -204,6 +369,69 @@ class WordPressClient:
             print(f"    Upload error: {e}")
             return None
 
+    def _upload_media_via_xmlrpc(
+        self,
+        *,
+        original_filename: str,
+        mime_type: str,
+        file_data: bytes,
+        alt_text: str = "",
+    ) -> dict | None:
+        filename_candidates = [original_filename]
+        shortened_filename = shorten_upload_filename(original_filename)
+        if shortened_filename != original_filename:
+            filename_candidates.append(shortened_filename)
+
+        for filename in filename_candidates:
+            try:
+                upload = self.xmlrpc.wp.uploadFile(
+                    self.xmlrpc_blog_id,
+                    self.auth[0],
+                    self.auth[1],
+                    {
+                        "name": filename,
+                        "type": mime_type,
+                        "bits": xmlrpc.client.Binary(file_data),
+                        "overwrite": True,
+                    },
+                )
+                media_id = int(upload.get("id", 0))
+                media_url = upload.get("url", "")
+
+                if alt_text and media_id:
+                    try:
+                        self.xmlrpc.wp.editPost(
+                            self.xmlrpc_blog_id,
+                            self.auth[0],
+                            self.auth[1],
+                            media_id,
+                            {
+                                "custom_fields": [
+                                    {"key": "_wp_attachment_image_alt", "value": alt_text},
+                                ]
+                            },
+                        )
+                    except Exception:
+                        pass
+
+                return {
+                    "id": media_id,
+                    "url": media_url,
+                    "filename": filename,
+                }
+            except xmlrpc.client.Fault as fault:
+                retryable = "guid" in fault.faultString.lower() or filename != shortened_filename
+                if retryable and filename != shortened_filename:
+                    print(f"    Upload retry with shortened filename: {shortened_filename}")
+                    continue
+                print(f"    Upload failed via XML-RPC: {fault.faultString[:200]}")
+                return None
+            except Exception as e:
+                print(f"    Upload error via XML-RPC: {e}")
+                return None
+
+        return None
+
     def create_post(
         self,
         title: str,
@@ -211,8 +439,21 @@ class WordPressClient:
         status: str = "draft",
         category_ids: list[int] | None = None,
         featured_media_id: int | None = None,
+        extra_fields: dict | None = None,
     ) -> dict | None:
         """記事を投稿する"""
+        if not self.rest_available and self.xmlrpc_available:
+            if extra_fields:
+                print("  XML-RPC create does not support extra ACF fields for _for-wp.html posting.")
+                return None
+            return self._create_post_via_xmlrpc(
+                title=title,
+                content=content,
+                status=status,
+                category_ids=category_ids,
+                featured_media_id=featured_media_id,
+            )
+
         post_data = {
             "title": title,
             "content": content,
@@ -224,45 +465,226 @@ class WordPressClient:
 
         if featured_media_id:
             post_data["featured_media"] = featured_media_id
+        if extra_fields:
+            post_data.update(extra_fields)
 
         try:
-            resp = self.session.post(
-                self._api_url("posts"),
-                json=post_data,
-                timeout=30,
-            )
+            attempts = [("original", content)]
+            iframe_stripped = strip_iframes_for_post(content)
+            if iframe_stripped != content:
+                attempts.append(("iframe_stripped", iframe_stripped))
 
-            if resp.status_code == 201:
-                return resp.json()
-            else:
-                print(f"  Post failed: {resp.status_code} {resp.text[:300]}")
+            for label, attempt_content in attempts:
+                post_data["content"] = attempt_content
+                resp = self.session.post(
+                    self._api_url("posts"),
+                    json=post_data,
+                    timeout=30,
+                )
+
+                if resp.status_code == 201:
+                    if label != "original":
+                        print("  Post create retry succeeded after removing iframe embeds.")
+                    return resp.json()
+
+                print(f"  Post failed ({label}): {resp.status_code} {resp.text[:300]}")
+                if resp.status_code != 403 or label != "original":
+                    continue
+                if len(attempts) > 1:
+                    print("  Retrying post creation without iframe embeds...")
+
+            if extra_fields:
                 return None
+            if self._test_xmlrpc_connection():
+                print("  REST投稿に失敗したため、XML-RPCで再試行します。")
+                return self._create_post_via_xmlrpc(
+                    title=title,
+                    content=content,
+                    status=status,
+                    category_ids=category_ids,
+                    featured_media_id=featured_media_id,
+                )
+
+            return None
 
         except Exception as e:
             print(f"  Post error: {e}")
+            if extra_fields:
+                return None
+            if self._test_xmlrpc_connection():
+                print("  REST例外のため、XML-RPCで再試行します。")
+                return self._create_post_via_xmlrpc(
+                    title=title,
+                    content=content,
+                    status=status,
+                    category_ids=category_ids,
+                    featured_media_id=featured_media_id,
+                )
+            return None
+
+    def _create_post_via_xmlrpc(
+        self,
+        *,
+        title: str,
+        content: str,
+        status: str = "draft",
+        category_ids: list[int] | None = None,
+        featured_media_id: int | None = None,
+    ) -> dict | None:
+        post_data = self._build_xmlrpc_post_data(
+            title=title,
+            content=content,
+            status=status,
+            category_ids=category_ids,
+            featured_media_id=featured_media_id,
+        )
+
+        try:
+            post_id = int(
+                self.xmlrpc.wp.newPost(
+                    self.xmlrpc_blog_id,
+                    self.auth[0],
+                    self.auth[1],
+                    post_data,
+                )
+            )
+            return {
+                "id": post_id,
+                "link": self._get_post_link_via_xmlrpc(post_id),
+                "featured_media": featured_media_id or 0,
+            }
+        except Exception as e:
+            print(f"  Post error via XML-RPC: {e}")
             return None
 
     def update_post(self, post_id: int, **kwargs) -> dict | None:
         """既存の記事を更新する"""
-        try:
-            resp = self.session.post(
-                self._api_url(f"posts/{post_id}"),
-                json=kwargs,
-                timeout=30,
-            )
+        if not self.rest_available and self.xmlrpc_available:
+            return self._update_post_via_xmlrpc(post_id, **kwargs)
 
-            if resp.status_code == 200:
-                return resp.json()
-            else:
-                print(f"  Update failed: {resp.status_code} {resp.text[:300]}")
-                return None
+        try:
+            attempts = [("original", kwargs.get("content"))]
+            content = kwargs.get("content")
+            iframe_stripped = strip_iframes_for_post(content) if isinstance(content, str) else content
+            if isinstance(content, str) and iframe_stripped != content:
+                attempts.append(("iframe_stripped", iframe_stripped))
+
+            for label, attempt_content in attempts:
+                payload = dict(kwargs)
+                if attempt_content is not None:
+                    payload["content"] = attempt_content
+                resp = self.session.post(
+                    self._api_url(f"posts/{post_id}"),
+                    json=payload,
+                    timeout=30,
+                )
+
+                if resp.status_code == 200:
+                    if label != "original":
+                        print("  Post update retry succeeded after removing iframe embeds.")
+                    return resp.json()
+
+                print(f"  Update failed ({label}): {resp.status_code} {resp.text[:300]}")
+                if resp.status_code != 403 or label != "original":
+                    continue
+                if len(attempts) > 1:
+                    print("  Retrying post update without iframe embeds...")
+
+            if self._test_xmlrpc_connection():
+                print("  REST更新に失敗したため、XML-RPCで再試行します。")
+                return self._update_post_via_xmlrpc(post_id, **kwargs)
+
+            return None
 
         except Exception as e:
             print(f"  Update error: {e}")
+            if self._test_xmlrpc_connection():
+                print("  REST例外のため、XML-RPCで再試行します。")
+                return self._update_post_via_xmlrpc(post_id, **kwargs)
+            return None
+
+    def _update_post_via_xmlrpc(self, post_id: int, **kwargs) -> dict | None:
+        acf_fields = kwargs.get("acf") or {}
+        manual_html = acf_fields.get("custom_html_content")
+        content = kwargs.get("content")
+        if manual_html and not content:
+            # REST 更新が落ちても for-wp 用HTMLの本文は同期しておく。
+            content = manual_html
+
+        post_data = self._build_xmlrpc_post_data(
+            title=kwargs.get("title"),
+            content=content,
+            status=kwargs.get("status"),
+            featured_media_id=kwargs.get("featured_media"),
+            extra_fields={
+                key: value
+                for key, value in kwargs.items()
+                if key not in {"title", "content", "status", "featured_media"}
+            },
+        )
+
+        post_data.pop("post_type", None)
+        post_data.pop("post_thumbnail", None)
+
+        try:
+            success = self.xmlrpc.wp.editPost(
+                self.xmlrpc_blog_id,
+                self.auth[0],
+                self.auth[1],
+                post_id,
+                post_data,
+            )
+            if not success:
+                print("  Update failed via XML-RPC: unknown error")
+                return None
+            if content:
+                try:
+                    self.xmlrpc.wp.editPost(
+                        self.xmlrpc_blog_id,
+                        self.auth[0],
+                        self.auth[1],
+                        post_id,
+                        {"post_content": content},
+                    )
+                except Exception as retry_e:
+                    print(f"  Content-only retry failed: {retry_e}")
+            if manual_html:
+                custom_field_ok = self.upsert_custom_fields(
+                    post_id,
+                    {"custom_html_content": manual_html},
+                )
+                if not custom_field_ok:
+                    print("  Warning: custom_html_content sync via XML-RPC custom fields failed")
+            return {
+                "id": post_id,
+                "link": self._get_post_link_via_xmlrpc(post_id),
+                "featured_media": kwargs.get("featured_media", 0),
+            }
+        except Exception as e:
+            print(f"  Update error via XML-RPC: {e}")
             return None
 
     def get_categories(self) -> list[dict]:
         """カテゴリ一覧を取得する"""
+        if not self.rest_available and self.xmlrpc_available:
+            try:
+                categories = self.xmlrpc.wp.getTerms(
+                    self.xmlrpc_blog_id,
+                    self.auth[0],
+                    self.auth[1],
+                    "category",
+                    {"number": 100},
+                )
+                return [
+                    {
+                        "id": int(item.get("term_id", 0)),
+                        "name": item.get("name", ""),
+                    }
+                    for item in categories
+                ]
+            except Exception:
+                return []
+
         try:
             resp = self.session.get(
                 self._api_url("categories"),
@@ -283,6 +705,18 @@ class WordPressClient:
                 return cat["id"]
 
         # 作成
+        if not self.rest_available and self.xmlrpc_available:
+            try:
+                term_id = self.xmlrpc.wp.newTerm(
+                    self.xmlrpc_blog_id,
+                    self.auth[0],
+                    self.auth[1],
+                    {"taxonomy": "category", "name": name},
+                )
+                return int(term_id)
+            except Exception:
+                return None
+
         try:
             resp = self.session.post(
                 self._api_url("categories"),
@@ -297,6 +731,21 @@ class WordPressClient:
 
     def find_media_id_by_url(self, media_url: str) -> int | None:
         """メディアURLから media ID を推定する。"""
+        if not self.rest_available and self.xmlrpc_available:
+            try:
+                items = self.xmlrpc.wp.getMediaLibrary(
+                    self.xmlrpc_blog_id,
+                    self.auth[0],
+                    self.auth[1],
+                    {"number": 100},
+                )
+                for item in items:
+                    if item.get("link") == media_url:
+                        return int(item.get("attachment_id", 0))
+            except Exception:
+                return None
+            return None
+
         try:
             filename = os.path.basename(urllib.parse.urlparse(media_url).path)
             stem, _ = os.path.splitext(filename)
@@ -317,7 +766,7 @@ class WordPressClient:
     def get_custom_fields(self, post_id: int) -> list[dict]:
         """XML-RPC経由で投稿のカスタムフィールド一覧を取得する。"""
         try:
-            post = self.xmlrpc.wp.getPost(0, self.auth[0], self.auth[1], post_id)
+            post = self.xmlrpc.wp.getPost(self.xmlrpc_blog_id, self.auth[0], self.auth[1], post_id)
             return post.get("custom_fields") or []
         except Exception as e:
             print(f"  Failed to fetch custom fields via XML-RPC: {e}")
@@ -350,7 +799,7 @@ class WordPressClient:
         try:
             return bool(
                 self.xmlrpc.wp.editPost(
-                    0,
+                    self.xmlrpc_blog_id,
                     self.auth[0],
                     self.auth[1],
                     post_id,
@@ -374,7 +823,144 @@ SWELL_CUSTOM_CSS_KEY = "swell_meta_css"
 SWELL_CUSTOM_JS_KEY = "swell_meta_js"
 LEGACY_SWELL_CUSTOM_CSS_KEY = "swell_custom_css"
 LEGACY_SWELL_CUSTOM_JS_KEY = "swell_custom_js"
+
+
+# ========================================
+# 共通アセット配信（テーマ別）
+# ========================================
+# SWELL は post meta (`swell_meta_css` / `swell_meta_js`) を読むのでカスタムフィールドに流し込めば完了。
+# SANGO はじめ他テーマはそのフィールドを無視するので、記事本文先頭に `<style>` / `<script>` ブロックを
+# 注入する必要がある。その際 WordPress の wpautop フィルタが空行を `</p><p>` に変換して CSS/JS を壊すため、
+# 注入前に空行を潰す。加えて kses が REST 経由の `<style>` を弾く場合があるので XML-RPC editPost で書き込む。
+def _compact_asset_for_inline(text: str) -> str:
+    if not text:
+        return ""
+    return re.sub(r"\n\s*\n+", "\n", text)
+
+
+def build_inline_assets_block(css: str | None, js: str | None) -> str:
+    # マーカーは <style> / <script> の内側に CSS/JS コメント形式で埋め込む。
+    # 旧仕様の HTML コメント形式 (<!-- ... -->) は WordPress wpautop が
+    # 単独 <p> で囲んでしまい本文冒頭に空白が生じるため、新仕様に統一する。
+    block = ""
+    if css:
+        block += (
+            f"<style>/* seo-article-common-css:start */"
+            f"{_compact_asset_for_inline(css)}"
+            f"/* seo-article-common-css:end */</style>\n"
+        )
+    if js:
+        block += (
+            f"<script>/* seo-article-common-js:start */"
+            f"{_compact_asset_for_inline(js)}"
+            f"/* seo-article-common-js:end */</script>\n"
+        )
+    return block
+
+
+def strip_inline_assets_block(content: str) -> str:
+    if not content:
+        return content or ""
+    # 新仕様: <style>...marker:start ... marker:end ...</style>
+    content = re.sub(
+        r'<style>\s*/\*\s*seo-article-common-css:start\s*\*/.*?/\*\s*seo-article-common-css:end\s*\*/\s*</style>\s*',
+        "",
+        content,
+        flags=re.DOTALL,
+    )
+    content = re.sub(
+        r'<script>\s*/\*\s*seo-article-common-js:start\s*\*/.*?/\*\s*seo-article-common-js:end\s*\*/\s*</script>\s*',
+        "",
+        content,
+        flags=re.DOTALL,
+    )
+    # 旧仕様: HTML コメントが <style>/<script> の外側にあったブロック（後方互換）
+    content = re.sub(
+        re.escape(CSS_START_MARKER) + r".*?" + re.escape(CSS_END_MARKER) + r"\s*",
+        "",
+        content,
+        flags=re.DOTALL,
+    )
+    content = re.sub(
+        re.escape(JS_START_MARKER) + r".*?" + re.escape(JS_END_MARKER) + r"\s*",
+        "",
+        content,
+        flags=re.DOTALL,
+    )
+    return content
+
+
+def detect_active_theme(client) -> str:
+    """REST API の themes?status=active を見て 'swell' / 'sango' / 'other' を返す。失敗時は 'other'。
+    swell_child などの子テーマも SWELL 系として認識する。SWELL でないものは `swell_meta_*` を読まないため
+    全てインライン注入ルートに倒す。"""
+    try:
+        resp = client.session.get(
+            f"{client.api_base}/themes",
+            params={"status": "active"},
+            timeout=15,
+        )
+        if resp.status_code == 200:
+            for theme in resp.json():
+                stylesheet = (theme.get("stylesheet") or "").lower()
+                template = (theme.get("template") or "").lower()
+                if "swell" in stylesheet or "swell" in template:
+                    return "swell"
+                if "sango" in stylesheet or "sango" in template:
+                    return "sango"
+    except Exception as e:
+        print(f"  (theme detection failed: {e})")
+    return "other"
+
+
+def _xmlrpc_server_for(client):
+    username, password = client.auth
+    return xmlrpc.client.ServerProxy(client.xmlrpc_url, allow_none=True), username, password
+
+
+def inject_inline_assets_via_xmlrpc(client, post_id: int, css: str | None, js: str | None) -> bool:
+    """SANGO など <style> 本文注入が必要なテーマ向け。既存マーカー区間を剥がしてから先頭に差し替える。
+    REST 経由だと kses に `<style>` を剥がされて 500 が返るので、XML-RPC editPost を使う。"""
+    server, username, password = _xmlrpc_server_for(client)
+    try:
+        post = server.wp.getPost("0", username, password, post_id)
+    except Exception as e:
+        print(f"  XMLRPC getPost failed: {e}")
+        return False
+    raw = post.get("post_content", "") or ""
+    cleaned = strip_inline_assets_block(raw)
+    new_content = build_inline_assets_block(css, js) + cleaned
+    try:
+        ok = server.wp.editPost("0", username, password, post_id, {"post_content": new_content})
+        return bool(ok)
+    except Exception as e:
+        print(f"  XMLRPC editPost failed: {e}")
+        return False
+
+
+def push_article_assets(client, post_id: int, assets: dict, theme: str | None = None) -> tuple[bool, str]:
+    """テーマに応じて CSS/JS を配信する。戻り値は (成否, 使用されたテーマ名)。
+    SWELL のみ `swell_meta_*` カスタムフィールド方式。それ以外（SANGO/SERUM/other）は本文に <style>/<script>
+    ブロックをインライン注入する。"""
+    resolved = theme or detect_active_theme(client)
+    if resolved == "swell":
+        ok = client.upsert_custom_fields(
+            post_id,
+            {
+                SWELL_CUSTOM_CSS_KEY: assets.get("css"),
+                SWELL_CUSTOM_JS_KEY: assets.get("js"),
+                LEGACY_SWELL_CUSTOM_CSS_KEY: None,
+                LEGACY_SWELL_CUSTOM_JS_KEY: None,
+            },
+        )
+        return ok, resolved
+    # SANGO/SERUM/その他: インライン注入（SWELL 以外は custom field を読まないので）
+    ok = inject_inline_assets_via_xmlrpc(client, post_id, assets.get("css"), assets.get("js"))
+    return ok, resolved
 UPLOAD_FILENAME_MAX_STEM = 40
+UPLOAD_IMAGE_OPTIMIZE_THRESHOLD = 1_000_000
+UPLOAD_IMAGE_MAX_WIDTH = 1600
+UPLOAD_IMAGE_JPEG_QUALITY = 82
 
 
 def load_image_cache() -> dict[str, str]:
@@ -401,6 +987,65 @@ def shorten_upload_filename(filename: str) -> str:
     if len(stem) > UPLOAD_FILENAME_MAX_STEM:
         stem = stem[:UPLOAD_FILENAME_MAX_STEM].rstrip("_-")
     return f"{stem or 'upload'}{ext.lower()}"
+
+
+def optimize_upload_image(
+    file_path: str,
+    filename: str,
+    mime_type: str,
+    file_data: bytes,
+) -> tuple[str, str, bytes]:
+    """大きい画像はアップロードしやすいサイズ/形式へ軽量化する。"""
+    if Image is None:
+        return filename, mime_type, file_data
+
+    if not mime_type.startswith("image/"):
+        return filename, mime_type, file_data
+
+    if len(file_data) < UPLOAD_IMAGE_OPTIMIZE_THRESHOLD:
+        return filename, mime_type, file_data
+
+    try:
+        with Image.open(file_path) as img:
+            img.load()
+            working = img.copy()
+    except Exception:
+        return filename, mime_type, file_data
+
+    try:
+        if working.width > UPLOAD_IMAGE_MAX_WIDTH:
+            working.thumbnail((UPLOAD_IMAGE_MAX_WIDTH, UPLOAD_IMAGE_MAX_WIDTH * 4))
+
+        if working.mode in ("RGBA", "LA") or (
+            working.mode == "P" and "transparency" in working.info
+        ):
+            background = Image.new("RGB", working.size, "white")
+            alpha = working.convert("RGBA")
+            background.paste(alpha, mask=alpha.getchannel("A"))
+            working = background
+        elif working.mode != "RGB":
+            working = working.convert("RGB")
+
+        buffer = io.BytesIO()
+        working.save(
+            buffer,
+            format="JPEG",
+            quality=UPLOAD_IMAGE_JPEG_QUALITY,
+            optimize=True,
+            progressive=True,
+        )
+        optimized = buffer.getvalue()
+        if len(optimized) >= len(file_data):
+            return filename, mime_type, file_data
+
+        optimized_name = f"{os.path.splitext(filename)[0]}.jpg"
+        print(
+            "    Optimized image for upload: "
+            f"{filename} ({len(file_data) // 1024}KB -> {len(optimized) // 1024}KB)"
+        )
+        return optimized_name, "image/jpeg", optimized
+    except Exception:
+        return filename, mime_type, file_data
 
 
 def get_file_mtime(file_path: str) -> float:
@@ -565,38 +1210,106 @@ def strip_existing_injected_assets(html_content: str) -> str:
     return html_content.strip()
 
 
+ARTICLE_SCOPE_CLASS = "ndm-article"
+ARTICLE_SCOPE_OPEN_RE = re.compile(
+    r'^\s*<article[^>]*class="[^"]*\b' + re.escape(ARTICLE_SCOPE_CLASS) + r'\b[^"]*"',
+    re.IGNORECASE,
+)
+
+
+def wrap_article_scope(html_content: str) -> str:
+    """記事本文を <article class="ndm-article"> でラップして、テーマ CSS の干渉を遮断する。
+    既にラップ済みの場合は何もしない。"""
+    if not html_content or not html_content.strip():
+        return html_content
+    if ARTICLE_SCOPE_OPEN_RE.search(html_content):
+        return html_content
+    body = html_content.strip()
+    return f'<article class="{ARTICLE_SCOPE_CLASS}">\n{body}\n</article>'
+
+
 def load_article_assets(html_dir: str) -> dict[str, str | None]:
-    """記事ごとの article-common.css / .js を読み込む。"""
-    css_path = os.path.join(html_dir, "article-common.css")
-    js_path = os.path.join(html_dir, "article-common.js")
-    if not os.path.exists(css_path):
-        fallback_css = os.path.join(OUTPUT_ROOT, "article-common.css")
-        if os.path.exists(fallback_css):
-            css_path = fallback_css
-    if not os.path.exists(js_path):
-        fallback_js = os.path.join(OUTPUT_ROOT, "article-common.js")
-        if os.path.exists(fallback_js):
-            js_path = fallback_js
+    """共通アセットをベースに、必要なら記事ローカル上書きを連結する。
+
+    古い article-common.css / .js が記事フォルダに残っていても、
+    投稿時のデザインルールは output/article-common.css / .js を正本にする。
+    記事単位の明示上書きが必要な場合のみ article-local.css / .js を使う。
+    """
+    local_css_path = os.path.join(html_dir, "article-local.css")
+    local_js_path = os.path.join(html_dir, "article-local.js")
+    legacy_css_path = os.path.join(html_dir, "article-common.css")
+    legacy_js_path = os.path.join(html_dir, "article-common.js")
+    fallback_css = os.path.join(OUTPUT_ROOT, "article-common.css")
+    fallback_js = os.path.join(OUTPUT_ROOT, "article-common.js")
 
     assets = {"css": None, "js": None}
-    if os.path.exists(css_path):
-        with open(css_path, "r", encoding="utf-8") as f:
+    if os.path.exists(fallback_css):
+        with open(fallback_css, "r", encoding="utf-8") as f:
             assets["css"] = f.read()
-    if os.path.exists(js_path):
-        with open(js_path, "r", encoding="utf-8") as f:
+    elif os.path.exists(legacy_css_path):
+        with open(legacy_css_path, "r", encoding="utf-8") as f:
+            assets["css"] = f.read()
+
+    if os.path.exists(fallback_js):
+        with open(fallback_js, "r", encoding="utf-8") as f:
             assets["js"] = f.read()
+    elif os.path.exists(legacy_js_path):
+        with open(legacy_js_path, "r", encoding="utf-8") as f:
+            assets["js"] = f.read()
+
+    if os.path.exists(local_css_path):
+        with open(local_css_path, "r", encoding="utf-8") as f:
+            local_css = f.read()
+        if local_css.strip():
+            base_css = assets["css"] or ""
+            assets["css"] = base_css.rstrip() + "\n\n/* === Article Local CSS === */\n" + local_css
+
+    if os.path.exists(local_js_path):
+        with open(local_js_path, "r", encoding="utf-8") as f:
+            local_js = f.read()
+        if local_js.strip():
+            base_js = assets["js"] or ""
+            assets["js"] = base_js.rstrip() + "\n\n/* === Article Local JS === */\n" + local_js
+    return assets
+
+
+def load_post_assets(html_path: str) -> dict[str, str | None]:
+    """WordPress投稿用アセットを読み込む。variant別テーマCSSも後段で連結する。"""
+    html_dir = os.path.dirname(os.path.abspath(html_path))
+    assets = load_article_assets(html_dir)
+    variant_index = detect_variant_index_from_path(html_path)
+    theme_path = get_variant_theme_css_path(variant_index)
+    if theme_path:
+        with open(theme_path, "r", encoding="utf-8") as f:
+            theme_css = f.read()
+        if assets.get("css") and theme_css:
+            assets["css"] = assets["css"].rstrip() + (
+                f"\n\n/* === Variant Theme v{variant_index} === */\n" + theme_css
+            )
+        elif theme_css:
+            assets["css"] = theme_css
     return assets
 
 
 def extract_post_title(html_content: str, html_path: str) -> str:
     """HTML内容からWordPress投稿タイトルを推定する。"""
-    tag_structure_path = html_path.replace("_記事.html", "_タグ構成.md")
+    tag_structure_path = html_path
+    if tag_structure_path.endswith("_記事_for-wp.html"):
+        tag_structure_path = tag_structure_path.replace("_記事_for-wp.html", "_タグ構成.md")
+    else:
+        tag_structure_path = tag_structure_path.replace("_記事.html", "_タグ構成.md")
     if os.path.exists(tag_structure_path):
         try:
             with open(tag_structure_path, "r", encoding="utf-8") as f:
                 tag_structure = f.read()
-            match = re.search(r"\*\*titleタグ\*\*:\s*(.+)", tag_structure)
-            if match:
+            title_patterns = (
+                r"\|\s*\*\*titleタグ\*\*\s*\|\s*(.+?)\s*\|",
+                r"\*\*titleタグ\*\*:\s*(.+)",
+            )
+            for pattern in title_patterns:
+                match = re.search(pattern, tag_structure)
+                if not match:
+                    continue
                 text = unescape(match.group(1)).strip()
                 if text:
                     return text
@@ -656,6 +1369,23 @@ def validate_html_for_wordpress(html_content: str, *, allow_local_images: bool =
         for marker in (CSS_START_MARKER, CSS_END_MARKER, JS_START_MARKER, JS_END_MARKER)
     ):
         issues.append("共通CSS/JSの本文埋め込みが残っています")
+
+    if re.search(r"\*\*[^*\n][^*\n]*\*\*", html_content):
+        issues.append("Markdown の強調記法(**...**)が本文HTMLに残っています")
+
+    return issues
+
+
+def validate_html_for_custom_html_field(html_content: str, *, allow_local_images: bool = False) -> list[str]:
+    """custom_html_content 用の検証。for-wp.html は <style>/<script> を含む前提。"""
+    issues = []
+
+    local_srcs = re.findall(r'src="(?!https?://)([^"]+)"', html_content, flags=re.IGNORECASE)
+    if local_srcs and not allow_local_images:
+        issues.append("ローカル画像参照が残っています: " + ", ".join(local_srcs[:5]))
+
+    if re.search(r"\*\*[^*\n][^*\n]*\*\*", html_content):
+        issues.append("Markdown の強調記法(**...**)が本文HTMLに残っています")
 
     return issues
 
@@ -736,7 +1466,9 @@ def main():
             html_content = f.read()
 
         html_dir = os.path.dirname(os.path.abspath(args.html))
-        assets = load_article_assets(html_dir)
+        manual_wp_html = is_manual_wp_html_path(args.html)
+        assets = {"css": None, "js": None} if manual_wp_html else load_post_assets(args.html)
+        output_key = infer_output_key_from_html_path(args.html)
 
         title = args.title or extract_post_title(html_content, args.html)
 
@@ -802,47 +1534,76 @@ def main():
         html_content = remove_deprecated_image_placeholders(html_content)
         html_content = remove_missing_local_image_tags(html_content, html_dir)
         html_content = remove_duplicate_screenshot_blocks(html_content)
-        html_content = strip_existing_injected_assets(html_content)
+        if not manual_wp_html:
+            html_content = strip_existing_injected_assets(html_content)
+            html_content = wrap_article_scope(html_content)
 
-        print("\nPreparing post-level CSS/JS...")
-        print(f"  CSS: {len(assets['css']) if assets['css'] else 0} chars")
-        print(f"  JS: {len(assets['js']) if assets['js'] else 0} chars")
-
-        issues = validate_html_for_wordpress(html_content, allow_local_images=args.dry_run)
+        if manual_wp_html:
+            print("\nPreparing custom_html_content from for-wp HTML...")
+            issues = validate_html_for_custom_html_field(html_content, allow_local_images=args.dry_run)
+        else:
+            print("\nPreparing post-level CSS/JS...")
+            print(f"  CSS: {len(assets['css']) if assets['css'] else 0} chars")
+            print(f"  JS: {len(assets['js']) if assets['js'] else 0} chars")
+            issues = validate_html_for_wordpress(html_content, allow_local_images=args.dry_run)
         if issues:
             print("\nError: 更新前HTMLの検証に失敗しました。")
             for issue in issues:
                 print(f"  - {issue}")
             sys.exit(1)
 
-        update_data = {"content": html_content, "title": title}
-        if featured_media_id:
-            update_data["featured_media"] = featured_media_id
+        if manual_wp_html:
+            update_data = {
+                "acf": {"custom_html_content": html_content},
+                "content": html_content,
+                "title": title,
+            }
+        else:
+            update_data = {"content": html_content, "title": title}
 
         print(f"\nUpdating post ID: {args.post_id}...")
         if args.dry_run:
-            print(f"  [DRY RUN] Would update post content ({len(html_content)} chars).")
-            print("  [DRY RUN] Would sync SWELL post CSS/JS fields.")
+            if manual_wp_html:
+                print(f"  [DRY RUN] Would update ACF custom_html_content ({len(html_content)} chars).")
+                print(f"  [DRY RUN] Would also sync post content ({len(html_content)} chars).")
+            else:
+                print(f"  [DRY RUN] Would update post content ({len(html_content)} chars).")
+                print("  [DRY RUN] Would sync SWELL post CSS/JS fields.")
             return
 
         result = client.update_post(args.post_id, **update_data)
+        # featured_media は content と同時送信すると無視されるため別リクエストで更新
+        if result and featured_media_id:
+            fm_result = client.update_post(args.post_id, featured_media=featured_media_id)
+            if fm_result and fm_result.get("featured_media") == featured_media_id:
+                print(f"  Featured image updated (ID: {featured_media_id})")
+            else:
+                print(f"  Warning: featured_media update may have failed")
         if result:
-            asset_ok = client.upsert_custom_fields(
-                args.post_id,
+            if manual_wp_html:
+                print("  Updated _for-wp.html into both post content and ACF custom_html_content.")
+            else:
+                asset_ok, theme_used = push_article_assets(client, args.post_id, assets)
+                if not asset_ok:
+                    print(f"  Warning: common CSS/JS delivery failed (theme={theme_used}).")
+                elif theme_used == "swell":
+                    print("  Synced common CSS/JS to SWELL custom fields.")
+                else:
+                    print(f"  Synced common CSS/JS via inline injection (theme={theme_used}).")
+            save_variant_status(
+                output_key,
                 {
-                    SWELL_CUSTOM_CSS_KEY: assets["css"],
-                    SWELL_CUSTOM_JS_KEY: assets["js"],
-                    LEGACY_SWELL_CUSTOM_CSS_KEY: None,
-                    LEGACY_SWELL_CUSTOM_JS_KEY: None,
+                    "completed": True,
+                    "post_id": args.post_id,
+                    "link": result.get("link", ""),
+                    "status": "updated",
+                    "saved_at": datetime.now().isoformat(),
+                    "source": "wp_post_update",
                 },
             )
-            if not asset_ok:
-                print("Error: 記事ごとのカスタムCSS/JS更新に失敗しました。")
-                sys.exit(1)
             print(f"  Updated: {result.get('link', '')}")
             edit_link = f"{site_url}/wp-admin/post.php?post={args.post_id}&action=edit"
             print(f"  Edit: {edit_link}")
-            print("  Synced SWELL custom CSS/JS fields.")
         else:
             print("Error: 更新に失敗しました。")
             sys.exit(1)
@@ -862,7 +1623,9 @@ def main():
         html_content = f.read()
 
     html_dir = os.path.dirname(os.path.abspath(args.html))
-    assets = load_article_assets(html_dir)
+    manual_wp_html = is_manual_wp_html_path(args.html)
+    assets = {"css": None, "js": None} if manual_wp_html else load_post_assets(args.html)
+    output_key = infer_output_key_from_html_path(args.html)
 
     # タイトル
     title = args.title
@@ -935,13 +1698,17 @@ def main():
     html_content = remove_deprecated_image_placeholders(html_content)
     html_content = remove_missing_local_image_tags(html_content, html_dir)
     html_content = remove_duplicate_screenshot_blocks(html_content)
-    html_content = strip_existing_injected_assets(html_content)
+    if not manual_wp_html:
+        html_content = strip_existing_injected_assets(html_content)
 
-    print("\nPreparing post-level CSS/JS...")
-    print(f"  CSS: {len(assets['css']) if assets['css'] else 0} chars")
-    print(f"  JS: {len(assets['js']) if assets['js'] else 0} chars")
-
-    issues = validate_html_for_wordpress(html_content, allow_local_images=args.dry_run)
+    if manual_wp_html:
+        print("\nPreparing custom_html_content from for-wp HTML...")
+        issues = validate_html_for_custom_html_field(html_content, allow_local_images=args.dry_run)
+    else:
+        print("\nPreparing post-level CSS/JS...")
+        print(f"  CSS: {len(assets['css']) if assets['css'] else 0} chars")
+        print(f"  JS: {len(assets['js']) if assets['js'] else 0} chars")
+        issues = validate_html_for_wordpress(html_content, allow_local_images=args.dry_run)
     if issues:
         print("\nError: 投稿前HTMLの検証に失敗しました。")
         for issue in issues:
@@ -966,20 +1733,25 @@ def main():
         print("\n[DRY RUN] Would create post:")
         print(f"  Title: {title}")
         print(f"  Status: {args.status}")
-        print(f"  Content length: {len(html_content)} chars")
+        if manual_wp_html:
+            print(f"  custom_html_content length: {len(html_content)} chars")
+        else:
+            print(f"  Content length: {len(html_content)} chars")
         print(f"  Images uploaded: {len(url_map)}")
         print(f"  Featured media: {featured_media_id}")
-        print(f"  SWELL CSS: {len(assets['css']) if assets['css'] else 0} chars")
-        print(f"  SWELL JS: {len(assets['js']) if assets['js'] else 0} chars")
+        if not manual_wp_html:
+            print(f"  SWELL CSS: {len(assets['css']) if assets['css'] else 0} chars")
+            print(f"  SWELL JS: {len(assets['js']) if assets['js'] else 0} chars")
         return
 
     print("\nCreating post...")
     result = client.create_post(
         title=title,
-        content=html_content,
+        content="" if manual_wp_html else html_content,
         status=args.status,
         category_ids=category_ids,
         featured_media_id=featured_media_id,
+        extra_fields={"acf": {"custom_html_content": html_content}} if manual_wp_html else None,
     )
 
     if result:
@@ -987,26 +1759,32 @@ def main():
         post_link = result.get("link", "")
         edit_link = f"{site_url}/wp-admin/post.php?post={post_id}&action=edit"
 
-        asset_ok = client.upsert_custom_fields(
-            post_id,
-            {
-                SWELL_CUSTOM_CSS_KEY: assets["css"],
-                SWELL_CUSTOM_JS_KEY: assets["js"],
-                LEGACY_SWELL_CUSTOM_CSS_KEY: None,
-                LEGACY_SWELL_CUSTOM_JS_KEY: None,
-            },
-        )
-        if not asset_ok:
-            print("\nError: 記事ごとのカスタムCSS/JS更新に失敗しました。")
-            sys.exit(1)
-
+        asset_ok, theme_used = (True, "custom_html_content") if manual_wp_html else push_article_assets(client, post_id, assets)
         print(f"\n{'=' * 60}")
         print(f"Post created successfully!")
         print(f"  ID: {post_id}")
         print(f"  Status: {args.status}")
         print(f"  URL: {post_link}")
         print(f"  Edit: {edit_link}")
-        print("  SWELL custom CSS/JS: synced")
+        if manual_wp_html:
+            print("  custom_html_content: posted directly from _for-wp.html")
+        elif not asset_ok:
+            print(f"  Common CSS/JS: WARNING - delivery failed (theme={theme_used})")
+        elif theme_used == "swell":
+            print("  Common CSS/JS: synced to SWELL custom fields")
+        else:
+            print(f"  Common CSS/JS: synced via inline injection (theme={theme_used})")
+        save_variant_status(
+            output_key,
+            {
+                "completed": True,
+                "post_id": post_id,
+                "link": post_link,
+                "status": args.status,
+                "saved_at": datetime.now().isoformat(),
+                "source": "wp_post_create",
+            },
+        )
         print(f"{'=' * 60}")
 
         if args.status == "draft":

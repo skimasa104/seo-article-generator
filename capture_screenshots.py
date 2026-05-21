@@ -19,24 +19,27 @@ urls.json の形式:
 """
 
 import argparse
+import glob
 import json
 import os
 import re
+import shutil
 import sys
 import time
 import urllib.parse
 
 from bs4 import BeautifulSoup
 
-from article_audit import extract_clinic_names
 from env_utils import load_project_env
+from fill_list_box import iter_candidate_clinic_h3_tags, slugify_heading
 from official_site_utils import (
     extract_lookup_name_variants,
+    find_cached_official_url,
     find_official_url,
     is_banned_domain,
     normalize_clinic_lookup_name,
 )
-from output_utils import ensure_keyword_images_dir
+from output_utils import OUTPUT_ROOT, ensure_keyword_images_dir
 
 try:
     from playwright.sync_api import sync_playwright
@@ -59,10 +62,11 @@ load_project_env()
 # HTML解析
 # ========================================
 def extract_h3_names(html_path: str) -> list[str]:
-    """HTMLファイルからクリニックH3見出しのみ抽出する"""
+    """HTMLファイルからスクショ対象のH3見出しを抽出する"""
     with open(html_path, "r", encoding="utf-8") as f:
         content = f.read()
-    return extract_clinic_names(content)
+    soup = BeautifulSoup(content, "lxml")
+    return [tag.get_text(" ", strip=True) for tag in iter_candidate_clinic_h3_tags(soup)]
 
 
 def get_default_urls_path(html_path: str) -> str:
@@ -72,10 +76,21 @@ def get_default_urls_path(html_path: str) -> str:
 
 
 def resolve_existing_url(url_map: dict[str, str], target_name: str) -> str | None:
+    reference_urls = {
+        str(value).strip()
+        for key, value in url_map.items()
+        if isinstance(key, str)
+        and isinstance(value, str)
+        and "参考元記事" in key
+        and value.strip()
+    }
+
     direct = url_map.get(target_name)
     if direct:
         if is_banned_domain(direct):
             print(f"  Ignoring cached non-official URL for {target_name}: {direct}")
+        elif direct.strip() in reference_urls:
+            print(f"  Ignoring reference article URL for {target_name}: {direct}")
         else:
             return direct
 
@@ -88,16 +103,21 @@ def resolve_existing_url(url_map: dict[str, str], target_name: str) -> str | Non
     ]
     for normalized_target in normalized_variants:
         for _, normalized_key, value in normalized_pairs:
-            if normalized_key == normalized_target and not is_banned_domain(value):
+            if (
+                normalized_key == normalized_target
+                and not is_banned_domain(value)
+                and value.strip() not in reference_urls
+            ):
                 return value
     for normalized_target in normalized_variants:
         for _, normalized_key, value in normalized_pairs:
             if (
                 (normalized_target in normalized_key or normalized_key in normalized_target)
                 and not is_banned_domain(value)
+                and value.strip() not in reference_urls
             ):
                 return value
-    return None
+    return find_cached_official_url(target_name)
 
 
 def build_screenshot_basename(name: str) -> str:
@@ -108,6 +128,57 @@ def build_screenshot_basename(name: str) -> str:
     return safe_name or "clinic"
 
 
+def iter_screenshot_basename_candidates(name: str) -> list[str]:
+    candidates: list[str] = []
+    raw_candidates = [name]
+    raw_candidates.extend(extract_lookup_name_variants(name))
+
+    seen = set()
+    for candidate in raw_candidates:
+        basename = build_screenshot_basename(candidate)
+        if basename and basename not in seen:
+            candidates.append(basename)
+            seen.add(basename)
+    return candidates
+
+
+def find_reusable_screenshot(name: str, output_dir: str) -> str | None:
+    current_output_dir = os.path.abspath(output_dir)
+
+    for basename in iter_screenshot_basename_candidates(name):
+        current_candidate = os.path.join(current_output_dir, f"screenshot_{basename}.png")
+        if os.path.exists(current_candidate):
+            return current_candidate
+
+    matches: list[str] = []
+    for basename in iter_screenshot_basename_candidates(name):
+        pattern = os.path.join(OUTPUT_ROOT, "*", "images", f"screenshot_{basename}.png")
+        for path in glob.glob(pattern):
+            absolute = os.path.abspath(path)
+            if absolute.startswith(current_output_dir + os.sep):
+                continue
+            matches.append(absolute)
+
+    if not matches:
+        return None
+
+    matches = sorted(set(matches), key=lambda path: os.path.getmtime(path), reverse=True)
+    return matches[0]
+
+
+def reuse_screenshot_if_available(name: str, destination_path: str, output_dir: str) -> bool:
+    reusable = find_reusable_screenshot(name, output_dir)
+    if not reusable:
+        return False
+
+    if os.path.abspath(reusable) != os.path.abspath(destination_path):
+        shutil.copy2(reusable, destination_path)
+        print(f"  Reused existing screenshot: {reusable}")
+    else:
+        print(f"  Reusing current screenshot: {reusable}")
+    return True
+
+
 # ========================================
 # スクリーンショット取得
 # ========================================
@@ -115,10 +186,18 @@ def capture_screenshot(page, url: str, output_path: str) -> bool:
     """指定URLのスクリーンショットを取得する"""
     try:
         try:
-            page.goto(url, wait_until="load", timeout=30000)
+            response = page.goto(url, wait_until="load", timeout=30000)
         except Exception:
-            page.goto(url, wait_until="domcontentloaded", timeout=30000)
+            response = page.goto(url, wait_until="domcontentloaded", timeout=30000)
+        if response is not None and response.status >= 400:
+            print(f"    HTTP status {response.status} for {url}")
+            return False
         time.sleep(2)  # 動的コンテンツの読み込み待ち
+
+        page_title = (page.title() or "").lower()
+        if "404" in page_title or "not found" in page_title:
+            print(f"    Suspicious page title for screenshot: {page_title}")
+            return False
 
         # Cookie同意バナー等を閉じる試み
         close_selectors = [
@@ -165,16 +244,40 @@ def insert_screenshots_into_html(html_path: str, screenshots: dict[str, str], ur
         content = f.read()
     soup = BeautifulSoup(content, "lxml")
 
-    for name, img_path in screenshots.items():
-        rel_path = os.path.relpath(img_path, os.path.dirname(html_path))
-        official_url = url_map.get(name, "#")
+    def ensure_heading_id(tag, name: str) -> None:
+        existing_id = (tag.get("id") or "").strip()
+        if existing_id:
+            return
+        base_name = re.split(r"\s*[|｜]\s*", name, maxsplit=1)[0].strip()
+        slug_base = slugify_heading(base_name) or "section"
+        candidate = f"clinic-{slug_base}"
+        suffix = 2
+        while soup.find(id=candidate) is not None:
+            candidate = f"clinic-{slug_base}-{suffix}"
+            suffix += 1
+        tag["id"] = candidate
+
+    target_names = []
+    for name in list(url_map.keys()) + list(screenshots.keys()):
+        if name not in target_names:
+            target_names.append(name)
+
+    for name in target_names:
+        img_path = screenshots.get(name)
+        rel_path = (
+            os.path.relpath(img_path, os.path.dirname(html_path))
+            if img_path
+            else None
+        )
+        official_url = (url_map.get(name) or "").strip()
         heading = soup.find("h3", string=lambda text: text and text.strip() == name)
         if heading is None:
             continue
+        ensure_heading_id(heading, name)
 
         section_nodes = []
         node = heading.find_next_sibling()
-        while node and not (getattr(node, "name", None) == "h3" and (node.get("id") or "").startswith("clinic-")) and getattr(node, "name", None) != "h2":
+        while node and getattr(node, "name", None) not in {"h2", "h3"}:
             section_nodes.append(node)
             node = node.find_next_sibling()
 
@@ -189,7 +292,7 @@ def insert_screenshots_into_html(html_path: str, screenshots: dict[str, str], ur
             if getattr(section_node, "string", None) and "後で作成:アフィカセット" in section_node.string:
                 placeholder_node = section_node
 
-        if screenshot_div:
+        if rel_path and screenshot_div:
             img = screenshot_div.find("img")
             if img is None:
                 img = soup.new_tag("img")
@@ -200,7 +303,7 @@ def insert_screenshots_into_html(html_path: str, screenshots: dict[str, str], ur
             img["height"] = "800"
             img["loading"] = "lazy"
             print(f"  Updated screenshot path for: {name}")
-        else:
+        elif rel_path:
             screenshot_div = soup.new_tag("div")
             screenshot_div["class"] = ["clinic-screenshot"]
             img = soup.new_tag("img")
@@ -215,6 +318,9 @@ def insert_screenshots_into_html(html_path: str, screenshots: dict[str, str], ur
             else:
                 heading.insert_after(screenshot_div)
             print(f"  Inserted screenshot block for: {name}")
+
+        if not official_url or official_url == "#":
+            continue
 
         if button_wrap is None and placeholder_node is not None:
             button_wrap = soup.new_tag("p")
@@ -237,8 +343,14 @@ def insert_screenshots_into_html(html_path: str, screenshots: dict[str, str], ur
             anchor["href"] = official_url
             anchor["target"] = "_blank"
             anchor["rel"] = "noopener noreferrer sponsored"
-            anchor["style"] = "display:inline-block;background:#0f6cbd;color:#fff;padding:14px 32px;border-radius:999px;text-decoration:none;font-size:15px;font-weight:bold;"
-            anchor.string = f"{name}の公式サイトを見る"
+            anchor["class"] = ["official-site-button"]
+            anchor["style"] = (
+                "display:inline-flex;align-items:center;justify-content:center;"
+                "background:#0f6cbd;color:#fff;padding:14px 24px;border-radius:999px;"
+                "text-decoration:none;font-size:15px;font-weight:bold;line-height:1.5;"
+                "text-align:center;width:min(100%,420px);max-width:100%;"
+            )
+            anchor.string = "公式サイトを見る"
             button_wrap.append(anchor)
             print(f"  Updated official site button for: {name}")
 
@@ -266,8 +378,9 @@ def insert_screenshots_into_html(html_path: str, screenshots: dict[str, str], ur
         button_html = (
             f'<p class="official-site-button-wrap" style="margin:1em 0 1.5em;text-align:center;">'
             f'<a href="{official_url}" target="_blank" rel="noopener noreferrer sponsored" '
-            f'style="display:inline-block;background:#0f6cbd;color:#fff;padding:14px 32px;border-radius:999px;text-decoration:none;font-size:15px;font-weight:bold;">'
-            f'{matched_name}の公式サイトを見る</a></p>'
+            f'class="official-site-button" '
+            f'style="display:inline-flex;align-items:center;justify-content:center;background:#0f6cbd;color:#fff;padding:14px 24px;border-radius:999px;text-decoration:none;font-size:15px;font-weight:bold;line-height:1.5;text-align:center;width:min(100%,420px);max-width:100%;">'
+            f'公式サイトを見る</a></p>'
         )
         pattern = re.compile(
             r"\{\{後で作成:アフィカセット\s*[—\-]\s*" + re.escape(placeholder_name) + r"\s*\}\}"
@@ -292,6 +405,11 @@ def main():
     parser.add_argument("--skip-insert", action="store_true",
                         help="HTMLへの画像挿入をスキップ")
     parser.add_argument("--only", type=str, help="特定のクリニック名のみ処理")
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="既存スクリーンショットを再利用せず、公式サイトから撮り直す",
+    )
     args = parser.parse_args()
 
     if not os.path.exists(args.html):
@@ -334,10 +452,14 @@ def main():
 
     # Playwright起動
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        browser = p.chromium.launch(
+            headless=True,
+            args=["--disable-blink-features=AutomationControlled"],
+        )
         context = browser.new_context(
             viewport={"width": VIEWPORT_WIDTH, "height": VIEWPORT_HEIGHT},
             locale="ja-JP",
+            ignore_https_errors=True,
             user_agent=(
                 "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
                 "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -345,6 +467,13 @@ def main():
             ),
         )
         page = context.new_page()
+        page.add_init_script(
+            """
+            Object.defineProperty(navigator, 'webdriver', {
+              get: () => undefined
+            });
+            """
+        )
 
         screenshots = {}
         results = []
@@ -381,8 +510,22 @@ def main():
             filename = f"screenshot_{safe_name}.png"
             filepath = os.path.join(output_dir, filename)
 
+            if not args.force and reuse_screenshot_if_available(name, filepath, output_dir):
+                screenshots[name] = filepath
+                results.append((name, url, True))
+                continue
+
             print(f"  Capturing: {url}")
             success = capture_screenshot(page, url, filepath)
+
+            if not success:
+                print("  Retrying with fresh official-site lookup...")
+                retry_url, _candidates = find_official_url(name)
+                if retry_url and retry_url != url:
+                    print(f"  Retry found: {retry_url}")
+                    url = retry_url
+                    url_map[name] = retry_url
+                    success = capture_screenshot(page, retry_url, filepath)
 
             if success:
                 print(f"  Saved: {filepath}")
@@ -415,6 +558,8 @@ def main():
 
     # HTML挿入
     if not args.skip_insert and screenshots:
+        insert_screenshots_into_html(args.html, screenshots, url_map)
+    elif not args.skip_insert and url_map:
         insert_screenshots_into_html(args.html, screenshots, url_map)
 
     print("\nDone!")

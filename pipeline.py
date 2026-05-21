@@ -21,18 +21,45 @@ import glob
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import time
+import unicodedata
 from datetime import datetime
 
 from article_audit import validate_article_html
+from add_references import validate_reference_output
 from bs4 import BeautifulSoup
 from env_utils import load_project_env
-from fill_list_box import iter_candidate_clinic_h3_tags, match_anchor_to_heading
+from fill_list_box import (
+    has_valid_intro_list_box,
+    iter_candidate_clinic_h3_tags,
+    match_anchor_to_heading,
+)
 from fill_reviews import html_needs_reviews
 from official_site_utils import normalize_text
-from output_utils import ensure_keyword_output_dir, get_keyword_scraped_dir, keyword_to_slug
+from output_utils import (
+    ensure_output_dir_for_key,
+    ensure_keyword_output_dir,
+    get_output_dir_for_key,
+    get_keyword_scraped_dir,
+    keyword_to_slug,
+    load_variant_status,
+    resolve_output_key,
+)
+from sanitize_article import normalize_table_classes
+from variant_utils import (
+    build_editorial_variant_instruction,
+    build_variant_output_key,
+    build_variant_profile,
+    extract_shortcode_name,
+    get_variant_embed_marker_from_shortcode_name,
+    is_nandemo_output_key,
+    is_nandemo_site,
+    normalize_variant_count,
+    resolve_variant_shortcode,
+)
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PYTHON = sys.executable
@@ -40,6 +67,7 @@ LOG_DIR = os.path.join(SCRIPT_DIR, "logs")
 STATE_DIR = os.path.join(SCRIPT_DIR, "runtime_state")
 STEP_RETRY_DELAYS = [5, 60]
 QUALITY_RETRY_DELAYS = [5, 60]
+COMPARISON_ARTICLE_TOKENS = ("比較", "おすすめ", "ランキング")
 STEP_SEQUENCE = [
     "search",
     "scrape",
@@ -48,11 +76,12 @@ STEP_SEQUENCE = [
     "fill_list_box",
     "fact_check",
     "sanitize_article",
+    "references",
     "fill_reviews",
     "fill_final_cta",
     "fill_maps",
     "screenshots",
-    "images",
+    "logos",
     "wordpress",
 ]
 FINAL_STATUS_TO_STEP = {
@@ -61,14 +90,19 @@ FINAL_STATUS_TO_STEP = {
     "failed_at_scrape": "scrape",
     "scrape_output_invalid": "scrape",
     "failed_at_tag_structure": "tag_structure",
+    "tag_structure_credit_exhausted": "tag_structure",
     "tag_structure_output_invalid": "tag_structure",
     "failed_at_generate_html": "generate_html",
+    "generate_html_credit_exhausted": "generate_html",
     "html_output_invalid": "generate_html",
     "failed_at_fill_list_box": "fill_list_box",
     "list_box_output_invalid": "fill_list_box",
     "failed_at_fact_check": "fact_check",
     "fact_check_output_invalid": "fact_check",
     "failed_at_sanitize_article": "sanitize_article",
+    "sanitize_article_output_invalid": "sanitize_article",
+    "failed_at_references": "references",
+    "references_output_invalid": "references",
     "failed_at_fill_reviews": "fill_reviews",
     "reviews_output_invalid": "fill_reviews",
     "failed_at_fill_final_cta": "fill_final_cta",
@@ -77,10 +111,55 @@ FINAL_STATUS_TO_STEP = {
     "map_output_invalid": "fill_maps",
     "failed_at_screenshots": "screenshots",
     "screenshot_output_invalid": "screenshots",
-    "failed_at_images": "images",
-    "image_output_invalid": "images",
+    "failed_at_logos": "logos",
+    "logos_output_invalid": "logos",
     "failed_at_wordpress": "wordpress",
 }
+
+
+def normalize_heading_text(text: str) -> str:
+    text = re.sub(r"<[^>]+>", "", text or "")
+    text = re.sub(r"\s+", "", text)
+    return text.strip()
+
+
+def canonical_heading_key(text: str) -> str:
+    normalized = normalize_heading_text(text)
+    if not normalized:
+        return ""
+    normalized = unicodedata.normalize("NFKC", normalized).lower()
+    normalized = normalized.replace("〜", "-").replace("～", "-")
+    normalized = re.sub(r"[◯○〇]+", "#", normalized)
+    normalized = re.sub(r"\d+(?:\s*[-~]\s*\d+)?", "#", normalized)
+    normalized = re.sub(r"[()（）［］\[\]【】「」『』:：・/／,，、。!！?？\-\s]+", "", normalized)
+    normalized = re.sub(r"#+", "#", normalized)
+    return normalized.strip("#")
+
+
+def canonical_h2_key(text: str) -> str:
+    raw = normalize_heading_text(text)
+    if not raw:
+        return ""
+    normalized = canonical_heading_key(raw)
+    if "よくある質問" in raw or "faq" in raw.lower():
+        return "faq"
+    if "まとめ" in raw:
+        return "summary"
+    if "オンライン診療" in raw and "クリニック" in raw:
+        return "online_clinic"
+    if "費用相場" in raw or "料金相場" in raw:
+        return "cost"
+    if "治療方法別" in raw or "治療法別" in raw:
+        return "treatment_type"
+    return normalized
+
+
+def is_anthropic_credit_error(text: str) -> bool:
+    normalized = (text or "").lower()
+    return (
+        "credit balance is too low" in normalized
+        or "please go to plans & billing to upgrade or purchase credits" in normalized
+    )
 
 load_project_env()
 
@@ -105,6 +184,38 @@ def get_latest_log(keyword: str) -> dict | None:
         return data
     except (OSError, json.JSONDecodeError):
         return None
+
+
+def is_success_like_final_status(status: str | None) -> bool:
+    if not status:
+        return False
+    return status == "success" or status.startswith("completed_with_errors")
+
+
+def variant_is_already_completed(keyword: str, variant_index: int) -> tuple[bool, dict | None]:
+    output_key = build_variant_output_key(keyword, variant_index)
+    status_payload = load_variant_status(output_key)
+    if status_payload and status_payload.get("completed"):
+        return True, {
+            "final_status": "success",
+            "status_source": "variant_status",
+            "variant_status": status_payload,
+        }
+
+    latest_log = get_latest_log(output_key)
+    if latest_log and is_success_like_final_status(latest_log.get("final_status")):
+        return True, latest_log
+
+    return False, None
+
+
+def get_next_pending_variant_index(keyword: str, scan_limit: int = 5) -> int:
+    scan_limit = max(1, min(5, int(scan_limit or 1)))
+    for index in range(1, scan_limit + 1):
+        already_completed, _ = variant_is_already_completed(keyword, index)
+        if not already_completed:
+            return index
+    return min(scan_limit + 1, 5)
 
 
 def get_runtime_state_path(keyword: str) -> str:
@@ -135,6 +246,40 @@ def save_runtime_state(keyword: str, data: dict) -> str:
     return path
 
 
+def copy_search_results_between_output_keys(source_key: str, target_key: str) -> str:
+    source_slug = keyword_to_slug(source_key)
+    target_slug = keyword_to_slug(target_key)
+    source_dir = get_output_dir_for_key(source_key)
+    target_dir = ensure_output_dir_for_key(target_key)
+    source_path = os.path.join(source_dir, f"{source_slug}_search_results.json")
+    target_path = os.path.join(target_dir, f"{target_slug}_search_results.json")
+    if not os.path.exists(source_path):
+        raise FileNotFoundError(f"shared search results not found: {source_path}")
+
+    with open(source_path, encoding="utf-8") as f:
+        payload = json.load(f)
+    payload["output_key"] = target_key
+    payload["copied_from_output_key"] = source_key
+    with open(target_path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, ensure_ascii=False, indent=2)
+    return target_path
+
+
+def try_copy_search_results_between_output_keys(source_key: str, target_key: str) -> tuple[bool, str | None]:
+    try:
+        return True, copy_search_results_between_output_keys(source_key, target_key)
+    except FileNotFoundError:
+        return False, None
+
+
+def can_reuse_scraped_outputs(keyword: str) -> bool:
+    try:
+        validate_scraped_outputs(get_keyword_scraped_dir(keyword))
+        return True
+    except Exception:
+        return False
+
+
 def infer_resume_step(final_status: str, validation_error: str = "") -> str | None:
     if final_status == "success":
         return None
@@ -144,6 +289,8 @@ def infer_resume_step(final_status: str, validation_error: str = "") -> str | No
         issue = validation_error or ""
         if "未確定の事実" in issue or "生成指示文" in issue:
             return "sanitize_article"
+        if "参考文献" in issue or "参照元" in issue:
+            return "references"
         if "口コミ" in issue:
             return "fill_reviews"
         if "一覧ボックス" in issue:
@@ -154,8 +301,6 @@ def infer_resume_step(final_status: str, validation_error: str = "") -> str | No
             return "fill_maps"
         if "スクリーンショット" in issue or "公式サイト" in issue:
             return "screenshots"
-        if "画像" in issue:
-            return "images"
         return "sanitize_article"
     if final_status == "resume_prerequisite_invalid":
         issue = validation_error or ""
@@ -173,6 +318,8 @@ def infer_resume_step(final_status: str, validation_error: str = "") -> str | No
             return "fact_check"
         if issue.startswith("sanitize_article:"):
             return "sanitize_article"
+        if issue.startswith("references:"):
+            return "references"
         if issue.startswith("fill_reviews:"):
             return "fill_reviews"
         if issue.startswith("fill_final_cta:"):
@@ -181,8 +328,6 @@ def infer_resume_step(final_status: str, validation_error: str = "") -> str | No
             return "fill_maps"
         if issue.startswith("screenshots:"):
             return "screenshots"
-        if issue.startswith("images:"):
-            return "images"
         return "generate_html"
     return None
 
@@ -238,6 +383,10 @@ def validate_tag_structure_output(path: str) -> None:
     validate_text_output(path, "タグ構成ファイル")
     with open(path, encoding="utf-8") as f:
         content = f.read()
+    remaining_placeholders = re.findall(r"\{\{(?:後で作成|後で挿入|TODO):[^}]*\}\}", content)
+    if remaining_placeholders:
+        preview = " / ".join(remaining_placeholders[:3])
+        raise ValueError(f"タグ構成に未解決のプレースホルダーが残っています: {preview}")
     if content.count("[H2]") < 2:
         raise ValueError("タグ構成にH2見出しが不足しています")
     if content.count("[H3]") < 2:
@@ -259,13 +408,121 @@ def validate_tag_structure_output(path: str) -> None:
     if any(token in article_type for token in ["比較", "おすすめ"]):
         if content.count("#### [H3]") < 5:
             raise ValueError("比較記事としては個別H3具体化が不足しています")
-        if "一覧ボックス" not in content:
-            raise ValueError("比較記事なのに一覧ボックス設計がありません")
+        # NOTE: 「一覧ボックス必須」チェックは撤廃。
+        # STEP2 プロンプトで「1位記事に一覧ボックスが無ければ配置しない」と指示しているのと矛盾するため。
+        # 一覧ボックスが必要かどうかは Claude が 1位記事プロファイルを見て判断する。
     if re.search(r"\*\*titleタグ\*\*:\s*.*(名古屋|新宿|大阪|横浜|福岡|札幌|池袋|渋谷)", content):
         first_line = re.search(r"# 「(.+?)」タグ構成設計", content)
         keyword = first_line.group(1) if first_line else ""
         if keyword and not re.search(r"(東京|大阪|名古屋|新宿|渋谷|池袋|横浜|福岡|札幌|千葉|埼玉|神戸|京都)", keyword):
             raise ValueError("タグ構成が地域特化に寄りすぎています")
+
+
+def extract_article_type_from_content(content: str) -> str:
+    match = re.search(r"\*\*記事タイプ\*\*:\s*(.+)", content)
+    return match.group(1).strip() if match else ""
+
+
+def extract_article_type_from_tag_structure(tag_structure_path: str | None) -> str:
+    if not tag_structure_path or not os.path.exists(tag_structure_path):
+        return ""
+    try:
+        with open(tag_structure_path, encoding="utf-8") as f:
+            return extract_article_type_from_content(f.read())
+    except OSError:
+        return ""
+
+
+def is_comparison_article_type(article_type: str) -> bool:
+    return any(token in (article_type or "") for token in COMPARISON_ARTICLE_TOKENS)
+
+
+def collect_section_nodes(heading, *, stop_at_h3: bool = True) -> list:
+    nodes = []
+    node = heading.find_next_sibling()
+    while node:
+        tag_name = getattr(node, "name", None)
+        if tag_name == "h2":
+            break
+        if stop_at_h3 and tag_name == "h3":
+            break
+        nodes.append(node)
+        node = node.find_next_sibling()
+    return nodes
+
+
+def section_has_official_site_button(nodes: list) -> bool:
+    official_tokens = ("公式サイト", "公式ページ", "公式HP", "公式ホームページ", "公式はこちら", "サイトはこちら")
+    for node in nodes:
+        tag_name = getattr(node, "name", None)
+        if tag_name is None:
+            continue
+        classes = node.get("class") or []
+        if "official-site-button-wrap" in classes:
+            return True
+        for anchor in node.find_all("a", href=True):
+            href = (anchor.get("href") or "").strip()
+            if not href or href == "#":
+                continue
+            text = normalize_text(anchor.get_text(" ", strip=True))
+            if href.startswith("http") and any(token.lower() in text.lower() for token in official_tokens):
+                return True
+    return False
+
+
+def collect_screenshot_target_sections(soup: BeautifulSoup) -> list[tuple[object, list]]:
+    """スクリーンショット対象は、比較記事の個別院/サービス見出しに限定する。"""
+    targets = []
+    for heading in iter_candidate_clinic_h3_tags(soup):
+        targets.append((heading, collect_section_nodes(heading)))
+    return targets
+
+
+def build_article_profile(
+    html_path: str,
+    tag_structure_path: str | None = None,
+    expected_shortcode: str = "",
+) -> dict[str, object]:
+    with open(html_path, encoding="utf-8") as f:
+        html = f.read()
+    soup = BeautifulSoup(html, "html.parser")
+    article_type = extract_article_type_from_tag_structure(tag_structure_path)
+    clinic_h3_tags = iter_candidate_clinic_h3_tags(soup)
+    has_clinic_sections = bool(clinic_h3_tags)
+    has_list_box = has_valid_intro_list_box(soup)
+    has_list_placeholder = "{{後で作成:一覧ボックス" in html
+    has_review_placeholder = html_needs_reviews(html)
+    has_review_section = 'class="review-section"' in html
+    has_map_block = 'class="clinic-map"' in html or "{{後で作成:マップ" in html
+    screenshot_targets = collect_screenshot_target_sections(soup)
+    has_official_button = any(
+        section_has_official_site_button(section_nodes)
+        for _, section_nodes in screenshot_targets
+    )
+
+    is_comparison = is_comparison_article_type(article_type)
+    # 一覧ボックスはタグ構成設計書（または本文に既存・プレースホルダーあり）が要求した場合のみ必須化する。
+    # 「比較系 + クリニックH3存在」だけで強制すると、競合（特に1位記事）が一覧ボックスを採用していなくても
+    # システム都合で挿入してしまい、SEO上のノイズになるため。
+    requires_list_box = has_list_box or has_list_placeholder
+    # 口コミも同様、本文/プレースホルダーで明示されている場合のみ必須化する。
+    requires_reviews = has_review_placeholder or has_review_section
+    requires_final_cta = bool(expected_shortcode.strip()) and is_comparison
+    requires_screenshots = bool(screenshot_targets)
+
+    return {
+        "article_type": article_type,
+        "is_comparison": is_comparison,
+        "has_clinic_sections": has_clinic_sections,
+        "has_list_box": has_list_box,
+        "has_review_section": has_review_section,
+        "has_map_block": has_map_block,
+        "has_official_button": has_official_button,
+        "requires_list_box": requires_list_box,
+        "requires_reviews": requires_reviews,
+        "requires_final_cta": requires_final_cta,
+        "requires_screenshots": requires_screenshots,
+    }
 
 
 def extract_expected_headings(tag_structure_path: str) -> tuple[list[str], list[str]]:
@@ -282,11 +539,13 @@ def validate_html_matches_tag_structure(html: str, tag_structure_path: str) -> N
     actual_h2s = [node.get_text(" ", strip=True) for node in soup.find_all("h2")]
     actual_h3s = [node.get_text(" ", strip=True) for node in soup.find_all("h3")]
 
-    missing_h2s = [heading for heading in expected_h2s if heading not in actual_h2s]
+    actual_h2_keys = {canonical_h2_key(heading) for heading in actual_h2s}
+    actual_h3_keys = {canonical_heading_key(heading) for heading in actual_h3s}
+    missing_h2s = [heading for heading in expected_h2s if canonical_h2_key(heading) not in actual_h2_keys]
     if missing_h2s:
         raise ValueError("タグ構成のH2が本文に不足しています: " + " / ".join(missing_h2s[:3]))
 
-    missing_h3s = [heading for heading in expected_h3s if heading not in actual_h3s]
+    missing_h3s = [heading for heading in expected_h3s if canonical_heading_key(heading) not in actual_h3_keys]
     if missing_h3s:
         raise ValueError("タグ構成のH3が本文に不足しています: " + " / ".join(missing_h3s[:3]))
 
@@ -305,11 +564,61 @@ def validate_html_output(path: str, keyword_slug: str, tag_structure_path: str |
         raise ValueError("旧口コミプレースホルダー表記が残っています")
     if "※要確認" in html:
         raise ValueError("本文HTMLに未確定プレースホルダーが残っています")
+    # いかなる {{後で作成:...}} 形式も許可しない
+    remaining = re.findall(r"\{\{後で作成:[^}]*\}\}", html)
+    if remaining:
+        preview = " / ".join(remaining[:3])
+        raise ValueError(f"未解決のプレースホルダーが残っています: {preview}")
     if tag_structure_path:
         validate_html_matches_tag_structure(html, tag_structure_path)
     issues = validate_article_html(html, keyword_slug)
     if issues:
         raise ValueError(" / ".join(issues))
+
+
+def _rewrite_soup_fragment(soup: BeautifulSoup) -> str:
+    if soup.body is not None:
+        html = soup.body.decode_contents().strip()
+    else:
+        html = str(soup)
+    return re.sub(r"\n{3,}", "\n\n", html)
+
+
+def auto_fix_table_class_issues(path: str) -> dict[str, int]:
+    with open(path, encoding="utf-8") as f:
+        html = f.read()
+    soup = BeautifulSoup(html, "lxml")
+    report = normalize_table_classes(soup)
+    if any(report.values()):
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(_rewrite_soup_fragment(soup))
+    return report
+
+
+def validate_html_output_with_resume_autofix(
+    path: str,
+    keyword_slug: str,
+    tag_structure_path: str | None = None,
+    *,
+    step_name: str = "resume",
+) -> None:
+    try:
+        validate_html_output(path, keyword_slug, tag_structure_path)
+        return
+    except Exception as e:
+        message = str(e)
+        if "clinic-summary-table" not in message and "clinic-detail-table" not in message:
+            raise
+
+    report = auto_fix_table_class_issues(path)
+    if any(report.values()):
+        log(
+            "  Resume autofix applied before "
+            f"{step_name}: summary={report.get('clinic_summary_tables_classed', 0)}, "
+            f"detail={report.get('clinic_detail_tables_classed', 0)}, "
+            f"compare={report.get('compare_tables_classed', 0)}"
+        )
+    validate_html_output(path, keyword_slug, tag_structure_path)
 
 
 def validate_generated_images(html_path: str, keyword_slug: str) -> None:
@@ -355,10 +664,7 @@ def validate_unresolved_facts(path: str) -> None:
 
 
 def article_requires_screenshots(path: str) -> bool:
-    with open(path, encoding="utf-8") as f:
-        html = f.read()
-    soup = BeautifulSoup(html, "html.parser")
-    return any((tag.get("id") or "").startswith("clinic-") for tag in soup.find_all("h3"))
+    return bool(build_article_profile(path).get("requires_screenshots"))
 
 
 def validate_screenshot_insertion(path: str) -> None:
@@ -374,38 +680,19 @@ def validate_screenshot_insertion(path: str) -> None:
         raise ValueError("公式サイトURLの要確認プレースホルダーが残っています")
 
     soup = BeautifulSoup(html, "html.parser")
-    clinic_sections = [
-        tag for tag in soup.find_all("h3")
-        if (tag.get("id") or "").startswith("clinic-")
-    ]
-    if not clinic_sections:
+    target_sections = collect_screenshot_target_sections(soup)
+
+    if not target_sections:
         return
 
-    missing_screenshots = []
-    for heading in clinic_sections:
-        section_nodes = []
-        node = heading.find_next_sibling()
-        while node and not (getattr(node, "name", None) == "h3" and (node.get("id") or "").startswith("clinic-")) and getattr(node, "name", None) != "h2":
-            section_nodes.append(node)
-            node = node.find_next_sibling()
+    missing_buttons = []
+    for heading, section_nodes in target_sections:
+        if not section_has_official_site_button(section_nodes):
+            missing_buttons.append(heading.get_text(" ", strip=True))
 
-        has_screenshot = False
-        for section_node in section_nodes:
-            if getattr(section_node, "name", None) != "div":
-                continue
-            if "clinic-screenshot" not in (section_node.get("class") or []):
-                continue
-            img = section_node.find("img")
-            if img and (img.get("src") or "").strip():
-                has_screenshot = True
-                break
-
-        if not has_screenshot:
-            missing_screenshots.append(heading.get_text(" ", strip=True))
-
-    if missing_screenshots:
-        preview = ", ".join(missing_screenshots[:5])
-        raise ValueError(f"クリニック紹介セクションにスクリーンショットがありません: {preview}")
+    if missing_buttons:
+        preview = ", ".join(missing_buttons[:5])
+        raise ValueError(f"クリニック紹介セクションに公式サイトボタンがありません: {preview}")
 
 
 def validate_list_box(path: str) -> None:
@@ -414,9 +701,10 @@ def validate_list_box(path: str) -> None:
     if "{{後で作成:一覧ボックス" in html:
         raise ValueError("一覧ボックスのプレースホルダーが残っています")
     if 'class="clinic-index-box"' not in html:
-        raise ValueError("一覧ボックスHTMLが見つかりません")
+        if 'class="clinic-list-box"' not in html:
+            return
     soup = BeautifulSoup(html, "html.parser")
-    anchors = soup.select(".clinic-index-box a[href^='#clinic-']")
+    anchors = soup.select(".clinic-index-box a[href^='#'], .clinic-list-box a[href^='#']")
     if not anchors:
         raise ValueError("一覧ボックス内にクリニックリンクが見つかりません")
 
@@ -425,7 +713,7 @@ def validate_list_box(path: str) -> None:
     target_ids = []
     for anchor in anchors:
         href = (anchor.get("href") or "").strip()
-        if href.startswith("#clinic-"):
+        if href.startswith("#"):
             target_ids.append(href[1:])
 
     if not target_ids:
@@ -446,9 +734,19 @@ def validate_list_box(path: str) -> None:
 def validate_final_cta(path: str, expected_shortcode: str) -> None:
     with open(path, encoding="utf-8") as f:
         html = f.read()
+    if not expected_shortcode.strip():
+        return
     if "<!-- final-cta:start -->" not in html or "<!-- final-cta:end -->" not in html:
         raise ValueError("末尾CTAが挿入されていません")
     tail = html[-4000:]
+    expected_name = extract_shortcode_name(expected_shortcode)
+    if expected_name:
+        pattern = re.compile(r'\[sc name="' + re.escape(expected_name) + r'"\s*\]\[/sc\]')
+        if not pattern.search(tail):
+            embed_marker = get_variant_embed_marker_from_shortcode_name(expected_name)
+            if not embed_marker or embed_marker not in tail:
+                raise ValueError("末尾CTA付近に想定ショートコードまたは直埋め早見表が見つかりません")
+        return
     if expected_shortcode not in tail:
         raise ValueError("末尾CTA付近に想定ショートコードが見つかりません")
 
@@ -467,12 +765,72 @@ def validate_map_queries(path: str) -> None:
         raise ValueError("旧式のGoogle Maps埋め込みURLが残っています")
 
 
-def validate_pre_publish_html(path: str, keyword_slug: str, expected_shortcode: str, tag_structure_path: str | None = None) -> None:
+def validate_pre_publish_html(
+    path: str,
+    keyword_slug: str,
+    expected_shortcode: str,
+    tag_structure_path: str | None = None,
+    article_profile: dict[str, object] | None = None,
+) -> None:
+    article_profile = article_profile or build_article_profile(path, tag_structure_path, expected_shortcode)
     validate_html_output(path, keyword_slug, tag_structure_path)
+    if not reference_report_allows_missing(path):
+        with open(path, encoding="utf-8") as f:
+            validate_reference_output(f.read())
     validate_reviews_output(path)
-    validate_list_box(path)
-    validate_final_cta(path, expected_shortcode)
-    validate_map_queries(path)
+    if article_profile.get("requires_list_box"):
+        validate_list_box(path)
+    if article_profile.get("requires_final_cta"):
+        validate_final_cta(path, expected_shortcode)
+    if article_profile.get("has_map_block"):
+        validate_map_queries(path)
+    # nandemo は他ドメインへ転用するため、ショートコード参照が残ってはいけない
+    output_key = infer_output_key_from_path(path)
+    if is_nandemo_output_key(output_key):
+        validate_no_shortcodes_for_nandemo(path)
+
+
+def infer_output_key_from_path(path: str) -> str:
+    """記事HTMLの絶対パスから出力キー（ディレクトリ名）を推定する。"""
+    return os.path.basename(os.path.dirname(os.path.abspath(path)))
+
+
+def validate_no_shortcodes_for_nandemo(path: str) -> None:
+    """なんでも記事は他ドメインに流用される前提なので、`[sc name="..."]` は全てインライン展開済みで
+    あるべき。残っている場合はエラー。"""
+    from variant_utils import find_unresolved_shortcodes
+    with open(path, encoding="utf-8") as f:
+        html = f.read()
+    leftovers = find_unresolved_shortcodes(html)
+    if leftovers:
+        unique = sorted(set(leftovers))
+        raise ValueError(
+            "なんでも記事に未展開のショートコードが残っています（インライン化必須）: "
+            + ", ".join(unique)
+        )
+
+
+def validate_references_and_html(path: str, keyword_slug: str, tag_structure_path: str | None = None) -> None:
+    validate_html_output(path, keyword_slug, tag_structure_path)
+    if reference_report_allows_missing(path):
+        return
+    with open(path, encoding="utf-8") as f:
+        validate_reference_output(f.read())
+
+
+def reference_report_allows_missing(path: str) -> bool:
+    html_dir = os.path.dirname(path)
+    basename = os.path.basename(path)
+    slug = os.path.splitext(basename)[0].replace("_記事", "")
+    report_path = os.path.join(html_dir, f"{slug}_reference_report.json")
+    if not os.path.exists(report_path):
+        return False
+    try:
+        with open(report_path, encoding="utf-8") as f:
+            payload = json.load(f)
+    except Exception:
+        return False
+    return payload.get("status") == "skipped"
 
 
 def explain_validation_error(issue: str) -> str:
@@ -480,6 +838,8 @@ def explain_validation_error(issue: str) -> str:
         ("プレースホルダー", "前段の生成物に未解決のテンプレートが残っているためです"),
         ("未確定の事実", "料金・住所・診療時間などを裏取りし切れず、仮置きの情報が残っています"),
         ("生成指示文", "LLMへの指示テキストが本文に混入しています"),
+        ("参考文献", "参考文献の形式、リンク設定、または候補選定に不整合があります"),
+        ("参照元", "参照元として弱いURLや不適切なリンクが混ざった可能性があります"),
         ("H2見出し", "構成設計か本文生成で見出し設計が崩れた可能性があります"),
         ("H3見出し", "比較対象の院数や見出し抽出が不足した可能性があります"),
         ("重複", "生成時に同じ院セクションを重ねて出力した可能性があります"),
@@ -521,6 +881,55 @@ def review_output(step_name: str, validator, results_bucket: dict) -> tuple[bool
         return False, issue
 
 
+def set_step_warning(results: dict, step_key: str, warning: str, *, optional: bool = False) -> None:
+    step_payload = dict(results["steps"].get(step_key) or {})
+    step_payload["status"] = "warning"
+    step_payload["warning"] = warning
+    if optional:
+        step_payload["optional"] = True
+    results["steps"][step_key] = step_payload
+    log(f"  ! {step_key} は警告扱いで継続します: {warning}")
+
+
+def file_exists_with_content(path: str) -> bool:
+    return os.path.exists(path) and os.path.getsize(path) > 0
+
+
+def estimate_generate_html_timeout(tag_path: str) -> int:
+    default_timeout = 900
+    if not os.path.exists(tag_path):
+        return default_timeout
+
+    try:
+        with open(tag_path, encoding="utf-8") as f:
+            tag_structure = f.read()
+    except OSError:
+        return default_timeout
+
+    h2_count = len(re.findall(r"^### \[H2\] ", tag_structure, re.MULTILINE))
+    h3_count = len(re.findall(r"^#### \[H3\] ", tag_structure, re.MULTILINE))
+    section_h3_counts = []
+    current_h3_count = 0
+    for line in tag_structure.splitlines():
+        if line.startswith("### [H2] "):
+            if current_h3_count:
+                section_h3_counts.append(current_h3_count)
+            current_h3_count = 0
+        elif line.startswith("#### [H3] "):
+            current_h3_count += 1
+    if current_h3_count:
+        section_h3_counts.append(current_h3_count)
+
+    max_h3_per_h2 = max(section_h3_counts, default=0)
+    timeout = default_timeout
+    timeout += max(0, h3_count - 20) * 45
+    timeout += max(0, h2_count - 8) * 60
+    timeout += max(0, max_h3_per_h2 - 6) * 90
+    timeout += max(0, len(tag_structure) - 6000) // 12
+
+    return max(default_timeout, min(timeout, 3600))
+
+
 def run_step_with_review(
     step_key: str,
     display_name: str,
@@ -530,6 +939,7 @@ def run_step_with_review(
     timeout: int | None = 300,
 ):
     max_reviews = 1 + len(QUALITY_RETRY_DELAYS)
+    previous_issue: str | None = None
 
     for review_attempt in range(1, max_reviews + 1):
         step = run_step(display_name, cmd, timeout=timeout)
@@ -543,6 +953,14 @@ def run_step_with_review(
         ok, issue = review_output(display_name, validator, step)
         if ok:
             return step, True, None
+
+        # 同じ品質エラーが連続したら早期終了。プロンプトもデータも同じなので Claude API を
+        # 何度叩いても結果は変わらない。クレジットの無駄遣いを避けるため停止する。
+        normalized_issue = (issue or "").strip()
+        if previous_issue is not None and normalized_issue == previous_issue:
+            log(f"  {display_name} の品質チェックが2回連続で同一エラー。リトライを早期終了します（クレジット節約）")
+            return step, False, issue
+        previous_issue = normalized_issue
 
         if review_attempt < max_reviews:
             delay = QUALITY_RETRY_DELAYS[review_attempt - 1]
@@ -597,6 +1015,8 @@ def run_step(name, cmd, timeout: int | None = 300):
                 "max_attempts": max_attempts,
                 "error": error_text,
             }
+            if is_anthropic_credit_error(error_text):
+                step_result["non_retryable"] = True
 
         except subprocess.TimeoutExpired:
             timeout_label = f"{timeout}秒" if timeout is not None else "上限なし"
@@ -616,6 +1036,10 @@ def run_step(name, cmd, timeout: int | None = 300):
                 "error": str(e),
             }
 
+        if step_result.get("non_retryable"):
+            log(f"  {name} は再試行しないエラーのため停止します")
+            return step_result
+
         if attempt < max_attempts:
             delay = STEP_RETRY_DELAYS[attempt - 1]
             log(f"  {name} を {delay}秒後に再試行します")
@@ -625,11 +1049,23 @@ def run_step(name, cmd, timeout: int | None = 300):
         return step_result
 
 
-def run_pipeline(keyword, site_config, genre_id, category="", title="", start_step=None):
+def run_pipeline(
+    keyword,
+    site_config,
+    genre_id,
+    category="",
+    title="",
+    start_step=None,
+    output_key=None,
+    variant_index=1,
+    variant_count=1,
+    reference_url="",
+):
     """パイプライン全体を実行"""
 
-    keyword_slug = keyword_to_slug(keyword)
-    keyword_output_dir = ensure_keyword_output_dir(keyword)
+    resolved_output_key = resolve_output_key(keyword, output_key)
+    keyword_slug = keyword_to_slug(resolved_output_key)
+    keyword_output_dir = ensure_output_dir_for_key(resolved_output_key)
     keyword_scraped_dir = get_keyword_scraped_dir(keyword)
     site_config_data = {}
     try:
@@ -638,9 +1074,13 @@ def run_pipeline(keyword, site_config, genre_id, category="", title="", start_st
     except Exception:
         site_config_data = {}
     skip_wordpress = bool(site_config_data.get("skip_wordpress"))
+    wordpress_timeout_seconds = int(site_config_data.get("wordpress_timeout_seconds", 600) or 600)
+    variant_profile = build_variant_profile(variant_index, variant_count)
     results = {
         "keyword": keyword,
+        "output_key": resolved_output_key,
         "site_config": site_config,
+        "variant_profile": variant_profile,
         "started_at": datetime.now().isoformat(),
         "steps": {},
     }
@@ -649,9 +1089,15 @@ def run_pipeline(keyword, site_config, genre_id, category="", title="", start_st
         results["resumed_from"] = start_step
 
     log(f"パイプライン開始: {keyword}")
+    if resolved_output_key != keyword:
+        log(f"出力キー: {resolved_output_key}")
+    if variant_count > 1:
+        log(f"編集版: {variant_index}/{variant_count}")
     log(f"サイト設定: {site_config}")
     if skip_wordpress:
         log("WordPress投稿: site config によりスキップ")
+    else:
+        log(f"WordPress投稿タイムアウト: {wordpress_timeout_seconds}秒")
     if start_step in STEP_SEQUENCE:
         log(f"再開ステップ: {start_step}")
     pipeline_start = time.time()
@@ -736,10 +1182,15 @@ def run_pipeline(keyword, site_config, genre_id, category="", title="", start_st
     search_json = os.path.join(keyword_output_dir, f"{keyword_slug}_search_results.json")
     if start_index <= STEP_SEQUENCE.index("search"):
         mark_step_start("search")
+        # reference_url 指定があれば、その URL を search_keyword.py に渡し、
+        # 結果リストの先頭に強制配置 → scrape の articles[0] になり、`top_article_profile` の対象になる
+        search_cmd = [PYTHON, "search_keyword.py", keyword, "--count", "5", "--output-key", resolved_output_key]
+        if reference_url:
+            search_cmd.extend(["--reference-url", reference_url])
         step, ok, issue = run_step_with_review(
             "search",
             "Step 0: Google検索",
-            [PYTHON, "search_keyword.py", keyword, "--count", "3"],
+            search_cmd,
             lambda: validate_search_results(search_json),
             results,
         )
@@ -802,15 +1253,34 @@ def run_pipeline(keyword, site_config, genre_id, category="", title="", start_st
             [
                 PYTHON, "generate_article.py", "--keyword", keyword, "--genre", genre_id,
                 "--step", "2", "--scraped-dir", keyword_scraped_dir,
+                "--output-key", resolved_output_key,
+                "--variant-index", str(variant_index),
+                "--variant-count", str(variant_count),
             ],
             lambda: validate_tag_structure_output(tag_path),
             results,
             timeout=300,
         )
         if step["status"] != "ok":
-            return finalize("failed_at_tag_structure")
+            if is_anthropic_credit_error(step.get("error", "")):
+                return finalize(
+                    "tag_structure_credit_exhausted",
+                    validation_error="Anthropic API のクレジット不足でタグ構成生成に失敗しました",
+                )
+            if file_exists_with_content(tag_path):
+                set_step_warning(
+                    results,
+                    "tag_structure",
+                    "タグ構成生成は失敗しましたが、既存のタグ構成ファイルで継続します",
+                )
+            else:
+                return finalize("failed_at_tag_structure")
         if not ok:
-            return finalize("tag_structure_output_invalid", validation_error=issue)
+            set_step_warning(
+                results,
+                "tag_structure",
+                issue or "タグ構成の品質チェックに失敗しました",
+            )
         mark_step_done("tag_structure")
     else:
         results["steps"]["tag_structure"] = {"status": "skipped", "reason": "resume"}
@@ -826,22 +1296,43 @@ def run_pipeline(keyword, site_config, genre_id, category="", title="", start_st
     html_path = os.path.join(keyword_output_dir, f"{keyword_slug}_記事.html")
     if start_index <= STEP_SEQUENCE.index("generate_html"):
         mark_step_start("generate_html")
+        generate_html_timeout = estimate_generate_html_timeout(tag_path)
+        log(f"  generate_html タイムアウト設定: {generate_html_timeout}秒")
         step, ok, issue = run_step_with_review(
             "generate_html",
             "Step 3: 本文HTML生成",
             [
                 PYTHON, "generate_article.py", "--keyword", keyword, "--genre", genre_id,
                 "--step", "3", "--scraped-dir", keyword_scraped_dir,
+                "--output-key", resolved_output_key,
+                "--variant-index", str(variant_index),
+                "--variant-count", str(variant_count),
             ],
             lambda: validate_html_output(html_path, keyword_slug, tag_path),
             results,
-            timeout=900,
+            timeout=generate_html_timeout,
         )
         if step["status"] != "ok":
-            return finalize("failed_at_generate_html")
+            if is_anthropic_credit_error(step.get("error", "")):
+                return finalize(
+                    "generate_html_credit_exhausted",
+                    validation_error="Anthropic API のクレジット不足で本文生成に失敗しました",
+                )
+            if file_exists_with_content(html_path):
+                set_step_warning(
+                    results,
+                    "generate_html",
+                    "本文生成は失敗しましたが、既存のHTMLで継続します",
+                )
+            else:
+                return finalize("failed_at_generate_html")
         log(f"  記事HTML: {html_path}")
         if not ok:
-            return finalize("html_output_invalid", validation_error=issue)
+            set_step_warning(
+                results,
+                "generate_html",
+                issue or "本文HTMLの品質チェックに失敗しました",
+            )
         mark_step_done("generate_html")
     else:
         results["steps"]["generate_html"] = {"status": "skipped", "reason": "resume"}
@@ -852,16 +1343,44 @@ def run_pipeline(keyword, site_config, genre_id, category="", title="", start_st
             return finalize("resume_prerequisite_invalid", validation_error=f"generate_html: {e}")
         mark_step_done("generate_html")
 
+    genre_path = os.path.join(SCRIPT_DIR, "genres", f"{genre_id}.json")
+    genre_config = json.load(open(genre_path, encoding="utf-8"))
+    expected_shortcode = resolve_variant_shortcode(
+        genre_config.get("shortcodes", {}).get("早見表", ""),
+        genre_id=genre_id,
+        output_key=resolved_output_key,
+        variant_index=variant_index,
+    )
+
+    def refresh_article_profile() -> dict[str, object]:
+        return build_article_profile(html_path, tag_path, expected_shortcode)
+
+    article_profile = refresh_article_profile()
+    if article_profile.get("article_type"):
+        log(f"  記事タイプ: {article_profile['article_type']}")
+
     # ==========================================
     # Step 3.5: 一覧ボックス差し込み
     # ==========================================
-    if start_index <= STEP_SEQUENCE.index("fill_list_box"):
+    article_profile = refresh_article_profile()
+    if not article_profile.get("requires_list_box"):
+        results["steps"]["fill_list_box"] = {"status": "skipped", "reason": "not_required"}
+        mark_step_done("fill_list_box")
+    elif start_index <= STEP_SEQUENCE.index("fill_list_box"):
         mark_step_start("fill_list_box")
         step, ok, issue = run_step_with_review(
             "fill_list_box",
             "Step 3.5: 一覧ボックス差し込み",
             [PYTHON, "fill_list_box.py", "--html", html_path],
-            lambda: (validate_list_box(html_path), validate_html_output(html_path, keyword_slug, tag_path)),
+            lambda: (
+                validate_list_box(html_path),
+                validate_html_output_with_resume_autofix(
+                    html_path,
+                    keyword_slug,
+                    tag_path,
+                    step_name="fill_list_box",
+                ),
+            ),
             results,
             timeout=120,
         )
@@ -899,7 +1418,12 @@ def run_pipeline(keyword, site_config, genre_id, category="", title="", start_st
     else:
         results["steps"]["fact_check"] = {"status": "skipped", "reason": "resume"}
         try:
-            validate_html_output(html_path, keyword_slug, tag_path)
+            validate_html_output_with_resume_autofix(
+                html_path,
+                keyword_slug,
+                tag_path,
+                step_name="fact_check",
+            )
         except Exception as e:
             return finalize("resume_prerequisite_invalid", validation_error=f"fact_check: {e}")
         mark_step_done("fact_check")
@@ -928,15 +1452,79 @@ def run_pipeline(keyword, site_config, genre_id, category="", title="", start_st
     else:
         results["steps"]["sanitize_article"] = {"status": "skipped", "reason": "resume"}
         try:
-            validate_html_output(html_path, keyword_slug, tag_path)
+            validate_html_output_with_resume_autofix(
+                html_path,
+                keyword_slug,
+                tag_path,
+                step_name="sanitize_article",
+            )
         except Exception as e:
             return finalize("resume_prerequisite_invalid", validation_error=f"sanitize_article: {e}")
         mark_step_done("sanitize_article")
 
     # ==========================================
+    # Step 4.4: 参考文献・公的情報の付与
+    # ==========================================
+    if start_index <= STEP_SEQUENCE.index("references"):
+        mark_step_start("references")
+        step, ok, issue = run_step_with_review(
+            "references",
+            "Step 4.4: 参考文献・公的情報の付与",
+            [PYTHON, "add_references.py", "--html", html_path],
+            lambda: validate_references_and_html(html_path, keyword_slug, tag_path),
+            results,
+            timeout=900,
+        )
+        if step["status"] != "ok":
+            return finalize("failed_at_references")
+        if not ok:
+            set_step_warning(
+                results,
+                "references",
+                issue or "参考文献・公的情報の品質チェックに失敗しました",
+            )
+        mark_step_done("references")
+    else:
+        results["steps"]["references"] = {"status": "skipped", "reason": "resume"}
+        try:
+            validate_html_output_with_resume_autofix(
+                html_path,
+                keyword_slug,
+                tag_path,
+                step_name="references",
+            )
+            if not reference_report_allows_missing(html_path):
+                with open(html_path, encoding="utf-8") as f:
+                    validate_reference_output(f.read())
+        except Exception as e:
+            log(f"  references の前提チェックに失敗したため、Step 4.4 を再実行します: {e}")
+            mark_step_start("references")
+            step, ok, issue = run_step_with_review(
+                "references",
+                "Step 4.4: 参考文献・公的情報の付与",
+                [PYTHON, "add_references.py", "--html", html_path],
+                lambda: validate_references_and_html(html_path, keyword_slug, tag_path),
+                results,
+                timeout=900,
+            )
+            if step["status"] != "ok":
+                return finalize("failed_at_references")
+            if not ok:
+                set_step_warning(
+                    results,
+                    "references",
+                    issue or "参考文献・公的情報の品質チェックに失敗しました",
+                )
+        mark_step_done("references")
+
+    # ==========================================
     # Step 4.5: 口コミ差し込み
     # ==========================================
-    if start_index <= STEP_SEQUENCE.index("fill_reviews"):
+    article_profile = refresh_article_profile()
+    if not article_profile.get("requires_reviews"):
+        results["steps"]["fill_reviews"] = {"status": "skipped", "reason": "not_required"}
+        mark_step_done("fill_reviews")
+    elif start_index <= STEP_SEQUENCE.index("fill_reviews"):
         mark_step_start("fill_reviews")
         step, ok, issue = run_step_with_review(
             "fill_reviews",
@@ -955,7 +1543,12 @@ def run_pipeline(keyword, site_config, genre_id, category="", title="", start_st
         results["steps"]["fill_reviews"] = {"status": "skipped", "reason": "resume"}
         try:
             validate_reviews_output(html_path)
-            validate_html_output(html_path, keyword_slug, tag_path)
+            validate_html_output_with_resume_autofix(
+                html_path,
+                keyword_slug,
+                tag_path,
+                step_name="fill_reviews",
+            )
         except Exception as e:
             return finalize("resume_prerequisite_invalid", validation_error=f"fill_reviews: {e}")
         mark_step_done("fill_reviews")
@@ -963,15 +1556,22 @@ def run_pipeline(keyword, site_config, genre_id, category="", title="", start_st
     # ==========================================
     # Step 4.6: 末尾CTA差し込み
     # ==========================================
-    genre_path = os.path.join(SCRIPT_DIR, "genres", f"{genre_id}.json")
-    genre_config = json.load(open(genre_path, encoding="utf-8"))
-    expected_shortcode = genre_config.get("shortcodes", {}).get("早見表", "")
-    if start_index <= STEP_SEQUENCE.index("fill_final_cta"):
+    article_profile = refresh_article_profile()
+    if not article_profile.get("requires_final_cta"):
+        results["steps"]["fill_final_cta"] = {"status": "skipped", "reason": "not_required"}
+        mark_step_done("fill_final_cta")
+    elif start_index <= STEP_SEQUENCE.index("fill_final_cta"):
         mark_step_start("fill_final_cta")
         step, ok, issue = run_step_with_review(
             "fill_final_cta",
             "Step 4.6: 末尾CTA差し込み",
-            [PYTHON, "fill_final_cta.py", "--html", html_path, "--keyword", keyword, "--genre-json", genre_path],
+            [
+                PYTHON, "fill_final_cta.py",
+                "--html", html_path,
+                "--keyword", keyword,
+                "--genre-json", genre_path,
+                "--variant-index", str(variant_index),
+            ],
             lambda: validate_final_cta(html_path, expected_shortcode),
             results,
             timeout=120,
@@ -992,7 +1592,11 @@ def run_pipeline(keyword, site_config, genre_id, category="", title="", start_st
     # ==========================================
     # Step 4.7: Googleマップ補正
     # ==========================================
-    if start_index <= STEP_SEQUENCE.index("fill_maps"):
+    article_profile = refresh_article_profile()
+    if not article_profile.get("has_map_block"):
+        results["steps"]["fill_maps"] = {"status": "skipped", "reason": "not_required"}
+        mark_step_done("fill_maps")
+    elif start_index <= STEP_SEQUENCE.index("fill_maps"):
         mark_step_start("fill_maps")
         step, ok, issue = run_step_with_review(
             "fill_maps",
@@ -1018,8 +1622,12 @@ def run_pipeline(keyword, site_config, genre_id, category="", title="", start_st
     # ==========================================
     # Step 5: 公式サイトスクリーンショット
     # ==========================================
-    screenshots_required = article_requires_screenshots(html_path)
-    if start_index <= STEP_SEQUENCE.index("screenshots"):
+    article_profile = refresh_article_profile()
+    screenshots_required = bool(article_profile.get("requires_screenshots"))
+    if not screenshots_required:
+        results["steps"]["screenshots"] = {"status": "skipped", "reason": "not_required"}
+        mark_step_done("screenshots")
+    elif start_index <= STEP_SEQUENCE.index("screenshots"):
         mark_step_start("screenshots")
         step, ok, issue = run_step_with_review(
             "screenshots",
@@ -1060,35 +1668,56 @@ def run_pipeline(keyword, site_config, genre_id, category="", title="", start_st
         mark_step_done("screenshots")
 
     # ==========================================
-    # Step 6: AI画像生成
+    # Step 5.5: クリニックロゴ取得（clinic-list-tbl 用）
     # ==========================================
-    if start_index <= STEP_SEQUENCE.index("images"):
-        mark_step_start("images")
+    # capture_logos.py で公式サイトからロゴ画像を抽出し、clinic-list-tbl の
+    # cl-logo-text を <img> に差し替える。output/.logo_cache.json で全記事間共有。
+    # ロゴはクリニック比較表の見栄え用なので任意扱い（失敗しても継続）。
+    if start_index <= STEP_SEQUENCE.index("logos"):
+        mark_step_start("logos")
+        logo_cmd = [PYTHON, "capture_logos.py", "--html", html_path]
+        urls_path = html_path.replace("_記事.html", "_urls.json")
+        if os.path.exists(urls_path):
+            logo_cmd.extend(["--urls", urls_path])
         step, ok, issue = run_step_with_review(
-            "images",
-            "Step 6: AI画像生成",
-            [PYTHON, "generate_images.py", "--keyword", keyword, "--html", html_path, "--site-config", site_config],
-            lambda: validate_generated_images(html_path, keyword_slug),
+            "logos",
+            "Step 5.5: クリニックロゴ取得",
+            logo_cmd,
+            lambda: True,  # ロゴは任意なのでバリデーションなし
             results,
-            timeout=None,
+            timeout=300,
         )
         if step["status"] != "ok":
-            return finalize("failed_at_images")
-        if not ok:
-            return finalize("image_output_invalid", validation_error=issue)
-        mark_step_done("images")
+            step["status"] = "warning"
+            step["optional"] = True
+            step["warning"] = "ロゴ取得は任意のため、失敗しても継続します"
+            log("  ! Step 5.5 は失敗しましたが任意ステップのため継続します")
+        mark_step_done("logos")
     else:
-        results["steps"]["images"] = {"status": "skipped", "reason": "resume"}
-        try:
-            validate_generated_images(html_path, keyword_slug)
-        except Exception as e:
-            return finalize("resume_prerequisite_invalid", validation_error=f"images: {e}")
-        mark_step_done("images")
+        results["steps"]["logos"] = {"status": "skipped", "reason": "resume"}
+        mark_step_done("logos")
+
+    # ==========================================
+    # Step 6: AI画像生成 → 廃止（Geminiでの自動画像生成は時間コストの割に品質が出ないため停止）
+    # ==========================================
+    # 旧コード: generate_images.py を呼び出してトップ画像とH2見出し画像を生成していた
+    # クリニック紹介セクションのスクリーンショット（capture_screenshots.py）は別ステップで継続
 
     try:
-        validate_pre_publish_html(html_path, keyword_slug, expected_shortcode, tag_path)
+        validate_pre_publish_html(
+            html_path,
+            keyword_slug,
+            expected_shortcode,
+            tag_path,
+            article_profile=refresh_article_profile(),
+        )
     except Exception as e:
-        return finalize("pre_publish_validation_failed", validation_error=str(e))
+        results["steps"]["pre_publish_validation"] = {
+            "status": "warning",
+            "warning": str(e),
+            "checked_at": datetime.now().isoformat(),
+        }
+        log(f"  ! 公開前チェックは警告扱いで継続します: {e}")
 
     # ==========================================
     # Step 7: WordPress下書き投稿
@@ -1116,13 +1745,19 @@ def run_pipeline(keyword, site_config, genre_id, category="", title="", start_st
             step = run_step(
                 "Step 7: WordPress下書き投稿",
                 wp_cmd,
-                timeout=180,
+                timeout=wordpress_timeout_seconds,
             )
             results["steps"]["wordpress"] = step
             if step["status"] == "ok":
                 mark_step_done("wordpress")
             else:
-                return finalize("failed_at_wordpress")
+                set_step_warning(
+                    results,
+                    "wordpress",
+                    step.get("error") or "WordPress下書き投稿に失敗しました",
+                    optional=True,
+                )
+                mark_step_done("wordpress")
         else:
             results["steps"]["wordpress"] = {"status": "skipped", "reason": "resume"}
             mark_step_done("wordpress")
@@ -1140,6 +1775,66 @@ def run_pipeline(keyword, site_config, genre_id, category="", title="", start_st
     return finalize(final_status)
 
 
+def run_nandemo_variant_batch(keyword, site_config, genre_id, category="", title="", variant_count=1, reference_url=""):
+    variant_count = normalize_variant_count(variant_count)
+    batch_started_at = datetime.now().isoformat()
+    variant_results = []
+    first_output_key = build_variant_output_key(keyword, 1)
+
+    for index in range(1, variant_count + 1):
+        output_key = build_variant_output_key(keyword, index)
+        already_completed, completed_result = variant_is_already_completed(keyword, index)
+        if already_completed:
+            variant_results.append({
+                "variant_index": index,
+                "output_key": output_key,
+                "result": completed_result or {"final_status": "success"},
+                "skipped_existing": True,
+            })
+            continue
+
+        start_step = None
+        if index > 1:
+            copied, _ = try_copy_search_results_between_output_keys(first_output_key, output_key)
+            if copied or can_reuse_scraped_outputs(keyword):
+                start_step = "tag_structure"
+
+        # reference_url は v1 で検索を走らせる時のみ使う。v2-v5 は v1 の検索結果を流用するため不要。
+        variant_reference_url = reference_url if index == 1 else ""
+
+        result = run_pipeline(
+            keyword=keyword,
+            site_config=site_config,
+            genre_id=genre_id,
+            category=category,
+            title=title,
+            start_step=start_step,
+            output_key=output_key,
+            variant_index=index,
+            variant_count=variant_count,
+            reference_url=variant_reference_url,
+        )
+        variant_results.append({
+            "variant_index": index,
+            "output_key": output_key,
+            "result": result,
+        })
+        if index == 1 and not is_success_like_final_status(result.get("final_status")):
+            break
+
+    failed = [item for item in variant_results if not is_success_like_final_status(item["result"].get("final_status"))]
+    final_status = "success" if not failed else ("completed_with_errors" if len(failed) < len(variant_results) else "failed_at_variant_batch")
+    return {
+        "keyword": keyword,
+        "site_config": site_config,
+        "variant_count": variant_count,
+        "started_at": batch_started_at,
+        "finished_at": datetime.now().isoformat(),
+        "final_status": final_status,
+        "variants": variant_results,
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(description="SEO記事自動生成パイプライン")
     parser.add_argument("--keyword", required=True, help="検索キーワード")
@@ -1147,25 +1842,52 @@ def main():
     parser.add_argument("--site", required=True, help="サイト設定JSONのパス")
     parser.add_argument("--category", default="", help="WordPressカテゴリ")
     parser.add_argument("--title", default="", help="記事タイトル（省略時は自動）")
+    parser.add_argument("--variant-count", type=int, default=1, help="なんでも向けの生成数（1〜5）")
+    parser.add_argument(
+        "--reference-url",
+        default="",
+        help="構造参照する競合記事URL（指定するとそのURLが Step 0 検索結果の先頭に強制配置され、Step 2 のタグ構成設計の主軸になる）",
+    )
     args = parser.parse_args()
 
-    results = run_pipeline(
-        keyword=args.keyword,
-        site_config=args.site,
-        genre_id=args.genre,
-        category=args.category,
-        title=args.title,
-    )
+    if is_nandemo_site(args.site) and normalize_variant_count(args.variant_count) > 1:
+        results = run_nandemo_variant_batch(
+            keyword=args.keyword,
+            site_config=args.site,
+            genre_id=args.genre,
+            category=args.category,
+            title=args.title,
+            variant_count=args.variant_count,
+            reference_url=args.reference_url,
+        )
+    else:
+        output_key = build_variant_output_key(args.keyword, 1) if is_nandemo_site(args.site) else None
+        results = run_pipeline(
+            keyword=args.keyword,
+            site_config=args.site,
+            genre_id=args.genre,
+            category=args.category,
+            title=args.title,
+            output_key=output_key,
+            variant_index=1,
+            variant_count=normalize_variant_count(args.variant_count) if is_nandemo_site(args.site) else 1,
+            reference_url=args.reference_url,
+        )
 
     # 結果サマリー
     print("\n" + "=" * 60)
     print("パイプライン結果サマリー")
     print("=" * 60)
-    for step_name, step_result in results.get("steps", {}).items():
-        status = step_result.get("status", "?")
-        elapsed = step_result.get("elapsed", "")
-        elapsed_str = f" ({elapsed}秒)" if elapsed else ""
-        print(f"  {step_name}: {status}{elapsed_str}")
+    if results.get("variants"):
+        for item in results["variants"]:
+            result = item["result"]
+            print(f"  variant {item['variant_index']} ({item['output_key']}): {result.get('final_status', '?')}")
+    else:
+        for step_name, step_result in results.get("steps", {}).items():
+            status = step_result.get("status", "?")
+            elapsed = step_result.get("elapsed", "")
+            elapsed_str = f" ({elapsed}秒)" if elapsed else ""
+            print(f"  {step_name}: {status}{elapsed_str}")
     print(f"\n  最終結果: {results.get('final_status', '?')}")
     print("=" * 60)
 

@@ -280,6 +280,298 @@ def extract_article(url):
     }
 
 
+def _normalize_for_match(text: str) -> str:
+    """ゆるい文字列マッチ用に空白記号を取り除いた小文字テキストに変換"""
+    if not text:
+        return ""
+    text = text.lower()
+    text = re.sub(r"[\s　]", "", text)
+    return text
+
+
+def _keyword_tokens(keyword: str) -> list[str]:
+    """キーワードを空白で分割しつつ全体も含めた検索トークンを返す"""
+    if not keyword:
+        return []
+    parts = [p for p in re.split(r"[\s　]+", keyword) if p]
+    tokens = parts.copy()
+    if len(parts) > 1:
+        tokens.append("".join(parts))
+    seen = set()
+    out = []
+    for t in tokens:
+        n = _normalize_for_match(t)
+        if n and n not in seen:
+            seen.add(n)
+            out.append(t)
+    return out
+
+
+def _heading_contains_any_token(heading: str, tokens: list[str]) -> bool:
+    n = _normalize_for_match(heading)
+    if not n:
+        return False
+    for t in tokens:
+        if _normalize_for_match(t) in n:
+            return True
+    return False
+
+
+def _percentile(values: list[float], q: float) -> float:
+    if not values:
+        return 0.0
+    s = sorted(values)
+    if len(s) == 1:
+        return float(s[0])
+    pos = (len(s) - 1) * q
+    lo = int(pos)
+    hi = min(lo + 1, len(s) - 1)
+    frac = pos - lo
+    return s[lo] + (s[hi] - s[lo]) * frac
+
+
+def build_top_article_profile(article: dict) -> dict:
+    """上位記事1本（articles[0]: スコア最上位、おおむねSERP上位）の構造プロファイルを返す。
+    Claude が「1位記事に揃える」判断をするための材料として渡す。"""
+    if not article:
+        return {}
+
+    intro_blocks = article.get("intro_blocks", []) or []
+    intro_features = sorted(set(intro_blocks))
+
+    tag_structure = article.get("tag_structure") or []
+    h2_list = [s for s in tag_structure if s.get("tag") == "h2"]
+    h3_list = [s for s in tag_structure if s.get("tag") == "h3"]
+
+    # H2 ごとに、配下の H3 数 / そのH2セクションの本文文字数 / ブロック型を集計
+    # 1位記事の「H2 単位の構造」を Claude に渡して、本記事もその構造に合わせさせる
+    h2_sections: list[dict] = []
+    h2_index_by_obj_id: dict[int, int] = {}
+    for s in tag_structure:
+        if s.get("tag") == "h2":
+            h2_sections.append({
+                "heading": s.get("heading", ""),
+                "content_length": int(s.get("content_length", 0) or 0),
+                "blocks": list(s.get("blocks", []) or []),
+                "h3_headings": [],
+                "h3_count": 0,
+                "h3_text_lengths": [],
+                "h3_table_counts": [],
+            })
+            h2_index_by_obj_id[id(s)] = len(h2_sections) - 1
+    # 直前の H2 に H3 を紐付ける（並びはスクレイプ順）
+    current_h2_idx = -1
+    for s in tag_structure:
+        if s.get("tag") == "h2":
+            current_h2_idx = h2_index_by_obj_id.get(id(s), -1)
+        elif s.get("tag") == "h3" and current_h2_idx >= 0:
+            sec = h2_sections[current_h2_idx]
+            blocks = s.get("blocks", []) or []
+            sec["h3_headings"].append(s.get("heading", ""))
+            sec["h3_count"] += 1
+            sec["h3_text_lengths"].append(int(s.get("content_length", 0) or 0))
+            sec["h3_table_counts"].append(
+                sum(1 for b in blocks if "テーブル" in (b or "") or "比較表" in (b or ""))
+            )
+
+    # H3 全体の構造特徴（既存の集計）
+    h3_table_counts: list[int] = []
+    h3_text_lengths: list[int] = []
+    h3_has_reviews = 0
+    h3_has_official_button = 0
+    h3_with_table = 0
+    h3_with_map = 0
+
+    for h3 in h3_list:
+        blocks = h3.get("blocks", []) or []
+        table_count = sum(1 for b in blocks if "テーブル" in (b or "") or "比較表" in (b or ""))
+        h3_table_counts.append(table_count)
+        if table_count > 0:
+            h3_with_table += 1
+        if any("口コミ" in (b or "") or "引用" in (b or "") or "吹き出し" in (b or "") for b in blocks):
+            h3_has_reviews += 1
+        if any("CTA" in (b or "") or "アフィリエイト" in (b or "") for b in blocks):
+            h3_has_official_button += 1
+        if any("マップ" in (b or "") or "iframe" in (b or "") for b in blocks):
+            h3_with_map += 1
+        h3_text_lengths.append(int(h3.get("content_length", 0) or 0))
+
+    # 記事内の機能ブロック総出現回数
+    feature_freq_in_article: dict[str, int] = {}
+    for b in intro_blocks:
+        feature_freq_in_article[b] = feature_freq_in_article.get(b, 0) + 1
+    for s in (article.get("tag_structure") or []):
+        for b in s.get("blocks", []) or []:
+            feature_freq_in_article[b] = feature_freq_in_article.get(b, 0) + 1
+
+    # H2 セクションの簡易ビュー（プロンプトで読みやすい形）
+    h2_section_view = []
+    for sec in h2_sections:
+        # ブロックの種類を集約（"テーブル: 2 / リスト: 1 / 段落: 多" のような形に）
+        block_summary: dict[str, int] = {}
+        for b in sec["blocks"]:
+            key = (b or "").strip() or "その他"
+            block_summary[key] = block_summary.get(key, 0) + 1
+        h2_section_view.append({
+            "heading": sec["heading"],
+            "content_length": sec["content_length"],
+            "h3_count": sec["h3_count"],
+            "h3_headings_sample": sec["h3_headings"][:3],
+            "h3_text_length_avg": (sum(sec["h3_text_lengths"]) // len(sec["h3_text_lengths"])) if sec["h3_text_lengths"] else 0,
+            "block_summary": block_summary,
+        })
+
+    return {
+        "url": article.get("url", ""),
+        "title_tag": article.get("title_tag", ""),
+        "label": "上位記事（検索/フィルタ最上位 = 概ね SERP 1位)",
+        "total_chars": article.get("total_chars", 0),
+        "h2_count": len(h2_list),
+        "h3_count": len(h3_list),
+        "h2_headings": [h.get("heading", "") for h in h2_list],
+        "h2_sections": h2_section_view,  # H2 単位の構造データ（H3数・本文長・ブロック種別）
+        "intro_features": intro_features,
+        "intro_has_index_box": any("一覧" in (b or "") or "ボックス" in (b or "") for b in intro_blocks),
+        "intro_has_table": any("テーブル" in (b or "") or "比較表" in (b or "") for b in intro_blocks),
+        "intro_has_toc": any("目次" in (b or "") for b in intro_blocks),
+        "h3_table_count_avg": round(sum(h3_table_counts) / len(h3_table_counts), 2) if h3_table_counts else 0,
+        "h3_table_count_max": max(h3_table_counts) if h3_table_counts else 0,
+        "h3_with_table_pct": round(h3_with_table / len(h3_list) * 100, 1) if h3_list else 0,
+        "h3_text_length_avg": round(sum(h3_text_lengths) / len(h3_text_lengths), 0) if h3_text_lengths else 0,
+        "h3_text_length_median": round(_percentile(h3_text_lengths, 0.5), 0) if h3_text_lengths else 0,
+        "h3_with_reviews_pct": round(h3_has_reviews / len(h3_list) * 100, 1) if h3_list else 0,
+        "h3_with_official_button_pct": round(h3_has_official_button / len(h3_list) * 100, 1) if h3_list else 0,
+        "h3_with_map_pct": round(h3_with_map / len(h3_list) * 100, 1) if h3_list else 0,
+        "feature_freq": dict(sorted(feature_freq_in_article.items(), key=lambda x: -x[1])),
+    }
+
+
+def build_competitor_summary(keyword: str, articles: list[dict]) -> dict:
+    """全競合記事を横断集計して、tag_structure 設計に渡す統計データを作る"""
+    n = len(articles)
+    tokens = _keyword_tokens(keyword)
+
+    char_values: list[int] = []
+    h2_count_values: list[int] = []
+    h3_count_values: list[int] = []
+
+    in_title = 0
+    in_meta = 0
+    in_h2_any = 0  # キーワードがH2のいずれかに含まれる記事数
+    in_h3_any = 0
+    in_intro = 0
+    h2_kw_ratio_per_article: list[float] = []
+    h3_kw_ratio_per_article: list[float] = []
+
+    feature_freq: dict[str, int] = {}        # 機能ブロックが「N記事のうち何件に登場したか」
+    h2_phrase_counter: dict[str, int] = {}   # H2見出しの正規化テキスト → 記事数
+
+    for a in articles:
+        char_values.append(a.get("total_chars") or 0)
+        if _heading_contains_any_token(a.get("title_tag", ""), tokens):
+            in_title += 1
+        if _heading_contains_any_token(a.get("meta_description", ""), tokens):
+            in_meta += 1
+        if _heading_contains_any_token(a.get("intro_text", ""), tokens):
+            in_intro += 1
+
+        # 記事内の機能ブロック頻度（記事単位で1回カウント、重複を抑える）
+        seen_features = set()
+        for b in a.get("intro_blocks", []) or []:
+            seen_features.add(b)
+        h2_list = [s for s in a.get("tag_structure", []) if s.get("tag") == "h2"]
+        h3_list = [s for s in a.get("tag_structure", []) if s.get("tag") == "h3"]
+        h2_count_values.append(len(h2_list))
+        h3_count_values.append(len(h3_list))
+
+        for s in a.get("tag_structure", []) or []:
+            for b in s.get("blocks", []) or []:
+                seen_features.add(b)
+        for ft in seen_features:
+            feature_freq[ft] = feature_freq.get(ft, 0) + 1
+
+        # H2/H3 のキーワード含有
+        h2_hits = sum(1 for h in h2_list if _heading_contains_any_token(h.get("heading", ""), tokens))
+        h3_hits = sum(1 for h in h3_list if _heading_contains_any_token(h.get("heading", ""), tokens))
+        if h2_list:
+            h2_kw_ratio_per_article.append(h2_hits / len(h2_list))
+        if h3_list:
+            h3_kw_ratio_per_article.append(h3_hits / len(h3_list))
+        if h2_hits > 0:
+            in_h2_any += 1
+        if h3_hits > 0:
+            in_h3_any += 1
+
+        # 共通H2フレーズ集計（文字単位ではなく見出しテキストの正規化）
+        for h in h2_list:
+            key = _normalize_for_match(h.get("heading", ""))
+            if not key:
+                continue
+            h2_phrase_counter[key] = h2_phrase_counter.get(key, 0) + 1
+
+    def _stats(values: list[float]) -> dict:
+        if not values:
+            return {"avg": 0, "median": 0, "min": 0, "max": 0, "p25": 0, "p75": 0}
+        return {
+            "avg": round(sum(values) / len(values), 1),
+            "median": round(_percentile(values, 0.5), 1),
+            "min": round(min(values), 1),
+            "max": round(max(values), 1),
+            "p25": round(_percentile(values, 0.25), 1),
+            "p75": round(_percentile(values, 0.75), 1),
+        }
+
+    # SEO的に意味の薄い汎用ブロックは除外（必ずある or ノイズになりやすい）
+    GENERIC_BLOCKS = {"テキスト", "テキストブロック", "リスト", "リスト型ブロック", "画像"}
+
+    # 必須機能（70%以上の競合に登場）— 構造的SEOシグナルになる機能だけを残す
+    must_include = sorted(
+        [
+            ft for ft, c in feature_freq.items()
+            if n > 0 and c / n >= 0.7 and ft not in GENERIC_BLOCKS
+        ],
+        key=lambda x: -feature_freq[x],
+    )
+    # 多くの競合に出ている機能（50%以上）
+    common_features = sorted(
+        [
+            ft for ft, c in feature_freq.items()
+            if n > 0 and c / n >= 0.5 and ft not in GENERIC_BLOCKS
+        ],
+        key=lambda x: -feature_freq[x],
+    )
+
+    # 共通H2フレーズの上位（複数記事に出現するもの）
+    common_h2_topics = [
+        {"phrase": phrase, "count": count}
+        for phrase, count in sorted(h2_phrase_counter.items(), key=lambda x: -x[1])
+        if count >= 2
+    ][:15]
+
+    return {
+        "competitor_count": n,
+        "keyword": keyword,
+        "char_stats": _stats(char_values),
+        "h2_count_stats": _stats(h2_count_values),
+        "h3_count_stats": _stats(h3_count_values),
+        "keyword_coverage": {
+            "in_title": in_title,
+            "in_meta": in_meta,
+            "in_intro": in_intro,
+            "articles_with_keyword_in_h2": in_h2_any,
+            "articles_with_keyword_in_h3": in_h3_any,
+            "h2_keyword_ratio_avg": round(sum(h2_kw_ratio_per_article)/len(h2_kw_ratio_per_article), 2) if h2_kw_ratio_per_article else 0.0,
+            "h3_keyword_ratio_avg": round(sum(h3_kw_ratio_per_article)/len(h3_kw_ratio_per_article), 2) if h3_kw_ratio_per_article else 0.0,
+        },
+        "feature_freq": dict(sorted(feature_freq.items(), key=lambda x: -x[1])),
+        "must_include_features": must_include,  # 70%以上の競合に出現
+        "common_features": common_features,      # 50%以上
+        "common_h2_topics": common_h2_topics,
+        # 1位記事（スコア最上位）の構造プロファイル
+        "top_article_profile": build_top_article_profile(articles[0]) if articles else {},
+    }
+
+
 def save_results(keyword, articles):
     """結果をファイルに保存"""
     output_dir = ensure_keyword_scraped_dir(keyword)
@@ -342,6 +634,7 @@ def save_results(keyword, articles):
     summary_file = os.path.join(output_dir, "summary.json")
     summary = {
         "keyword": keyword,
+        "competitor_summary": build_competitor_summary(keyword, articles),
         "articles": [
             {
                 "url": a["url"],

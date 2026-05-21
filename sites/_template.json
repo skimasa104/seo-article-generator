@@ -3,5 +3,7 @@
   "username": "your-username",
   "app_password": "xxxx xxxx xxxx xxxx xxxx xxxx",
   "rest_api_base": "https://your-site.com/wp-json/wp/v2",
+  "xmlrpc_url": "https://your-site.com/xmlrpc.php",
+  "wordpress_timeout_seconds": 600,
   "skip_wordpress": false
 }

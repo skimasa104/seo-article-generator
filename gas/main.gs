@@ -9,10 +9,11 @@
  *   B列: ジャンル（例: aga, ed, hair_removal, phimosis, diet）
  *   C列: サイト設定ファイル（例: sites/aurora_clinic.json）
  *   D列: カテゴリ（例: AGA）
- *   E列: ステータス（自動更新: 未実行 / 実行中 / 完了 / エラー）
+ *   E列: ステータス（自動更新: 未実行 / 待機中 / 実行中 / 完了 / エラー）
  *   F列: ジョブID（自動記入）
  *   G列: 実行日時（自動記入）
  *   H列: 備考（自動記入: エラー内容等）
+ *   I列: 生成数（なんでも選択時のみ使用: 1〜5）
  *
  * ■ 使い方:
  *   1. スプレッドシートにこのスクリプトを紐づける
@@ -45,17 +46,27 @@ const HEADER_VALUES = [[
   "ステータス",
   "ジョブID",
   "実行日時",
-  "備考"
+  "備考",
+  "生成数",
+  "参考URL"
 ]];
 
-const GENRE_OPTIONS = ["aga", "ed", "hair_removal", "phimosis", "diet"];
-const SITE_OPTIONS = [
-  "sites/aurora_clinic.json",
-  "sites/ashitano_clinic.json",
-  "sites/mame_clinic.json",
-  "sites/utu_yobo.json"
+const GENRE_OPTIONS = [
+  "AGA",
+  "ED",
+  "医療脱毛",
+  "包茎",
+  "ダイエット"
 ];
-const STATUS_OPTIONS = ["未実行", "実行中", "完了", "エラー"];
+const SITE_OPTIONS = [
+  "オーロラクリニック",
+  "明日のクリニック",
+  "まめクリニック",
+  "うつ予防",
+  "なんでも"
+];
+const STATUS_OPTIONS = ["未実行", "待機中", "実行中", "完了", "エラー"];
+const VARIANT_COUNT_OPTIONS = ["1", "2", "3", "4", "5"];
 const SETUP_ROW_COUNT = 1000;
 const GENRE_LABEL_MAP = {
   "AGA": "aga",
@@ -72,15 +83,41 @@ const GENRE_LABEL_MAP = {
   "医療ダイエット": "diet",
   "diet": "diet"
 };
+const GENRE_DISPLAY_MAP = {
+  "aga": "AGA",
+  "ed": "ED",
+  "hair_removal": "医療脱毛",
+  "phimosis": "包茎",
+  "diet": "ダイエット"
+};
 const SITE_LABEL_MAP = {
   "オーロラクリニック": "sites/aurora_clinic.json",
   "aurora_clinic": "sites/aurora_clinic.json",
+  "sites/aurora_clinic.json": "sites/aurora_clinic.json",
+  "aurora-clinic.jp": "sites/aurora_clinic.json",
   "明日のクリニック": "sites/ashitano_clinic.json",
   "ashitano_clinic": "sites/ashitano_clinic.json",
+  "sites/ashitano_clinic.json": "sites/ashitano_clinic.json",
+  "ashitano.clinic": "sites/ashitano_clinic.json",
   "まめクリニック": "sites/mame_clinic.json",
   "mame_clinic": "sites/mame_clinic.json",
+  "sites/mame_clinic.json": "sites/mame_clinic.json",
+  "mame-clinic.net": "sites/mame_clinic.json",
   "うつ予防": "sites/utu_yobo.json",
-  "utu_yobo": "sites/utu_yobo.json"
+  "utu_yobo": "sites/utu_yobo.json",
+  "sites/utu_yobo.json": "sites/utu_yobo.json",
+  "utu-yobo.com": "sites/utu_yobo.json",
+  "なんでも": "sites/nandemo.json",
+  "nandemo": "sites/nandemo.json",
+  "sites/nandemo.json": "sites/nandemo.json",
+  "nandemo.trigger-tech.info": "sites/nandemo.json"
+};
+const SITE_DISPLAY_MAP = {
+  "sites/aurora_clinic.json": "オーロラクリニック",
+  "sites/ashitano_clinic.json": "明日のクリニック",
+  "sites/mame_clinic.json": "まめクリニック",
+  "sites/utu_yobo.json": "うつ予防",
+  "sites/nandemo.json": "なんでも"
 };
 
 
@@ -94,6 +131,8 @@ function onOpen() {
     .addItem("シート初期化", "setupSheet")
     .addItem("選択行を実行", "runSelectedRow")
     .addItem("未実行を一括実行", "runAllPending")
+    .addItem("選択行を未実行に戻す", "resetSelectedRowsToPending")
+    .addItem("選択行のステータス再判定", "reconcileSelectedRows")
     .addSeparator()
     .addItem("ステータス更新", "updateAllStatuses")
     .addItem("ステータストリガー設定", "installStatusTrigger")
@@ -109,11 +148,32 @@ function setupSheet() {
 }
 
 
+function onEdit(e) {
+  if (!e || !e.range) {
+    return;
+  }
+
+  var range = e.range;
+  var sheet = range.getSheet();
+  var row = range.getRow();
+  var col = range.getColumn();
+
+  if (row <= 1) {
+    return;
+  }
+
+  if ((col >= 1 && col <= 4) || col === 9 || col === 10) {
+    invalidateRowIfCoreFieldsChanged(sheet, row);
+  }
+}
+
+
 function ensureSheetSetup() {
   var sheet = SpreadsheetApp.getActiveSheet();
   ensureHeaderRow(sheet);
   ensureColumnStyles(sheet);
   ensureDropdowns(sheet);
+  normalizeExistingSelections(sheet);
 }
 
 
@@ -139,6 +199,8 @@ function ensureColumnStyles(sheet) {
   sheet.setColumnWidth(6, 120);
   sheet.setColumnWidth(7, 150);
   sheet.setColumnWidth(8, 320);
+  sheet.setColumnWidth(9, 100);
+  sheet.setColumnWidth(10, 280);
 
   sheet.getRange(2, 7, Math.max(sheet.getMaxRows() - 1, 1), 1).setNumberFormat("yyyy-mm-dd hh:mm:ss");
 }
@@ -162,21 +224,44 @@ function ensureDropdowns(sheet) {
   var statusRule = SpreadsheetApp.newDataValidation()
     .requireValueInList(STATUS_OPTIONS, true)
     .setAllowInvalid(false)
-    .setHelpText("未実行・実行中・完了・エラーから選択してください")
+    .setHelpText("未実行・待機中・実行中・完了・エラーから選択してください")
+    .build();
+
+  var variantCountRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(VARIANT_COUNT_OPTIONS, true)
+    .setAllowInvalid(false)
+    .setHelpText("なんでも向けの生成数を1〜5で指定してください")
     .build();
 
   sheet.getRange(2, 2, rowCount, 1).setDataValidation(genreRule);
   sheet.getRange(2, 3, rowCount, 1).setDataValidation(siteRule);
   sheet.getRange(2, 5, rowCount, 1).setDataValidation(statusRule);
+  sheet.getRange(2, 9, rowCount, 1).setDataValidation(variantCountRule);
 
   var notesRange = sheet.getRange(2, 3, rowCount, 1);
   notesRange.setNote(
-    "サイト設定ファイルを選択してください。\n" +
+    "投稿サイトを選択してください。\n" +
+    "サイト名でも設定ファイル名でも選べます。\n" +
     "例:\n" +
-    "sites/aurora_clinic.json\n" +
-    "sites/ashitano_clinic.json\n" +
-    "sites/mame_clinic.json（投稿は自動スキップ）\n" +
-    "sites/utu_yobo.json"
+    "オーロラクリニック / sites/aurora_clinic.json\n" +
+    "明日のクリニック / sites/ashitano_clinic.json\n" +
+    "まめクリニック / sites/mame_clinic.json（投稿は自動スキップ）\n" +
+    "うつ予防 / sites/utu_yobo.json\n" +
+    "なんでも / sites/nandemo.json"
+  );
+
+  sheet.getRange(2, 9, rowCount, 1).setNote(
+    "生成数を指定してください。\n" +
+    "通常サイトは 1 のままでOKです。\n" +
+    "なんでも を選んだ場合のみ、1〜5本の別編集版を生成できます。"
+  );
+
+  sheet.getRange(2, 10, rowCount, 1).setNote(
+    "（任意）構造を参照したい競合記事のURLを貼り付けます。\n" +
+    "指定するとそのURLが Step 0 検索結果の先頭に強制配置され、\n" +
+    "Step 2 のタグ構成設計では「1位記事」として構造（H2/H3 階層・文字数・ブロック型）を踏襲します。\n" +
+    "本文は完全に独自表現で書き起こされます（コピーや言い換えはしません）。\n" +
+    "空欄の場合は Google検索1位を自動で参照します。"
   );
 }
 
@@ -211,7 +296,7 @@ function runAllPending() {
 
   for (var row = 2; row <= lastRow; row++) {
     var status = sheet.getRange(row, 5).getValue();
-    if (status === "未実行" || status === "") {
+    if (status === "未実行") {
       runRow(sheet, row);
       count++;
       // API負荷を分散するため少し待つ
@@ -228,13 +313,84 @@ function runAllPending() {
 
 
 /**
+ * 選択中の行を未実行に戻す
+ * ステータス・ジョブID・実行日時・備考をクリアする
+ */
+function resetSelectedRowsToPending() {
+  var sheet = SpreadsheetApp.getActiveSheet();
+  var range = sheet.getActiveRange();
+
+  if (!range) {
+    SpreadsheetApp.getUi().alert("リセットする行を選択してください。");
+    return;
+  }
+
+  var startRow = range.getRow();
+  var numRows = range.getNumRows();
+  var resetCount = 0;
+
+  for (var offset = 0; offset < numRows; offset++) {
+    var row = startRow + offset;
+    if (row <= 1) {
+      continue;
+    }
+    resetRowState(sheet, row);
+    resetCount++;
+  }
+
+  if (resetCount === 0) {
+    SpreadsheetApp.getUi().alert("2行目以降を選択してください。");
+    return;
+  }
+
+  SpreadsheetApp.getUi().alert(resetCount + "行を未実行に戻しました。");
+}
+
+
+function reconcileSelectedRows() {
+  var sheet = SpreadsheetApp.getActiveSheet();
+  var range = sheet.getActiveRange();
+
+  if (!range) {
+    SpreadsheetApp.getUi().alert("再判定する行を選択してください。");
+    return;
+  }
+
+  var startRow = range.getRow();
+  var numRows = range.getNumRows();
+  var checkedCount = 0;
+
+  for (var offset = 0; offset < numRows; offset++) {
+    var row = startRow + offset;
+    if (row <= 1) {
+      continue;
+    }
+    reconcileRowStatus(sheet, row);
+    checkedCount++;
+  }
+
+  if (checkedCount === 0) {
+    SpreadsheetApp.getUi().alert("2行目以降を選択してください。");
+    return;
+  }
+
+  SpreadsheetApp.getUi().alert(checkedCount + "行のステータスを再判定しました。");
+}
+
+
+/**
  * 指定行のパイプラインを実行
  */
 function runRow(sheet, row) {
   var keyword = sheet.getRange(row, 1).getValue().toString().trim();
-  var genre = normalizeGenreValue(sheet.getRange(row, 2).getValue().toString().trim());
-  var site = normalizeSiteValue(sheet.getRange(row, 3).getValue().toString().trim());
+  var genreRaw = sheet.getRange(row, 2).getValue().toString().trim();
+  var siteRaw = sheet.getRange(row, 3).getValue().toString().trim();
+  var genre = normalizeGenreValue(genreRaw);
+  var site = normalizeSiteValue(siteRaw);
   var category = sheet.getRange(row, 4).getValue().toString().trim();
+  var variantCountRaw = sheet.getRange(row, 9).getValue().toString().trim();
+  var variantCount = parseInt(variantCountRaw || "1", 10);
+  var referenceUrl = sheet.getRange(row, 10).getValue().toString().trim();
 
   if (!keyword) {
     sheet.getRange(row, 5).setValue("エラー");
@@ -248,14 +404,25 @@ function runRow(sheet, row) {
     return;
   }
 
-  sheet.getRange(row, 2).setValue(genre);
+  sheet.getRange(row, 2).setValue(toGenreDisplayValue(genreRaw || genre));
 
   // デフォルトサイト設定
   if (!site) {
     site = "sites/aurora_clinic.json";
   }
 
-  sheet.getRange(row, 3).setValue(site);
+  sheet.getRange(row, 3).setValue(toSiteDisplayValue(siteRaw || site));
+
+  if (!variantCount || variantCount < 1) {
+    variantCount = 1;
+  }
+  if (site !== "sites/nandemo.json") {
+    variantCount = 1;
+  }
+  if (variantCount > 5) {
+    variantCount = 5;
+  }
+  sheet.getRange(row, 9).setValue(String(variantCount));
 
   // リクエスト送信
   var payload = {
@@ -263,6 +430,8 @@ function runRow(sheet, row) {
     genre: genre,
     site: site,
     category: category,
+    variant_count: variantCount,
+    reference_url: referenceUrl,
   };
 
   try {
@@ -275,7 +444,11 @@ function runRow(sheet, row) {
     }
 
     // 成功: ジョブ情報を記入
-    sheet.getRange(row, 5).setValue("実行中");
+    if (response.phase === "queued") {
+      sheet.getRange(row, 5).setValue("待機中");
+    } else {
+      sheet.getRange(row, 5).setValue("実行中");
+    }
     sheet.getRange(row, 6).setValue(response.job_id);
     sheet.getRange(row, 7).setValue(new Date());
     sheet.getRange(row, 8).setValue(response.message || "");
@@ -287,12 +460,37 @@ function runRow(sheet, row) {
 }
 
 
+function resetRowState(sheet, row) {
+  sheet.getRange(row, 5).setValue("未実行");
+  sheet.getRange(row, 6).clearContent();
+  sheet.getRange(row, 7).clearContent();
+  sheet.getRange(row, 8).clearContent();
+}
+
+
+function invalidateRowIfCoreFieldsChanged(sheet, row) {
+  var currentStatus = sheet.getRange(row, 5).getValue().toString().trim();
+  var currentJobId = sheet.getRange(row, 6).getValue().toString().trim();
+  var currentNote = sheet.getRange(row, 8).getValue().toString().trim();
+
+  if (!currentStatus && !currentJobId && !currentNote) {
+    return;
+  }
+
+  if (currentStatus === "未実行" && !currentJobId) {
+    return;
+  }
+
+  resetRowState(sheet, row);
+}
+
+
 // ========================================
 // ステータス確認
 // ========================================
 
 /**
- * 「実行中」の全行のステータスを更新
+ * 「待機中」「実行中」の全行のステータスを更新
  */
 function updateAllStatuses() {
   var sheet = SpreadsheetApp.getActiveSheet();
@@ -301,7 +499,7 @@ function updateAllStatuses() {
 
   for (var row = 2; row <= lastRow; row++) {
     var status = sheet.getRange(row, 5).getValue();
-    if (status === "実行中") {
+    if (status === "実行中" || status === "待機中") {
       var jobId = sheet.getRange(row, 6).getValue().toString().trim();
       if (jobId) {
         updateRowStatus(sheet, row, jobId);
@@ -324,16 +522,28 @@ function updateRowStatus(sheet, row, jobId) {
     var response = getRequest("/status?job_id=" + jobId);
 
     if (response.error) {
-      sheet.getRange(row, 8).setValue("確認エラー: " + response.error);
+      reconcileRowStatus(sheet, row);
       return;
     }
 
     var jobStatus = response.status;
 
     if (jobStatus === "running") {
-      // まだ実行中
+      var phase = response.phase || "";
+      var queuePosition = response.queue_position || 0;
       var startedAt = response.started_at ? "\n開始: " + response.started_at : "";
-      sheet.getRange(row, 8).setValue("実行中: " + (response.keyword || "") + startedAt);
+
+      if (phase === "queued") {
+        sheet.getRange(row, 5).setValue("待機中");
+        sheet.getRange(row, 8).setValue(
+          "待機中: " + (response.keyword || "") +
+          (queuePosition > 0 ? "\nキュー: " + queuePosition + "番目" : "") +
+          startedAt
+        );
+      } else {
+        sheet.getRange(row, 5).setValue("実行中");
+        sheet.getRange(row, 8).setValue("実行中: " + (response.keyword || "") + startedAt);
+      }
       return;
     }
 
@@ -350,8 +560,96 @@ function updateRowStatus(sheet, row, jobId) {
     }
 
   } catch (e) {
+    reconcileRowStatus(sheet, row);
+  }
+}
+
+
+function reconcileRowStatus(sheet, row) {
+  var keyword = sheet.getRange(row, 1).getValue().toString().trim();
+  var jobId = sheet.getRange(row, 6).getValue().toString().trim();
+
+  if (!keyword && !jobId) {
+    resetRowState(sheet, row);
+    return;
+  }
+
+  try {
+    var path = "/reconcile?keyword=" + encodeURIComponent(keyword);
+    if (jobId) {
+      path += "&job_id=" + encodeURIComponent(jobId);
+    }
+    var response = getRequest(path);
+
+    if (response.error) {
+      sheet.getRange(row, 5).setValue("エラー");
+      sheet.getRange(row, 8).setValue("再判定エラー: " + response.error);
+      return;
+    }
+
+    applyReconciledStatus(sheet, row, response);
+  } catch (e) {
     sheet.getRange(row, 5).setValue("エラー");
-    sheet.getRange(row, 8).setValue("確認エラー: " + e.message);
+    sheet.getRange(row, 8).setValue("再判定エラー: " + e.message);
+  }
+}
+
+
+function applyReconciledStatus(sheet, row, response) {
+  var status = response.status || "";
+  var phase = response.phase || "";
+  var message = response.message || "";
+  var queuePosition = response.queue_position || 0;
+  var startedAt = response.started_at;
+  var finishedAt = response.finished_at;
+
+  if (response.id) {
+    sheet.getRange(row, 6).setValue(response.id);
+  }
+
+  if (status === "running") {
+    if (phase === "queued") {
+      sheet.getRange(row, 5).setValue("待機中");
+      sheet.getRange(row, 8).setValue(
+        "待機中: " + (response.keyword || "") +
+        (queuePosition > 0 ? "\nキュー: " + queuePosition + "番目" : "") +
+        (startedAt ? "\n開始: " + startedAt : "")
+      );
+    } else {
+      sheet.getRange(row, 5).setValue("実行中");
+      sheet.getRange(row, 8).setValue(
+        "実行中: " + (response.keyword || "") +
+        (startedAt ? "\n開始: " + startedAt : "")
+      );
+    }
+    if (startedAt) {
+      sheet.getRange(row, 7).setValue(new Date(startedAt));
+    }
+    return;
+  }
+
+  if (status === "success") {
+    sheet.getRange(row, 5).setValue("完了");
+    sheet.getRange(row, 8).setValue("正常完了");
+    if (finishedAt) {
+      sheet.getRange(row, 7).setValue(new Date(finishedAt));
+    }
+    return;
+  }
+
+  if (status === "not_found") {
+    resetRowState(sheet, row);
+    return;
+  }
+
+  sheet.getRange(row, 5).setValue("エラー");
+  if (finishedAt) {
+    sheet.getRange(row, 7).setValue(new Date(finishedAt));
+  }
+  if (response.result) {
+    sheet.getRange(row, 8).setValue(buildErrorMessage(response));
+  } else {
+    sheet.getRange(row, 8).setValue(message || "エラー");
   }
 }
 
@@ -520,4 +818,46 @@ function normalizeGenreValue(genre) {
     return "";
   }
   return GENRE_LABEL_MAP[genre] || genre;
+}
+
+
+function toGenreDisplayValue(value) {
+  var normalized = normalizeGenreValue(value);
+  return GENRE_DISPLAY_MAP[normalized] || value;
+}
+
+
+function toSiteDisplayValue(value) {
+  var normalized = normalizeSiteValue(value);
+  return SITE_DISPLAY_MAP[normalized] || value;
+}
+
+
+function normalizeExistingSelections(sheet) {
+  var lastRow = Math.max(sheet.getLastRow(), 2);
+  if (lastRow < 2) {
+    return;
+  }
+
+  var genreRange = sheet.getRange(2, 2, lastRow - 1, 1);
+  var genreValues = genreRange.getValues();
+  for (var i = 0; i < genreValues.length; i++) {
+    var currentGenre = genreValues[i][0].toString().trim();
+    if (!currentGenre) {
+      continue;
+    }
+    genreValues[i][0] = toGenreDisplayValue(currentGenre);
+  }
+  genreRange.setValues(genreValues);
+
+  var siteRange = sheet.getRange(2, 3, lastRow - 1, 1);
+  var siteValues = siteRange.getValues();
+  for (var j = 0; j < siteValues.length; j++) {
+    var currentSite = siteValues[j][0].toString().trim();
+    if (!currentSite) {
+      continue;
+    }
+    siteValues[j][0] = toSiteDisplayValue(currentSite);
+  }
+  siteRange.setValues(siteValues);
 }

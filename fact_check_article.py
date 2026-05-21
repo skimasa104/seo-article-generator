@@ -14,6 +14,7 @@ import requests
 from bs4 import BeautifulSoup
 
 from article_audit import extract_clinic_names, validate_article_html
+from sanitize_article import normalize_table_classes
 from env_utils import load_project_env
 from generate_article import call_claude, load_api_key
 from official_site_utils import find_official_url, normalize_clinic_lookup_name
@@ -291,20 +292,26 @@ def fact_check_html(html_path: str) -> dict:
     source_map = {source["name"]: source for source in sources}
     usage_totals: dict[str, int] = {}
     corrected_targets: list[str] = []
+    section_errors: list[str] = []
 
     for section in sections:
         source = source_map.get(section["name"])
         if source is None:
             continue
-        prompt = build_section_factcheck_prompt(section_to_html(section), source)
-        corrected_section, _, usage = call_claude(SYSTEM_PROMPT, prompt, api_key, max_tokens=4096)
-        normalized_section = normalize_section_fragment(corrected_section, section["name"])
-        replace_section(section, normalized_section)
-        corrected_targets.append(section["name"])
-        for key, value in usage.items():
-            if isinstance(value, int):
-                usage_totals[key] = usage_totals.get(key, 0) + value
+        try:
+            prompt = build_section_factcheck_prompt(section_to_html(section), source)
+            corrected_section, _, usage = call_claude(SYSTEM_PROMPT, prompt, api_key, max_tokens=4096)
+            normalized_section = normalize_section_fragment(corrected_section, section["name"])
+            replace_section(section, normalized_section)
+            corrected_targets.append(section["name"])
+            for key, value in usage.items():
+                if isinstance(value, int):
+                    usage_totals[key] = usage_totals.get(key, 0) + value
+        except Exception as e:
+            section_errors.append(f"{section['name']}: {e}")
+            continue
 
+    normalize_table_classes(soup)
     corrected_html = serialize_html_fragment(soup)
 
     keyword_slug = os.path.splitext(os.path.basename(html_path))[0].replace("_記事", "")
@@ -315,6 +322,7 @@ def fact_check_html(html_path: str) -> dict:
             "reason": "ファクトチェック後のHTMLが構造検証に失敗しました",
             "issues": issues,
             "fetch_errors": fetch_errors,
+            "section_errors": section_errors,
         }
 
     with open(html_path, "w", encoding="utf-8") as f:
@@ -329,6 +337,7 @@ def fact_check_html(html_path: str) -> dict:
         "corrected_targets": corrected_targets,
         "unresolved_targets": unresolved_targets,
         "fetch_errors": fetch_errors,
+        "section_errors": section_errors,
         "usage": usage_totals,
     }
     report_path = os.path.join(

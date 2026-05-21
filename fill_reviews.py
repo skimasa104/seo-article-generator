@@ -8,26 +8,37 @@ import argparse
 import os
 import re
 import sys
+from pathlib import Path
 
 from bs4 import BeautifulSoup
+from fill_list_box import iter_candidate_clinic_h3_tags
 
 REVIEW_PLACEHOLDER_PATTERN = re.compile(r"\{\{後で作成:口コミ\s*[—\-]\s*(.+?)\s*\}\}")
 
 
 def normalize_name(text: str) -> str:
-    text = text or ""
-    aliases = {
-        "イースト駅前クリニック": "イースト駅前クリニック新宿東口院・新宿西口院",
-        "AGAヘアクリニック": "AHCメディカルサロン新宿（AGAヘアクリニック新宿）",
-        "AGAスキンクリニック": "AGAスキンクリニック新宿駅前院",
-        "Dクリニック": "Dクリニック新宿",
-        "ゴリラクリニック": "ゴリラクリニック新宿本院",
-        "湘南AGAクリニック": "湘南AGAクリニック新宿本院",
-        "AGAメディカルケアクリニック": "AGAメディカルケアクリニック新宿院",
-        "ウィルAGAクリニック": "ウィルAGAクリニック新宿院",
-        "スマイルAGAクリニック": "スマイルAGAクリニック新宿院",
-    }
-    return aliases.get(text.strip(), text.strip())
+    text = re.split(r"\s*[|｜]\s*", text or "", maxsplit=1)[0]
+    text = re.sub(r"[（(].*?[）)]", "", text).strip()
+    text = re.sub(r"\s+", "", text)
+    return text.strip()
+
+
+def find_best_review_key(clinic_name: str, review_map: dict[str, list[str]]) -> str:
+    normalized = normalize_name(clinic_name)
+    if not normalized:
+        return ""
+    if normalized in review_map:
+        return normalized
+
+    candidates = []
+    for key in review_map:
+        if not key:
+            continue
+        if key in normalized or normalized in key:
+            candidates.append(key)
+    if not candidates:
+        return ""
+    return max(candidates, key=len)
 
 
 def extract_reviews_from_structure(structure_text: str) -> dict[str, list[str]]:
@@ -55,10 +66,37 @@ def extract_reviews_from_structure(structure_text: str) -> dict[str, list[str]]:
                     current_name = None
             continue
 
+        if line.startswith("> スクロールできます→"):
+            inline_reviews = line.replace("> スクロールできます→", "", 1).strip()
+            segments = re.findall(r"([^\s。]{1,20}?院)(?!内)(.*?)(?=[^\s。]{1,20}?院(?!内)|$)", inline_reviews)
+            for _location, body in segments:
+                review_text = re.sub(r"\s+", " ", body).strip(" 。")
+                if not review_text:
+                    continue
+                if review_text not in reviews[current_name]:
+                    reviews[current_name].append(review_text)
+                if len(reviews[current_name]) >= 2:
+                    current_name = None
+                    break
+            continue
+
         if line.startswith("### [H3]") or line.startswith("### [H2]"):
             current_name = None
 
     return reviews
+
+
+def extract_reviews_from_scraped_dir(scraped_dir: str) -> dict[str, list[str]]:
+    review_map: dict[str, list[str]] = {}
+    for path in sorted(Path(scraped_dir).glob("article_*_structure.md")):
+        structure_text = path.read_text(encoding="utf-8")
+        extracted = extract_reviews_from_structure(structure_text)
+        for name, review_texts in extracted.items():
+            bucket = review_map.setdefault(name, [])
+            for review_text in review_texts:
+                if review_text not in bucket:
+                    bucket.append(review_text)
+    return review_map
 
 
 def build_review_html(clinic_name: str, review_texts: list[str]) -> str:
@@ -68,8 +106,8 @@ def build_review_html(clinic_name: str, review_texts: list[str]) -> str:
         blocks.append(
             '<div class="review-bubble">'
             '<div class="review-avatar"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#999" width="22" height="22"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg></div>'
-            '<div class="review-body"><div class="review-meta"><span class="review-stars">Google口コミ</span>'
-            f"<span>口コミ{idx}</span></div>{safe_text}</div></div>"
+            '<div class="review-body"><div class="review-meta"><span class="review-stars">★★★★★</span>'
+            f"<span>Google口コミ {idx}</span></div>{safe_text}</div></div>"
         )
     if not blocks:
         return ""
@@ -82,7 +120,7 @@ def html_needs_reviews(html: str) -> bool:
 
 
 def iter_clinic_sections(soup: BeautifulSoup):
-    for h3 in soup.find_all("h3"):
+    for h3 in iter_candidate_clinic_h3_tags(soup):
         name = h3.get_text(" ", strip=True)
         if not name:
             continue
@@ -155,13 +193,11 @@ def insert_review_into_section(soup: BeautifulSoup, nodes, review_html: str) -> 
 
 
 def fill_reviews(html_path: str, scraped_dir: str) -> dict[str, int]:
-    structure_path = os.path.join(scraped_dir, "article_1_structure.md")
-    if not os.path.exists(structure_path):
-        raise FileNotFoundError(f"口コミ抽出元が見つかりません: {structure_path}")
-
-    with open(structure_path, encoding="utf-8") as f:
-        structure_text = f.read()
-    review_map = extract_reviews_from_structure(structure_text)
+    if not os.path.isdir(scraped_dir):
+        raise FileNotFoundError(f"口コミ抽出元ディレクトリが見つかりません: {scraped_dir}")
+    review_map = extract_reviews_from_scraped_dir(scraped_dir)
+    if not review_map:
+        raise FileNotFoundError(f"口コミ抽出元が見つかりません: {scraped_dir}")
 
     with open(html_path, encoding="utf-8") as f:
         html = f.read()
@@ -173,8 +209,8 @@ def fill_reviews(html_path: str, scraped_dir: str) -> dict[str, int]:
     placeholders = REVIEW_PLACEHOLDER_PATTERN.findall(html)
     if placeholders:
         for placeholder_name in placeholders:
-            canonical_name = normalize_name(placeholder_name)
-            review_html = build_review_html(canonical_name, review_map.get(canonical_name, []))
+            review_key = find_best_review_key(placeholder_name, review_map)
+            review_html = build_review_html(placeholder_name, review_map.get(review_key, []))
             pattern = re.compile(r"\{\{後で作成:口コミ\s*[—\-]\s*" + re.escape(placeholder_name) + r"\s*\}\}")
             if review_html:
                 html = pattern.sub(review_html, html)
@@ -186,10 +222,10 @@ def fill_reviews(html_path: str, scraped_dir: str) -> dict[str, int]:
         soup = BeautifulSoup(html, "html.parser")
         for _h3, clinic_name, nodes in iter_clinic_sections(soup):
             removed_legacy += remove_legacy_reviews(nodes)
-            canonical_name = normalize_name(clinic_name)
             if section_has_review(nodes):
                 continue
-            review_html = build_review_html(canonical_name, review_map.get(canonical_name, []))
+            review_key = find_best_review_key(clinic_name, review_map)
+            review_html = build_review_html(clinic_name, review_map.get(review_key, []))
             if not review_html:
                 continue
             if insert_review_into_section(soup, nodes, review_html):
