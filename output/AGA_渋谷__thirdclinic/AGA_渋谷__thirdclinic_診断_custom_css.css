@@ -1,0 +1,470 @@
+/* ===== AGAクリニック診断UI（品川記事から転用） ===== */
+/* ========================================
+   AGA診断UI - div版CSS (WordPress安全)
+   ======================================== */
+.aga-diagnosis-wrap {
+  --aga-primary: #4a8fd6;
+  --aga-primary-dark: #3a7bc2;
+  --aga-primary-light: #eef6ff;
+  --aga-primary-soft: #dbeafe;
+  --aga-text: #2d3748;
+  --aga-text-sub: #8694a5;
+  --aga-border: #e8eef5;
+  --aga-bg: #f5f9fd;
+  --aga-white: #ffffff;
+  --aga-shadow: 0 4px 20px rgba(74, 143, 214, 0.08);
+  --aga-shadow-hover: 0 8px 28px rgba(74, 143, 214, 0.18);
+
+  max-width: 640px;
+  margin: 32px auto;
+  padding: 0 12px;
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic", Meiryo, sans-serif;
+  color: var(--aga-text);
+  line-height: 1.6;
+}
+.aga-diagnosis-wrap *,
+.aga-diagnosis-wrap *::before,
+.aga-diagnosis-wrap *::after {
+  box-sizing: border-box;
+}
+
+/* ヘッダー */
+.aga-diagnosis-wrap .aga-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+.aga-diagnosis-wrap .aga-header-badge {
+  display: inline-block;
+  background: var(--aga-primary-soft);
+  color: var(--aga-primary-dark);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 100px;
+  margin-bottom: 10px;
+  letter-spacing: 0.04em;
+}
+.aga-diagnosis-wrap .aga-header-title {
+  font-size: 22px;
+  font-weight: 800;
+  margin: 0 0 6px;
+  letter-spacing: -0.02em;
+  line-height: 1.4;
+}
+.aga-diagnosis-wrap .aga-header-sub {
+  font-size: 13px;
+  color: var(--aga-text-sub);
+  margin: 0;
+}
+
+/* プログレスバー */
+.aga-diagnosis-wrap .aga-progress-wrap {
+  margin-bottom: 18px;
+  padding: 0 4px;
+}
+.aga-diagnosis-wrap .aga-progress {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.aga-diagnosis-wrap .aga-progress-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: var(--aga-white);
+  border: 2px solid var(--aga-border);
+  border-radius: 50%;
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--aga-text-sub);
+  transition: all 0.3s;
+  flex-shrink: 0;
+}
+.aga-diagnosis-wrap .aga-progress-bar.active {
+  background: var(--aga-primary);
+  border-color: var(--aga-primary);
+  color: #fff;
+  box-shadow: 0 0 0 4px rgba(74, 143, 214, 0.18);
+}
+.aga-diagnosis-wrap .aga-progress-bar.done {
+  background: var(--aga-primary);
+  border-color: var(--aga-primary);
+  color: #fff;
+}
+.aga-diagnosis-wrap .aga-progress-bar.done span {
+  display: none;
+}
+.aga-diagnosis-wrap .aga-progress-bar.done::before {
+  content: "✓";
+  font-size: 14px;
+  font-weight: 800;
+}
+.aga-diagnosis-wrap .aga-progress-line {
+  flex: 1;
+  height: 2px;
+  background: var(--aga-border);
+  margin: 0 4px;
+  transition: background 0.3s;
+}
+.aga-diagnosis-wrap .aga-progress-line.done {
+  background: var(--aga-primary);
+}
+.aga-diagnosis-wrap .aga-progress-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--aga-text-sub);
+  font-weight: 600;
+}
+.aga-diagnosis-wrap .aga-progress-labels span {
+  flex: 1;
+  text-align: center;
+}
+.aga-diagnosis-wrap .aga-progress-labels span:first-child { text-align: left; }
+.aga-diagnosis-wrap .aga-progress-labels span:last-child { text-align: right; }
+
+/* ステップ */
+.aga-diagnosis-wrap .aga-step {
+  display: none;
+  background: var(--aga-white);
+  border: 1px solid var(--aga-border);
+  border-radius: 14px;
+  padding: 20px 16px;
+  box-shadow: var(--aga-shadow);
+  animation: agaFadeIn 0.4s ease;
+}
+.aga-diagnosis-wrap .aga-step.active {
+  display: block;
+}
+@keyframes agaFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.aga-diagnosis-wrap .aga-step-head {
+  margin-bottom: 10px;
+}
+.aga-diagnosis-wrap .aga-step-num {
+  display: inline-block;
+  background: var(--aga-primary-soft);
+  color: var(--aga-primary-dark);
+  font-size: 12px;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 6px;
+  letter-spacing: 0.04em;
+  margin-right: 6px;
+}
+.aga-diagnosis-wrap .aga-step-count {
+  font-size: 11px;
+  color: var(--aga-text-sub);
+  font-weight: 600;
+}
+.aga-diagnosis-wrap .aga-question {
+  font-size: 17px;
+  font-weight: 800;
+  margin: 0 0 6px;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+}
+.aga-diagnosis-wrap .aga-question-sub {
+  font-size: 12px;
+  color: var(--aga-text-sub);
+  margin: 0 0 16px;
+  line-height: 1.5;
+}
+
+/* 選択肢 */
+.aga-diagnosis-wrap .aga-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.aga-diagnosis-wrap .aga-option {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 12px;
+  width: 100%;
+  background: #ffffff;
+  border: 1.5px solid #e8eef5;
+  border-radius: 10px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  line-height: 1.5;
+  user-select: none;
+  -webkit-tap-highlight-color: rgba(74, 143, 214, 0.1);
+}
+.aga-diagnosis-wrap .aga-option:hover {
+  border-color: #4a8fd6;
+  background: #eef6ff;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 28px rgba(74, 143, 214, 0.18);
+}
+.aga-diagnosis-wrap .aga-option:hover .aga-option-icon {
+  background: #4a8fd6;
+  color: #fff;
+}
+.aga-diagnosis-wrap .aga-option:hover .aga-option-arrow {
+  color: #4a8fd6;
+  transform: translateX(3px);
+}
+.aga-diagnosis-wrap .aga-option:focus {
+  outline: 2px solid #4a8fd6;
+  outline-offset: 2px;
+}
+.aga-diagnosis-wrap .aga-option-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  max-width: 36px;
+  background: #eef6ff;
+  color: #4a8fd6;
+  border-radius: 8px;
+  flex: 0 0 36px;
+  transition: all 0.2s;
+  font-size: 18px;
+  line-height: 1;
+}
+.aga-diagnosis-wrap .aga-option-body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  text-align: left;
+}
+.aga-diagnosis-wrap .aga-option-title {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  color: #2d3748;
+  line-height: 1.4;
+}
+.aga-diagnosis-wrap .aga-option-sub {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  color: #8694a5;
+  line-height: 1.5;
+}
+.aga-diagnosis-wrap .aga-option-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 700;
+  color: #8694a5;
+  transition: all 0.2s;
+  flex: 0 0 auto;
+  margin-left: 4px;
+  width: 16px;
+}
+
+/* 結果 */
+.aga-diagnosis-wrap .aga-result {
+  display: none;
+  background: var(--aga-white);
+  border: 1px solid var(--aga-border);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: var(--aga-shadow);
+  animation: agaFadeIn 0.5s ease;
+}
+.aga-diagnosis-wrap .aga-result.active {
+  display: block;
+}
+.aga-diagnosis-wrap .aga-result-top {
+  background: linear-gradient(135deg, #eef6ff 0%, #dbeafe 100%);
+  color: var(--aga-text);
+  padding: 22px 18px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  border-bottom: 1px solid var(--aga-border);
+}
+.aga-diagnosis-wrap .aga-result-badge {
+  display: inline-block;
+  background: #fff;
+  border: 1px solid var(--aga-primary-soft);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 100px;
+  margin-bottom: 10px;
+  letter-spacing: 0.04em;
+  color: var(--aga-primary-dark);
+  box-shadow: 0 2px 6px rgba(74, 143, 214, 0.1);
+}
+.aga-diagnosis-wrap .aga-result-lead {
+  font-size: 12px;
+  margin: 0 0 6px;
+  color: var(--aga-text-sub);
+  font-weight: 600;
+}
+.aga-diagnosis-wrap .aga-result-name {
+  font-size: 19px;
+  font-weight: 800;
+  margin: 0;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  color: var(--aga-primary-dark);
+}
+
+.aga-diagnosis-wrap .aga-result-reason-wrap {
+  padding: 18px 16px 0;
+}
+.aga-diagnosis-wrap .aga-result-reason-label,
+.aga-diagnosis-wrap .aga-result-features-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--aga-primary);
+  margin-bottom: 8px;
+  letter-spacing: 0.02em;
+}
+.aga-diagnosis-wrap .aga-result-features-label {
+  padding: 0 16px;
+  margin-top: 18px;
+}
+.aga-diagnosis-wrap .aga-result-reason {
+  background: var(--aga-bg);
+  border-left: 3px solid var(--aga-primary);
+  border-radius: 0 8px 8px 0;
+  padding: 14px 14px;
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--aga-text);
+}
+
+.aga-diagnosis-wrap .aga-result-features {
+  list-style: none;
+  padding: 0 16px;
+  margin: 0;
+}
+.aga-diagnosis-wrap .aga-result-features li {
+  position: relative;
+  padding: 10px 14px 10px 34px;
+  margin-bottom: 6px;
+  font-size: 13px;
+  line-height: 1.6;
+  background: var(--aga-bg);
+  border-radius: 8px;
+  color: var(--aga-text);
+}
+.aga-diagnosis-wrap .aga-result-features li::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  top: 13px;
+  width: 16px;
+  height: 16px;
+  background: var(--aga-primary);
+  border-radius: 50%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 10px;
+}
+
+.aga-diagnosis-wrap .aga-result-cta {
+  display: block;
+  text-align: center;
+  margin: 18px 16px 0;
+  background: linear-gradient(135deg, #5ba0e6 0%, #4a8fd6 100%);
+  color: #fff !important;
+  padding: 14px 22px;
+  border-radius: 10px;
+  font-weight: 800;
+  text-decoration: none;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+  transition: all 0.2s;
+  box-shadow: 0 4px 14px rgba(74, 143, 214, 0.35);
+  cursor: pointer;
+}
+.aga-diagnosis-wrap .aga-result-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(74, 143, 214, 0.45);
+}
+
+.aga-diagnosis-wrap .aga-restart {
+  display: inline-block;
+  margin: 10px auto 18px;
+  background: transparent;
+  border: 1px solid #e8eef5;
+  border-radius: 8px;
+  padding: 8px 18px;
+  font-size: 12px;
+  color: #8694a5;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 600;
+  text-align: center;
+  user-select: none;
+}
+/* restart要素を中央寄せ */
+.aga-diagnosis-wrap .aga-result {
+  position: relative;
+}
+.aga-diagnosis-wrap .aga-restart {
+  display: block;
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
+}
+.aga-diagnosis-wrap .aga-restart:hover {
+  background: #f5f9fd;
+  color: #2d3748;
+  border-color: #8694a5;
+}
+
+/* デスクトップ拡張 */
+@media (min-width: 768px) {
+  .aga-diagnosis-wrap {
+    max-width: 720px;
+    padding: 0 16px;
+  }
+  .aga-diagnosis-wrap .aga-header-title { font-size: 26px; }
+  .aga-diagnosis-wrap .aga-header-sub { font-size: 14px; }
+  .aga-diagnosis-wrap .aga-step { padding: 28px 24px; border-radius: 16px; }
+  .aga-diagnosis-wrap .aga-question { font-size: 20px; }
+  .aga-diagnosis-wrap .aga-question-sub { font-size: 13px; margin-bottom: 20px; }
+  .aga-diagnosis-wrap .aga-option {
+    padding: 14px 16px;
+    gap: 14px;
+    border-width: 2px;
+    border-radius: 12px;
+  }
+  .aga-diagnosis-wrap .aga-option-icon {
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    max-width: 42px;
+    flex: 0 0 42px;
+    border-radius: 10px;
+    font-size: 20px;
+  }
+  .aga-diagnosis-wrap .aga-option-title { font-size: 15px; }
+  .aga-diagnosis-wrap .aga-option-sub { font-size: 12px; }
+  .aga-diagnosis-wrap .aga-option-arrow { font-size: 17px; }
+  .aga-diagnosis-wrap .aga-progress-bar { width: 32px; height: 32px; font-size: 13px; }
+  .aga-diagnosis-wrap .aga-progress-labels { font-size: 11px; }
+  .aga-diagnosis-wrap .aga-result-top { padding: 28px 24px; }
+  .aga-diagnosis-wrap .aga-result-name { font-size: 23px; }
+  .aga-diagnosis-wrap .aga-result-reason-wrap { padding: 24px 24px 0; }
+  .aga-diagnosis-wrap .aga-result-reason { font-size: 14px; padding: 16px 18px; }
+  .aga-diagnosis-wrap .aga-result-features { padding: 0 24px; }
+  .aga-diagnosis-wrap .aga-result-features-label { padding: 0 24px; }
+  .aga-diagnosis-wrap .aga-result-features li { font-size: 14px; padding: 12px 16px 12px 38px; }
+  .aga-diagnosis-wrap .aga-result-cta { margin: 22px 24px 0; padding: 16px 26px; font-size: 16px; }
+}
+
+.tcg-fixed-line { display: none; }

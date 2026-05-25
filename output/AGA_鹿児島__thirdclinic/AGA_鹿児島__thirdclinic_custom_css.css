@@ -1,3 +1,4 @@
+/* === SEO記事 共通CSS（見出しh2-h6はサイトデフォルトを使用するため除外済み） === */
 /* ========================================
    SEO記事共通CSS
    WordPressの「カスタムCSS & JS」に貼り付けて使用
@@ -15,12 +16,9 @@
   line-height: 1.85 !important;
   word-break: break-word;
 }
-.ndm-article *,
-.ndm-article *::before,
-.ndm-article *::after {
+.ndm-article *, .ndm-article *::before, .ndm-article *::after {
   box-sizing: border-box;
 }
-
 /* --- 段落 --- */
 .ndm-article p {
   margin: 1em 0 !important;
@@ -31,38 +29,6 @@
   background: none !important;
   border: 0 !important;
 }
-
-/* --- 見出しベース（H2/H3の最終見た目は後段の専用ルールで定義） --- */
-.ndm-article h2,
-.ndm-article h3,
-.ndm-article h4,
-.ndm-article h5,
-.ndm-article h6 {
-  color: #1e3a8a !important;
-  background: none !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-}
-.ndm-article h4 {
-  margin: 1.4em 0 0.6em !important;
-  padding: 0 !important;
-  font-size: 16px !important;
-  line-height: 1.6 !important;
-  font-weight: 700 !important;
-  color: #1e3a8a !important;
-  background: none !important;
-  border: 0 !important;
-}
-.ndm-article h5,
-.ndm-article h6 {
-  margin: 1em 0 0.5em !important;
-  padding: 0 !important;
-  font-weight: 700 !important;
-  color: #1e3a8a !important;
-  background: none !important;
-  border: 0 !important;
-}
-
 /* --- リスト --- */
 .ndm-article ul {
   list-style: disc outside !important;
@@ -80,7 +46,6 @@
   color: #243446 !important;
   background: none !important;
 }
-
 /* --- リンク・強調 --- */
 .ndm-article a:not(.btn):not(.cl-btn):not(.official-site-button):not([class*="__btn"]):not([style*="background"]) {
   color: #2563eb !important;
@@ -90,18 +55,12 @@
 .ndm-article a:not(.btn):not(.cl-btn):not(.official-site-button):not([class*="__btn"]):not([style*="background"]):hover {
   text-decoration: none;
 }
-.ndm-article a.btn,
-.ndm-article a.cl-btn,
-.ndm-article a.official-site-button,
-.ndm-article a[class*="__btn"],
-.ndm-article .official-site-button-wrap a,
-.ndm-article div[style*="text-align:center"] > a[style*="background"] {
+.ndm-article a.btn, .ndm-article a.cl-btn, .ndm-article a.official-site-button, .ndm-article a[class*="__btn"], .ndm-article .official-site-button-wrap a, .ndm-article div[style*="text-align:center"] > a[style*="background"] {
   color: #fff !important;
   text-decoration: none !important;
   word-break: keep-all !important;
 }
-.ndm-article .official-site-button-wrap a,
-.ndm-article div[style*="text-align:center"] > a[style*="background"] {
+.ndm-article .official-site-button-wrap a, .ndm-article div[style*="text-align:center"] > a[style*="background"] {
   display: inline-flex !important;
   align-items: center;
   justify-content: center;
@@ -113,14 +72,12 @@
   white-space: normal !important;
   overflow-wrap: break-word !important;
 }
-.ndm-article strong,
-.ndm-article b {
+.ndm-article strong, .ndm-article b {
   font-weight: 700 !important;
   background: linear-gradient(transparent 60%, #fef08a 60%) !important;
   padding: 0 2px !important;
   color: #243446 !important;
 }
-
 /* --- メディア --- */
 .ndm-article img {
   max-width: 100%;
@@ -135,7 +92,6 @@
   max-width: 100%;
   border: 0;
 }
-
 /* --- 区切り線・引用 --- */
 .ndm-article hr {
   border: 0 !important;
@@ -149,21 +105,17 @@
   background: #f9fafb;
   color: #4b5563;
 }
-
 /* --- テーブル基本（個別 class はこの後の定義で上書き） --- */
 .ndm-article table {
   border-collapse: collapse;
   width: 100%;
   margin: 1em 0;
 }
-.ndm-article th,
-.ndm-article td {
+.ndm-article th, .ndm-article td {
   vertical-align: top;
 }
-
 /* --- 概要テーブル・詳細テーブル（2列: th | td） --- */
-.clinic-summary-table,
-.clinic-detail-table {
+.clinic-summary-table, .clinic-detail-table {
   width: 100% !important;
   min-width: 0 !important;
   max-width: 100% !important;
@@ -178,8 +130,7 @@
   box-shadow: 0 4px 12px rgba(30, 58, 138, 0.08), 0 2px 4px rgba(30, 58, 138, 0.04);
   border: 1px solid #dbeafe;
 }
-.clinic-summary-table th,
-.clinic-detail-table th {
+.clinic-summary-table th, .clinic-detail-table th {
   width: 34%;
   min-width: 0;
   background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
@@ -195,8 +146,7 @@
   overflow-wrap: anywhere !important;
   writing-mode: horizontal-tb;
 }
-.clinic-summary-table td,
-.clinic-detail-table td {
+.clinic-summary-table td, .clinic-detail-table td {
   padding: 14px 18px;
   border-bottom: 1px solid #e5e7eb;
   vertical-align: top;
@@ -208,30 +158,22 @@
   writing-mode: horizontal-tb;
   background: #fff;
 }
-.clinic-summary-table tr:last-child th,
-.clinic-summary-table tr:last-child td,
-.clinic-detail-table tr:last-child th,
-.clinic-detail-table tr:last-child td {
+.clinic-summary-table tr:last-child th, .clinic-summary-table tr:last-child td, .clinic-detail-table tr:last-child th, .clinic-detail-table tr:last-child td {
   border-bottom: 0;
 }
-.clinic-summary-table tr:hover td,
-.clinic-detail-table tr:hover td {
+.clinic-summary-table tr:hover td, .clinic-detail-table tr:hover td {
   background: #fafbff;
 }
-.clinic-summary-table th:first-child,
-.clinic-detail-table th:first-child {
+.clinic-summary-table th:first-child, .clinic-detail-table th:first-child {
   position: sticky;
   left: 0;
   z-index: 1;
   background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%) !important;
   box-shadow: 2px 0 0 #93c5fd;
 }
-
 /* --- 比較テーブル（複数列: thead付き） --- */
 /* 注: `.comparison-table` は <div> ラッパー専用。`<table>` に同名クラスが乗っているケースがあり、その場合は table レイアウトを壊さないよう `div.` で限定する */
-.table-scroll,
-div.comparison-table,
-.comparison-table-container {
+.table-scroll, div.comparison-table, .comparison-table-container {
   display: block;
   width: 100%;
   max-width: 100%;
@@ -240,7 +182,6 @@ div.comparison-table,
   -webkit-overflow-scrolling: touch;
   margin: 1em 0;
 }
-
 .treatment-compare-table {
   width: max-content;
   min-width: 680px;
@@ -299,12 +240,10 @@ div.comparison-table,
 .treatment-compare-table tbody tr:hover td {
   background: #eef5ff !important;
 }
-.treatment-compare-table tbody tr:last-child th,
-.treatment-compare-table tbody tr:last-child td {
+.treatment-compare-table tbody tr:last-child th, .treatment-compare-table tbody tr:last-child td {
   border-bottom: 0;
 }
-.treatment-compare-table th:last-child,
-.treatment-compare-table td:last-child {
+.treatment-compare-table th:last-child, .treatment-compare-table td:last-child {
   border-right: 0;
 }
 .treatment-compare-table a {
@@ -313,12 +252,10 @@ div.comparison-table,
   word-break: normal !important;
   overflow-wrap: normal !important;
 }
-.treatment-compare-table th:last-child,
-.treatment-compare-table td:last-child {
+.treatment-compare-table th:last-child, .treatment-compare-table td:last-child {
   min-width: 180px;
 }
-.treatment-compare-table th:first-child,
-.treatment-compare-table td:first-child {
+.treatment-compare-table th:first-child, .treatment-compare-table td:first-child {
   position: sticky;
   left: 0;
   z-index: 1;
@@ -332,7 +269,6 @@ div.comparison-table,
   background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%) !important;
   color: #fff !important;
 }
-
 /* --- Googleマップ --- */
 .clinic-map {
   margin: 1em 0;
@@ -342,18 +278,14 @@ div.comparison-table,
   height: 300px;
   border: 0;
 }
-
 /* --- 複数院マップ（clinic-maps-multi / clinic-multi-map 両対応） --- */
-.clinic-maps-multi .clinic-map,
-.clinic-multi-map .clinic-map {
+.clinic-maps-multi .clinic-map, .clinic-multi-map .clinic-map {
   margin: 0;
 }
-.clinic-maps-multi .clinic-map-item p,
-.clinic-multi-map-label {
+.clinic-maps-multi .clinic-map-item p, .clinic-multi-map-label {
   line-height: 1.55;
   color: #243446;
 }
-
 /* --- 公式サイトスクリーンショット --- */
 .clinic-screenshot {
   margin: 1em 0;
@@ -366,7 +298,6 @@ div.comparison-table,
   height: auto;
   display: block;
 }
-
 .official-site-button-wrap {
   margin: 1em 0 1.5em;
   text-align: center;
@@ -391,7 +322,6 @@ div.comparison-table,
 .official-site-button-wrap a:hover {
   filter: brightness(1.04);
 }
-
 /* --- 口コミ吹き出し --- */
 .review-section {
   margin: 1.5em 0;
@@ -470,7 +400,6 @@ div.comparison-table,
   color: #f5a623;
   letter-spacing: 1px;
 }
-
 /* --- FAQ --- */
 .faq-section {
   margin: 1.5em 0 2em;
@@ -496,44 +425,27 @@ div.comparison-table,
 .faq-answer > p:last-child {
   margin-bottom: 0;
 }
-
 /* --- 説明ブロック見出し・リスト余白 --- */
-.consultation-comparison > div,
-.side-effect-understanding > div,
-.cost-planning > div,
-.clinic-selection-tips > div {
+.consultation-comparison > div, .side-effect-understanding > div, .cost-planning > div, .clinic-selection-tips > div {
   margin: 1.2em 0 1.45em;
 }
-.consultation-comparison h4,
-.side-effect-understanding h4,
-.cost-planning h4,
-.clinic-selection-tips h4 {
+.consultation-comparison h4, .side-effect-understanding h4, .cost-planning h4, .clinic-selection-tips h4 {
   margin: 0 0 0.85em;
   padding-left: 0.8em;
   border-left: 3px solid #e7defa;
   line-height: 1.5;
 }
-.consultation-comparison ul,
-.side-effect-understanding ul,
-.cost-planning ul,
-.clinic-selection-tips ul {
+.consultation-comparison ul, .side-effect-understanding ul, .cost-planning ul, .clinic-selection-tips ul {
   margin: 0.4em 0 0;
   padding-left: 1.25em;
 }
-.consultation-comparison li,
-.side-effect-understanding li,
-.cost-planning li,
-.clinic-selection-tips li {
+.consultation-comparison li, .side-effect-understanding li, .cost-planning li, .clinic-selection-tips li {
   margin: 0 0 0.55em;
   line-height: 1.85;
 }
-.consultation-comparison li:last-child,
-.side-effect-understanding li:last-child,
-.cost-planning li:last-child,
-.clinic-selection-tips li:last-child {
+.consultation-comparison li:last-child, .side-effect-understanding li:last-child, .cost-planning li:last-child, .clinic-selection-tips li:last-child {
   margin-bottom: 0;
 }
-
 /* --- 仮データ明記のアンケート風図表 --- */
 .mock-survey-block {
   position: relative;
@@ -790,62 +702,56 @@ div.comparison-table,
   font-size: 13px;
   line-height: 1.7;
 }
-
-@media (max-width: 767px) {
-  .mock-survey-block {
+@media (max-width: 767px) {.mock-survey-block {
     padding: 14px;
     border-radius: 2px;
   }
-  .mock-survey-title {
+.mock-survey-title {
     font-size: 18px;
   }
-  .mock-survey-question-note,
-  .mock-survey-note,
-  .mock-survey-summary-text {
+.mock-survey-question-note, .mock-survey-note, .mock-survey-summary-text {
     font-size: 12px;
   }
-  .mock-survey-bar-row {
+.mock-survey-bar-row {
     grid-template-columns: auto minmax(0, 1fr) auto;
     gap: 8px;
     padding: 12px;
   }
-  .mock-survey-meter {
+.mock-survey-meter {
     grid-column: 1 / -1;
   }
-  .mock-survey-rank {
+.mock-survey-rank {
     font-size: 10px;
     width: 38px;
   }
-  .mock-survey-label {
+.mock-survey-label {
     font-size: 13px;
   }
-  .mock-survey-value {
+.mock-survey-value {
     justify-content: flex-end;
   }
-  .mock-survey-value strong {
+.mock-survey-value strong {
     font-size: 17px;
   }
-  .mock-survey-grid {
+.mock-survey-grid {
     grid-template-columns: 1fr;
     gap: 12px;
   }
-  .mock-survey-card {
+.mock-survey-card {
     padding: 14px 12px;
   }
-  .mock-survey-card-title {
+.mock-survey-card-title {
     font-size: 12px;
   }
-  .mock-survey-percent {
+.mock-survey-percent {
     font-size: 20px;
   }
-  .mock-survey-summary-item {
+.mock-survey-summary-item {
     grid-template-columns: 50px minmax(0, 1fr);
   }
-  .mock-survey-summary-title {
+.mock-survey-summary-title {
     font-size: 13px;
-  }
-}
-
+  }}
 /* --- SWELL 目次トグル --- */
 .p-toc {
   margin: 1.25em 0 1.75em;
@@ -894,24 +800,16 @@ div.comparison-table,
 .p-toc.is-open .seo-toc-toggle-label::after {
   transform: rotate(-135deg) translateY(-1px);
 }
-.p-toc:not(.is-open) .p-toc__list,
-.p-toc:not(.is-open) ol,
-.p-toc:not(.is-open) ul {
+.p-toc:not(.is-open) .p-toc__list, .p-toc:not(.is-open) ol, .p-toc:not(.is-open) ul {
   display: none;
 }
-.p-toc.is-open .p-toc__list,
-.p-toc.is-open ol,
-.p-toc.is-open ul {
+.p-toc.is-open .p-toc__list, .p-toc.is-open ol, .p-toc.is-open ul {
   display: block;
 }
-
-@media (max-width: 767px) {
-  .p-toc__ttl {
+@media (max-width: 767px) {.p-toc__ttl {
     align-items: flex-start;
     flex-direction: column;
-  }
-}
-
+  }}
 /* --- 記事末尾CTA --- */
 .article-final-cta {
   margin: 2em 0 1em;
@@ -970,10 +868,8 @@ div.comparison-table,
 .article-final-cta.cta-variant-5 .article-final-cta__eyebrow {
   color: #506273;
 }
-
 /* --- strong 蛍光マーカー強調 --- */
-p strong,
-li strong {
+p strong, li strong {
   color: inherit;
   background-image: linear-gradient(transparent 56%, rgba(255, 241, 168, 0.92) 56%);
   background-size: 100% 100% !important;
@@ -988,52 +884,32 @@ li strong {
   -webkit-box-decoration-break: clone;
   transition: filter 0.25s ease, border-color 0.25s ease;
 }
-p strong.is-visible,
-li strong.is-visible {
+p strong.is-visible, li strong.is-visible {
   filter: saturate(1.05);
   border-bottom-color: #e0be49;
 }
-
-@media (max-width: 767px) {
-  .clinic-summary-table,
-  .clinic-detail-table,
-  .treatment-compare-table {
+@media (max-width: 767px) {.clinic-summary-table, .clinic-detail-table, .treatment-compare-table {
     font-size: 13px;
   }
-
-  .clinic-summary-table th,
-  .clinic-detail-table th,
-  .clinic-summary-table td,
-  .clinic-detail-table td,
-  .treatment-compare-table th,
-  .treatment-compare-table td {
+.clinic-summary-table th, .clinic-detail-table th, .clinic-summary-table td, .clinic-detail-table td, .treatment-compare-table th, .treatment-compare-table td {
     padding: 10px 12px;
   }
-
-  .clinic-summary-table th,
-  .clinic-detail-table th {
+.clinic-summary-table th, .clinic-detail-table th {
     width: 40%;
     min-width: 0;
   }
-
-  .clinic-summary-table td,
-  .clinic-detail-table td {
+.clinic-summary-table td, .clinic-detail-table td {
     min-width: 0;
   }
-
-  .treatment-compare-table {
+.treatment-compare-table {
     min-width: 720px;
   }
-
-  .treatment-compare-table th,
-  .treatment-compare-table td {
+.treatment-compare-table th, .treatment-compare-table td {
     white-space: normal !important;
     word-break: normal !important;
     overflow-wrap: anywhere !important;
   }
-
-  .treatment-compare-table th:first-child,
-  .treatment-compare-table td:first-child {
+.treatment-compare-table th:first-child, .treatment-compare-table td:first-child {
     min-width: 34vw !important;
     max-width: 42vw !important;
     width: 38vw;
@@ -1041,145 +917,35 @@ li strong.is-visible {
     word-break: break-word !important;
     overflow-wrap: anywhere !important;
   }
-  .treatment-compare-table th:first-child a,
-  .treatment-compare-table td:first-child a {
+.treatment-compare-table th:first-child a, .treatment-compare-table td:first-child a {
     display: inline !important;
     white-space: normal !important;
     word-break: break-word !important;
     overflow-wrap: anywhere !important;
     max-width: 100%;
   }
-
-  .treatment-compare-table th:last-child,
-  .treatment-compare-table td:last-child {
+.treatment-compare-table th:last-child, .treatment-compare-table td:last-child {
     min-width: 160px;
   }
-
-  .official-site-button-wrap a {
+.official-site-button-wrap a {
     width: 100% !important;
     padding: 14px 18px !important;
     font-size: 14px !important;
   }
-  .ndm-article div[style*="text-align:center"] > a[style*="background"] {
+.ndm-article div[style*="text-align:center"] > a[style*="background"] {
     width: 100% !important;
     padding: 14px 18px !important;
     font-size: 14px !important;
-  }
-}
-
+  }}
 /* --- なんでも向け早見表ショートコード: 外枠ボックスを無効化 --- */
-.ndm-aga-v1,
-.ndm-aga-v2,
-.ndm-aga-v3,
-.ndm-aga-v4,
-.ndm-aga-v5 {
+.ndm-aga-v1, .ndm-aga-v2, .ndm-aga-v3, .ndm-aga-v4, .ndm-aga-v5 {
   padding: 0 !important;
   border: 0 !important;
   background: transparent !important;
 }
-@media (max-width: 767px) {
-  .ndm-aga-v1,
-  .ndm-aga-v2,
-  .ndm-aga-v3,
-  .ndm-aga-v4,
-  .ndm-aga-v5 {
+@media (max-width: 767px) {.ndm-aga-v1, .ndm-aga-v2, .ndm-aga-v3, .ndm-aga-v4, .ndm-aga-v5 {
     padding: 0 !important;
-  }
-}
-
-/* ======================================
-   派手なH2見出しデザイン
-   - 早見表セクション (.ndm-aga-v*) のH2は除外
-   - .ndm-article 配下だけに効かせて本文外への漏れを防ぐ
-   ====================================== */
-.ndm-article h2:not([class*="ndm-aga"]) {
-  position: relative;
-  margin: 2.5em 0 1.4em !important;
-  padding: 22px 24px 22px 70px !important;
-  color: #fff !important;
-  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 55%, #06b6d4 100%) !important;
-  border: 0 !important;
-  border-radius: 12px !important;
-  font-size: 22px !important;
-  font-weight: 800 !important;
-  line-height: 1.5 !important;
-  box-shadow:
-    0 10px 22px rgba(30, 58, 138, 0.22),
-    0 2px 4px rgba(30, 58, 138, 0.12);
-  letter-spacing: 0.02em;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
-}
-.ndm-article h2:not([class*="ndm-aga"])::before {
-  content: "";
-  position: absolute;
-  left: 18px;
-  top: 50%;
-  width: 38px;
-  height: 38px;
-  transform: translateY(-50%);
-  background: linear-gradient(135deg, #fde68a 0%, #f59e0b 100%);
-  border-radius: 50%;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.18);
-}
-.ndm-article h2:not([class*="ndm-aga"])::after {
-  content: "✓";
-  position: absolute;
-  left: 18px;
-  top: 50%;
-  width: 38px;
-  height: 38px;
-  transform: translateY(-50%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #1e3a8a;
-  font-size: 22px;
-  font-weight: 900;
-  line-height: 1;
-}
-@media (max-width: 767px) {
-  .ndm-article h2:not([class*="ndm-aga"]) {
-    padding: 18px 18px 18px 60px;
-    font-size: 19px;
-    border-radius: 10px;
-  }
-  .ndm-article h2:not([class*="ndm-aga"])::before,
-  .ndm-article h2:not([class*="ndm-aga"])::after {
-    left: 14px;
-    width: 32px;
-    height: 32px;
-  }
-  .ndm-article h2:not([class*="ndm-aga"])::after {
-    font-size: 18px;
-  }
-}
-
-/* ======================================
-   H3見出しのアクセント
-   ====================================== */
-.ndm-article h3:not([class*="ndm-aga"]):not(.faq-question):not(.clinic-multi-map-label) {
-  position: relative;
-  margin: 2em 0 1em !important;
-  padding: 12px 16px 12px 22px !important;
-  font-size: 19px !important;
-  font-weight: 800 !important;
-  line-height: 1.55 !important;
-  color: #1e3a8a;
-  background: linear-gradient(90deg, #eff6ff 0%, #ffffff 100%) !important;
-  border-left: 6px solid #2563eb !important;
-  border-radius: 0 8px 8px 0 !important;
-}
-.ndm-article h3:not([class*="ndm-aga"]):not(.faq-question):not(.clinic-multi-map-label)::before {
-  content: "";
-  position: absolute;
-  left: -6px;
-  top: 0;
-  width: 6px;
-  height: 100%;
-  background: linear-gradient(180deg, #06b6d4 0%, #2563eb 100%);
-  border-radius: 0 0 0 0;
-}
-
+  }}
 /* ======================================
    一覧ボックス（最終版）
    ====================================== */
@@ -1196,10 +962,7 @@ li strong.is-visible {
   content: none !important;
   display: none !important;
 }
-.clinic-index-box .clinic-index-title,
-.clinic-index-box .clinic-index-box__title,
-.clinic-index-title,
-.clinic-index-box__title {
+.clinic-index-box .clinic-index-title, .clinic-index-box .clinic-index-box__title, .clinic-index-title, .clinic-index-box__title {
   margin: 0 !important;
   padding: 12px 16px !important;
   background: #a9c1bc !important;
@@ -1209,12 +972,7 @@ li strong.is-visible {
   line-height: 1.5 !important;
   border: 0 !important;
 }
-.clinic-index-box .clinic-index-list,
-.clinic-index-box .clinic-index-box__list,
-.clinic-index-box > ul,
-.clinic-index-box > ol,
-.clinic-index-list,
-.clinic-index-box__list {
+.clinic-index-box .clinic-index-list, .clinic-index-box .clinic-index-box__list, .clinic-index-box > ul, .clinic-index-box > ol, .clinic-index-list, .clinic-index-box__list {
   counter-reset: clinic-index;
   display: grid;
   grid-template-columns: 1fr;
@@ -1223,12 +981,7 @@ li strong.is-visible {
   padding: 14px 16px 16px !important;
   list-style: none !important;
 }
-.clinic-index-box .clinic-index-list li,
-.clinic-index-box .clinic-index-box__list li,
-.clinic-index-box > ul > li,
-.clinic-index-box > ol > li,
-.clinic-index-list li,
-.clinic-index-box__list li {
+.clinic-index-box .clinic-index-list li, .clinic-index-box .clinic-index-box__list li, .clinic-index-box > ul > li, .clinic-index-box > ol > li, .clinic-index-list li, .clinic-index-box__list li {
   counter-increment: clinic-index;
   display: flex;
   align-items: flex-start;
@@ -1238,12 +991,7 @@ li strong.is-visible {
   list-style: none !important;
   background: none !important;
 }
-.clinic-index-box .clinic-index-list li::before,
-.clinic-index-box .clinic-index-box__list li::before,
-.clinic-index-box > ul > li::before,
-.clinic-index-box > ol > li::before,
-.clinic-index-list li::before,
-.clinic-index-box__list li::before {
+.clinic-index-box .clinic-index-list li::before, .clinic-index-box .clinic-index-box__list li::before, .clinic-index-box > ul > li::before, .clinic-index-box > ol > li::before, .clinic-index-list li::before, .clinic-index-box__list li::before {
   content: counter(clinic-index);
   display: inline-flex;
   align-items: center;
@@ -1259,12 +1007,7 @@ li strong.is-visible {
   font-weight: 700;
   line-height: 1;
 }
-.clinic-index-box .clinic-index-list a,
-.clinic-index-box .clinic-index-box__list a,
-.clinic-index-box > ul a,
-.clinic-index-box > ol a,
-.clinic-index-list a,
-.clinic-index-box__list a {
+.clinic-index-box .clinic-index-list a, .clinic-index-box .clinic-index-box__list a, .clinic-index-box > ul a, .clinic-index-box > ol a, .clinic-index-list a, .clinic-index-box__list a {
   display: block;
   min-width: 0;
   padding: 0 !important;
@@ -1276,83 +1019,46 @@ li strong.is-visible {
   line-height: 1.55 !important;
   font-weight: 700 !important;
 }
-.clinic-index-box .clinic-index-list a:hover,
-.clinic-index-box .clinic-index-box__list a:hover,
-.clinic-index-box > ul a:hover,
-.clinic-index-box > ol a:hover,
-.clinic-index-list a:hover,
-.clinic-index-box__list a:hover {
+.clinic-index-box .clinic-index-list a:hover, .clinic-index-box .clinic-index-box__list a:hover, .clinic-index-box > ul a:hover, .clinic-index-box > ol a:hover, .clinic-index-list a:hover, .clinic-index-box__list a:hover {
   color: #2d527c !important;
 }
-@media (max-width: 767px) {
-  .clinic-index-box .clinic-index-title,
-  .clinic-index-box .clinic-index-box__title,
-  .clinic-index-title,
-  .clinic-index-box__title {
+@media (max-width: 767px) {.clinic-index-box .clinic-index-title, .clinic-index-box .clinic-index-box__title, .clinic-index-title, .clinic-index-box__title {
     padding: 10px 14px !important;
     font-size: 14px !important;
   }
-  .clinic-index-box .clinic-index-list,
-  .clinic-index-box .clinic-index-box__list,
-  .clinic-index-box > ul,
-  .clinic-index-box > ol,
-  .clinic-index-list,
-  .clinic-index-box__list {
+.clinic-index-box .clinic-index-list, .clinic-index-box .clinic-index-box__list, .clinic-index-box > ul, .clinic-index-box > ol, .clinic-index-list, .clinic-index-box__list {
     gap: 7px;
     padding: 12px 14px 14px !important;
   }
-  .clinic-index-box .clinic-index-list li,
-  .clinic-index-box .clinic-index-box__list li,
-  .clinic-index-box > ul > li,
-  .clinic-index-box > ol > li,
-  .clinic-index-list li,
-  .clinic-index-box__list li {
+.clinic-index-box .clinic-index-list li, .clinic-index-box .clinic-index-box__list li, .clinic-index-box > ul > li, .clinic-index-box > ol > li, .clinic-index-list li, .clinic-index-box__list li {
     gap: 8px;
   }
-  .clinic-index-box .clinic-index-list li::before,
-  .clinic-index-box .clinic-index-box__list li::before,
-  .clinic-index-box > ul > li::before,
-  .clinic-index-box > ol > li::before,
-  .clinic-index-list li::before,
-  .clinic-index-box__list li::before {
+.clinic-index-box .clinic-index-list li::before, .clinic-index-box .clinic-index-box__list li::before, .clinic-index-box > ul > li::before, .clinic-index-box > ol > li::before, .clinic-index-list li::before, .clinic-index-box__list li::before {
     flex-basis: 20px;
     width: 20px;
     height: 20px;
     font-size: 11px;
   }
-  .clinic-index-box .clinic-index-list a,
-  .clinic-index-box .clinic-index-box__list a,
-  .clinic-index-box > ul a,
-  .clinic-index-box > ol a,
-  .clinic-index-list a,
-  .clinic-index-box__list a {
+.clinic-index-box .clinic-index-list a, .clinic-index-box .clinic-index-box__list a, .clinic-index-box > ul a, .clinic-index-box > ol a, .clinic-index-list a, .clinic-index-box__list a {
     font-size: 13px !important;
     line-height: 1.5 !important;
-  }
-}
-
+  }}
 /* ======================================
    通常リスト（記事本文の<ul>/<ol>）
    ====================================== */
-article ul:not(.ndm-aga-v1 ul):not(.ndm-aga-v2 ul):not(.ndm-aga-v3 ul):not(.ndm-aga-v4 ul):not(.ndm-aga-v5 ul):not(.clinic-index-box ul),
-.entry-content ul:not(.ndm-aga-v1 ul):not(.ndm-aga-v2 ul):not(.ndm-aga-v3 ul):not(.ndm-aga-v4 ul):not(.ndm-aga-v5 ul):not(.clinic-index-box ul),
-.post_content ul:not(.ndm-aga-v1 ul):not(.ndm-aga-v2 ul):not(.ndm-aga-v3 ul):not(.ndm-aga-v4 ul):not(.ndm-aga-v5 ul):not(.clinic-index-box ul) {
+article ul:not(.ndm-aga-v1 ul):not(.ndm-aga-v2 ul):not(.ndm-aga-v3 ul):not(.ndm-aga-v4 ul):not(.ndm-aga-v5 ul):not(.clinic-index-box ul), .entry-content ul:not(.ndm-aga-v1 ul):not(.ndm-aga-v2 ul):not(.ndm-aga-v3 ul):not(.ndm-aga-v4 ul):not(.ndm-aga-v5 ul):not(.clinic-index-box ul), .post_content ul:not(.ndm-aga-v1 ul):not(.ndm-aga-v2 ul):not(.ndm-aga-v3 ul):not(.ndm-aga-v4 ul):not(.ndm-aga-v5 ul):not(.clinic-index-box ul) {
   list-style: none !important;
   padding-left: 0 !important;
   margin: 1em 0;
 }
-article ul:not(.clinic-index-box ul) > li,
-.entry-content ul:not(.clinic-index-box ul) > li,
-.post_content ul:not(.clinic-index-box ul) > li {
+article ul:not(.clinic-index-box ul) > li, .entry-content ul:not(.clinic-index-box ul) > li, .post_content ul:not(.clinic-index-box ul) > li {
   position: relative;
   padding: 6px 6px 6px 28px;
   margin: 4px 0;
   line-height: 1.85;
   list-style: none;
 }
-article ul:not(.clinic-index-box ul) > li::before,
-.entry-content ul:not(.clinic-index-box ul) > li::before,
-.post_content ul:not(.clinic-index-box ul) > li::before {
+article ul:not(.clinic-index-box ul) > li::before, .entry-content ul:not(.clinic-index-box ul) > li::before, .post_content ul:not(.clinic-index-box ul) > li::before {
   content: "";
   position: absolute;
   left: 6px;
@@ -1363,7 +1069,6 @@ article ul:not(.clinic-index-box ul) > li::before,
   background: linear-gradient(135deg, #06b6d4 0%, #2563eb 100%);
   box-shadow: 0 2px 4px rgba(37, 99, 235, 0.25);
 }
-
 /* ======================================
    複数院マップ（multi-map）
    ====================================== */
@@ -1401,7 +1106,6 @@ article ul:not(.clinic-index-box ul) > li::before,
   height: 240px;
   border: 0;
 }
-
 /* ======================================
    口コミ引用元リンク
    ====================================== */
@@ -1425,7 +1129,6 @@ article ul:not(.clinic-index-box ul) > li::before,
 .review-source a:hover {
   color: #0284c7 !important;
 }
-
 /* ======================================
    なんでも比較表（上位5院）
    ====================================== */
@@ -1576,30 +1279,24 @@ article ul:not(.clinic-index-box ul) > li::before,
   margin-top: 2px;
   word-break: keep-all;
 }
-@media (max-width: 767px) {
-  .clinic-list-tbl table {
+@media (max-width: 767px) {.clinic-list-tbl table {
     min-width: 760px;
   }
-  .clinic-list-tbl .cl-logo-box {
+.clinic-list-tbl .cl-logo-box {
     width: 140px;
     height: 60px;
   }
-  .clinic-list-tbl tbody td {
+.clinic-list-tbl tbody td {
     padding: 14px 10px;
-  }
-}
-
+  }}
 /* ======================================
    strong（蛍光マーカー風強化）
    ====================================== */
-article p strong,
-.entry-content p strong,
-.post_content p strong {
+article p strong, .entry-content p strong, .post_content p strong {
   background: linear-gradient(transparent 55%, #fef08a 55%);
   font-weight: 800;
   padding: 0 2px;
 }
-
 /* ============================================================
    2026-05-14 V1記事の共通アップデート
    - フォント全体縮小（PC/SP）
@@ -1611,22 +1308,18 @@ article p strong,
    ============================================================ */
 
 /* --- 早見表内のテーブル/段落の余白を打ち消し --- */
-.ndm-aga-v1 .ndm-aga-v1__scroll,
-.ndm-article .ndm-aga-v1 .ndm-aga-v1__scroll {
+.ndm-aga-v1 .ndm-aga-v1__scroll, .ndm-article .ndm-aga-v1 .ndm-aga-v1__scroll {
   margin: 0 !important;
   padding: 0 !important;
   line-height: 1.4 !important;
 }
-.ndm-aga-v1 .ndm-aga-v1__tablewrap,
-.ndm-article .ndm-aga-v1 .ndm-aga-v1__tablewrap {
+.ndm-aga-v1 .ndm-aga-v1__tablewrap, .ndm-article .ndm-aga-v1 .ndm-aga-v1__tablewrap {
   margin: 0 !important;
   padding: 0 !important;
 }
-.ndm-aga-v1 table,
-.ndm-article .ndm-aga-v1 table {
+.ndm-aga-v1 table, .ndm-article .ndm-aga-v1 table {
   margin: 0 !important;
 }
-
 /* --- 早見表ヒーローブロック（タイトル装飾） --- */
 .ndm-aga-v1__hero {
   margin: 0 0 12px;
@@ -1656,15 +1349,12 @@ article p strong,
   font-size: .78em;
   font-weight: 900;
 }
-@media (max-width: 767px) {
-  .ndm-aga-v1__hero {
+@media (max-width: 767px) {.ndm-aga-v1__hero {
     padding: 6px 6px;
   }
-  .ndm-aga-v1__hero .ndm-aga-v1__title {
+.ndm-aga-v1__hero .ndm-aga-v1__title {
     font-size: 4.6vw;
-  }
-}
-
+  }}
 /* --- エリアジャンプボックス --- */
 .area-jump-box {
   margin: 18px 0 24px;
@@ -1735,7 +1425,6 @@ article p strong,
 .area-jump-box__link:hover {
   color: #0a4d99 !important;
 }
-
 /* --- ベース文字サイズ縮小（PC） --- */
 .ndm-article {
   font-size: 14px !important;
@@ -1749,46 +1438,14 @@ article p strong,
   font-size: 14px !important;
   line-height: 1.8 !important;
 }
-.ndm-article h4 {
-  font-size: 14px !important;
-}
-
-/* --- H2/H3 縮小（PC） --- */
-.ndm-article h2:not([class*="ndm-aga"]) {
-  margin: 2.2em 0 1.2em !important;
-  padding: 16px 20px 16px 56px !important;
-  font-size: 18px !important;
-  border-radius: 10px !important;
-}
-.ndm-article h2:not([class*="ndm-aga"])::before,
-.ndm-article h2:not([class*="ndm-aga"])::after {
-  left: 14px;
-  width: 30px;
-  height: 30px;
-}
-.ndm-article h2:not([class*="ndm-aga"])::after {
-  font-size: 18px;
-}
-.ndm-article h3:not([class*="ndm-aga"]):not(.faq-question):not(.clinic-multi-map-label) {
-  margin: 1.8em 0 0.9em !important;
-  padding: 9px 14px 9px 18px !important;
-  font-size: 16px !important;
-  border-left-width: 5px !important;
-}
-
 /* --- テーブル縮小（PC） --- */
-.clinic-summary-table,
-.clinic-detail-table {
+.clinic-summary-table, .clinic-detail-table {
   font-size: 12px !important;
 }
-.clinic-summary-table th,
-.clinic-detail-table th,
-.clinic-summary-table td,
-.clinic-detail-table td {
+.clinic-summary-table th, .clinic-detail-table th, .clinic-summary-table td, .clinic-detail-table td {
   padding: 10px 14px !important;
   line-height: 1.7 !important;
 }
-
 /* --- 公式サイトボタン（飛び出し対策・強化） --- */
 .official-site-button-wrap {
   margin: 1em 0 1.5em;
@@ -1796,9 +1453,7 @@ article p strong,
   max-width: 100%;
   overflow: hidden;
 }
-.official-site-button-wrap a,
-.official-site-button-wrap a.official-site-button,
-a.official-site-button {
+.official-site-button-wrap a, .official-site-button-wrap a.official-site-button, a.official-site-button {
   display: inline-flex !important;
   align-items: center;
   justify-content: center;
@@ -1818,58 +1473,26 @@ a.official-site-button {
   color: #fff !important;
   text-decoration: none !important;
 }
-.official-site-button-wrap a:hover,
-a.official-site-button:hover {
+.official-site-button-wrap a:hover, a.official-site-button:hover {
   background: #0a5798 !important;
   color: #fff !important;
 }
 
+
 /* === スマホサイズ（最大限縮小） === */
-@media (max-width: 767px) {
-  .ndm-article,
-  .ndm-article p,
-  .ndm-article li {
+
+@media (max-width: 767px) {.ndm-article, .ndm-article p, .ndm-article li {
     font-size: 12px !important;
     line-height: 1.7 !important;
   }
-  .ndm-article h4 {
-    font-size: 12px !important;
-  }
-  .ndm-article h2:not([class*="ndm-aga"]) {
-    padding: 11px 12px 11px 42px !important;
-    font-size: 14px !important;
-    border-radius: 8px !important;
-  }
-  .ndm-article h2:not([class*="ndm-aga"])::before,
-  .ndm-article h2:not([class*="ndm-aga"])::after {
-    left: 10px !important;
-    width: 22px !important;
-    height: 22px !important;
-  }
-  .ndm-article h2:not([class*="ndm-aga"])::after {
-    font-size: 13px !important;
-  }
-  .ndm-article h3:not([class*="ndm-aga"]):not(.faq-question):not(.clinic-multi-map-label) {
-    font-size: 13px !important;
-    padding: 6px 10px 6px 12px !important;
-    border-left-width: 4px !important;
-  }
-  .clinic-summary-table,
-  .clinic-detail-table,
-  .treatment-compare-table {
+.clinic-summary-table, .clinic-detail-table, .treatment-compare-table {
     font-size: 10px !important;
   }
-  .clinic-summary-table th,
-  .clinic-detail-table th,
-  .clinic-summary-table td,
-  .clinic-detail-table td,
-  .treatment-compare-table th,
-  .treatment-compare-table td {
+.clinic-summary-table th, .clinic-detail-table th, .clinic-summary-table td, .clinic-detail-table td, .treatment-compare-table th, .treatment-compare-table td {
     padding: 6px 8px !important;
     line-height: 1.55 !important;
   }
-  .official-site-button-wrap a,
-  a.official-site-button {
+.official-site-button-wrap a, a.official-site-button {
     width: 100% !important;
     max-width: calc(100% - 4px) !important;
     padding: 9px 10px !important;
@@ -1877,86 +1500,596 @@ a.official-site-button:hover {
     border-radius: 14px !important;
     line-height: 1.4 !important;
   }
-  .area-jump-box {
+.area-jump-box {
     padding: 12px 12px 10px;
     border-radius: 8px;
   }
-  .area-jump-box__title {
+.area-jump-box__title {
     font-size: 13px;
   }
-  .area-jump-box__type {
+.area-jump-box__type {
     font-size: 14px;
   }
-  .area-jump-box__link {
+.area-jump-box__link {
     font-size: 12px;
   }
-  .area-jump-box__list li {
+.area-jump-box__list li {
     padding: 5px 6px 5px 22px !important;
   }
-  .area-jump-box__list li::before {
+.area-jump-box__list li::before {
     left: 3px;
     top: 6px;
     font-size: 13px;
-  }
+  }}
+
+/* === CTA (ndm-cta-y1〜y4) === */
+/* === 4パターン共通 === */
+.ndm-article .ndm-cta-y1,.ndm-article .ndm-cta-y2,.ndm-article .ndm-cta-y3,.ndm-article .ndm-cta-y4{margin:24px auto!important;max-width:540px!important;padding:0!important;background:#fff!important;border:1px solid #d8dee8!important;border-radius:6px!important;font-family:"Hiragino Sans","Yu Gothic",sans-serif!important;overflow:hidden!important;box-shadow:0 6px 18px rgba(30,58,138,.12)!important;color:#1a2a40!important}
+.ndm-article .ndm-cta-y1 *,.ndm-article .ndm-cta-y2 *,.ndm-article .ndm-cta-y3 *,.ndm-article .ndm-cta-y4 *{box-sizing:border-box}
+.ndm-article .ndm-cta-y1__patternlabel,.ndm-article .ndm-cta-y2__patternlabel,.ndm-article .ndm-cta-y3__patternlabel,.ndm-article .ndm-cta-y4__patternlabel{display:block!important;margin:0!important;padding:6px 12px!important;background:#374151!important;color:#fff!important;font-size:11px!important;font-weight:700!important;letter-spacing:.08em!important;text-align:left!important}
+.ndm-article .ndm-cta-y1__body,.ndm-article .ndm-cta-y2__body,.ndm-article .ndm-cta-y3__body,.ndm-article .ndm-cta-y4__body{padding:16px 18px 22px!important;text-align:center!important;background:#fff!important}
+.ndm-article .ndm-cta-y1__bannerwrap,.ndm-article .ndm-cta-y2__bannerwrap,.ndm-article .ndm-cta-y3__bannerwrap,.ndm-article .ndm-cta-y4__bannerwrap{margin:0 0 12px!important;padding:0!important;line-height:0!important;text-align:center!important}
+.ndm-article .ndm-cta-y1__btnwrap,.ndm-article .ndm-cta-y2__btnwrap,.ndm-article .ndm-cta-y3__btnwrap,.ndm-article .ndm-cta-y4__btnwrap{margin:0!important;padding:0!important;line-height:1!important;text-align:center!important}
+.ndm-article .ndm-cta-y1__bannerlink,.ndm-article .ndm-cta-y2__bannerlink,.ndm-article .ndm-cta-y3__bannerlink,.ndm-article .ndm-cta-y4__bannerlink{display:block!important;margin:0 auto!important;border-radius:6px!important;overflow:hidden!important;line-height:0!important;box-shadow:0 4px 8px rgba(0,0,0,.1)!important;padding:0!important;background:none!important;text-decoration:none!important;width:100%}
+.ndm-article .ndm-cta-y1__banner,.ndm-article .ndm-cta-y2__banner,.ndm-article .ndm-cta-y3__banner,.ndm-article .ndm-cta-y4__banner{display:block!important;width:100%!important;height:auto!important;border:0!important;margin:0!important;padding:0!important}
+.ndm-article .ndm-cta-y1__urge,.ndm-article .ndm-cta-y2__urge,.ndm-article .ndm-cta-y3__urge,.ndm-article .ndm-cta-y4__urge{margin:0 0 10px!important;padding:0!important;font-size:13px!important;font-weight:700!important;color:#c53d2f!important;background:none!important;border:0!important;line-height:1.5!important}
+.ndm-article .ndm-cta-y1__btn,.ndm-article .ndm-cta-y2__btn,.ndm-article .ndm-cta-y3__btn,.ndm-article .ndm-cta-y4__btn{display:inline-flex!important;align-items:center!important;justify-content:center!important;width:min(100%,420px)!important;padding:14px 12px!important;background:linear-gradient(135deg,#1e3a8a 0%,#2563eb 100%)!important;color:#fff!important;text-decoration:none!important;border-radius:999px!important;font-size:14px!important;font-weight:bold!important;line-height:1.4!important;box-shadow:0 4px 10px rgba(37,99,235,.32)!important;border:0!important;margin:0!important;text-align:center!important;white-space:normal!important;word-break:keep-all!important}
+.ndm-article .ndm-cta-y1__btn::after,.ndm-article .ndm-cta-y2__btn::after,.ndm-article .ndm-cta-y3__btn::after,.ndm-article .ndm-cta-y4__btn::after{content:" ▶";font-size:11px;margin-left:6px;flex-shrink:0}
+
+/* === Y-1: 青グラデヒーロー＋メインコピー巨大 === */
+.ndm-article .ndm-cta-y1__hero{margin:0!important;padding:24px 16px 20px!important;background:linear-gradient(180deg,#eaf3fb 0%,#cfe2f3 100%)!important;text-align:center!important}
+.ndm-article .ndm-cta-y1__main{margin:0 0 12px!important;padding:0!important;font-size:24px!important;line-height:1.45!important;font-weight:900!important;color:#1a2a40!important;letter-spacing:-.01em!important;background:none!important;border:0!important}
+.ndm-article .ndm-cta-y1__main .accent{color:#1565c0!important}
+.ndm-article .ndm-cta-y1__pricerow{margin:0!important;padding:8px 12px!important;background:#fff!important;border-radius:6px!important;display:inline-block!important;font-size:14px!important;color:#1a2a40!important;font-weight:700!important;line-height:1.4!important;box-shadow:0 2px 6px rgba(30,58,138,.10)!important}
+.ndm-article .ndm-cta-y1__pricerow .price{font-size:24px!important;font-weight:900!important;color:#dc2626!important;vertical-align:-0.05em!important;margin:0 2px!important;line-height:1!important}
+
+/* === Y-2: 黄色ヒーロー＋メインコピー巨大＋赤マーカー === */
+.ndm-article .ndm-cta-y2__hero{margin:0!important;padding:24px 16px 20px!important;background:linear-gradient(180deg,#fff8e7 0%,#ffeec4 100%)!important;text-align:center!important;border-bottom:3px solid #f59e0b!important}
+.ndm-article .ndm-cta-y2__main{margin:0 0 12px!important;padding:0!important;font-size:24px!important;line-height:1.5!important;font-weight:900!important;color:#1a2a40!important;letter-spacing:-.01em!important;background:none!important;border:0!important}
+.ndm-article .ndm-cta-y2__main .marker{background:linear-gradient(transparent 60%,#fef08a 60%)!important;padding:0 4px!important;display:inline-block!important}
+.ndm-article .ndm-cta-y2__main .accent{color:#dc2626!important;font-size:1.05em!important;background:linear-gradient(transparent 60%,#fef08a 60%)!important;padding:0 4px!important;display:inline-block!important}
+.ndm-article .ndm-cta-y2__pricerow{margin:0!important;padding:8px 12px!important;background:#fff!important;border-radius:6px!important;display:inline-block!important;font-size:14px!important;color:#1a2a40!important;font-weight:700!important;line-height:1.4!important;box-shadow:0 2px 6px rgba(245,158,11,.20)!important;border:1px solid #f59e0b!important}
+.ndm-article .ndm-cta-y2__pricerow .price{font-size:24px!important;font-weight:900!important;color:#dc2626!important;vertical-align:-0.05em!important;margin:0 2px!important;line-height:1!important}
+
+/* === Y-3: ネイビーべた＋メインコピー白文字巨大 === */
+.ndm-article .ndm-cta-y3__hero{margin:0!important;padding:24px 16px 20px!important;background:linear-gradient(135deg,#1e3a8a 0%,#2563eb 100%)!important;text-align:center!important}
+.ndm-article .ndm-cta-y3__main{margin:0 0 14px!important;padding:0!important;font-size:24px!important;line-height:1.45!important;font-weight:900!important;color:#fff!important;letter-spacing:-.01em!important;background:none!important;border:0!important;text-shadow:0 2px 4px rgba(0,0,0,.15)!important}
+.ndm-article .ndm-cta-y3__main .accent{color:#fde047!important}
+.ndm-article .ndm-cta-y3__pricerow{margin:0!important;padding:8px 12px!important;background:#fff!important;border-radius:6px!important;display:inline-block!important;font-size:14px!important;color:#1a2a40!important;font-weight:700!important;line-height:1.4!important;box-shadow:0 4px 10px rgba(0,0,0,.20)!important}
+.ndm-article .ndm-cta-y3__pricerow .price{font-size:24px!important;font-weight:900!important;color:#dc2626!important;vertical-align:-0.05em!important;margin:0 2px!important;line-height:1!important}
+
+/* === Y-4: 青グラデ＋メインコピー巨大＋3ステップ === */
+.ndm-article .ndm-cta-y4__hero{margin:0!important;padding:22px 16px 18px!important;background:linear-gradient(180deg,#eaf3fb 0%,#cfe2f3 100%)!important;text-align:center!important}
+.ndm-article .ndm-cta-y4__main{margin:0 0 14px!important;padding:0!important;font-size:23px!important;line-height:1.45!important;font-weight:900!important;color:#1a2a40!important;letter-spacing:-.01em!important;background:none!important;border:0!important}
+.ndm-article .ndm-cta-y4__main .accent{color:#1565c0!important}
+.ndm-article .ndm-cta-y4__steps{margin:0!important;padding:0!important;display:flex!important;justify-content:center!important;gap:6px!important;align-items:center!important;flex-wrap:wrap!important;background:none!important}
+.ndm-article .ndm-cta-y4__step{display:inline-flex!important;align-items:center!important;padding:5px 10px!important;background:#fff!important;color:#1a2a40!important;font-size:12px!important;font-weight:700!important;border-radius:99px!important;line-height:1.4!important;border:1px solid #cfe2f3!important;box-shadow:0 1px 2px rgba(30,58,138,.08)!important}
+.ndm-article .ndm-cta-y4__step-arrow{font-size:13px!important;color:#1565c0!important;font-weight:900!important}
+
+/* スマホ対応 */
+@media(max-width:480px){
+  .ndm-article .ndm-cta-y1__hero,.ndm-article .ndm-cta-y2__hero,.ndm-article .ndm-cta-y3__hero,.ndm-article .ndm-cta-y4__hero{padding:20px 12px 16px!important}
+  .ndm-article .ndm-cta-y1__main,.ndm-article .ndm-cta-y2__main,.ndm-article .ndm-cta-y3__main{font-size:5.4vw!important}
+  .ndm-article .ndm-cta-y4__main{font-size:5vw!important}
+  .ndm-article .ndm-cta-y1__pricerow,.ndm-article .ndm-cta-y2__pricerow,.ndm-article .ndm-cta-y3__pricerow{font-size:13px!important;padding:7px 10px!important}
+  .ndm-article .ndm-cta-y1__pricerow .price,.ndm-article .ndm-cta-y2__pricerow .price,.ndm-article .ndm-cta-y3__pricerow .price{font-size:22px!important}
+  .ndm-article .ndm-cta-y1__btn,.ndm-article .ndm-cta-y2__btn,.ndm-article .ndm-cta-y3__btn,.ndm-article .ndm-cta-y4__btn{font-size:12px!important;padding:13px 10px!important;letter-spacing:-.02em!important}
+  .ndm-article .ndm-cta-y4__step{font-size:11px!important;padding:4px 8px!important}
 }
 
-/* ===== 編集部コメント（クリニック紹介の寸評・吹き出し風） ===== */
-.editor-comment {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  margin: 18px 0 20px;
-  padding: 16px 18px;
-  background: #f5f7fa;
-  border: 1px solid #e0e6ee;
-  border-left: 4px solid #1e3a8a;
-  border-radius: 6px;
+/* === 早見表 (ndm-aga-v1) === */
+.ndm-aga-v1{margin:24px 0;padding:20px;border:1px solid #d8dee8;border-radius:2px;background:#f7f9fc;font-family:"Hiragino Sans","Yu Gothic",sans-serif;color:#243446}
+.ndm-aga-v1 *{box-sizing:border-box}
+.ndm-aga-v1__title{margin:0 0 8px;font-size:25px;line-height:1.6}
+.ndm-aga-v1__lead{margin:0 0 16px;font-size:14px;line-height:1.9;color:#556579}
+.ndm-aga-v1__scroll{margin:0 0 10px;text-align:right;font-size:11px;color:#6c7a8a}
+.ndm-aga-v1__tablewrap{overflow-x:auto;padding-bottom:2px}
+.ndm-aga-v1__table{width:100%;min-width:760px;border-collapse:separate;border-spacing:0;background:#fff;border:1px solid #d9e1eb;border-radius:2px;overflow:hidden}
+.ndm-aga-v1__table th,.ndm-aga-v1__table td{padding:14px 12px;border-bottom:1px solid #e5ebf2;border-right:1px solid #e5ebf2;text-align:center;vertical-align:middle;font-size:14px;line-height:1.7}
+.ndm-aga-v1__table th:last-child,.ndm-aga-v1__table td:last-child{border-right:0}
+.ndm-aga-v1__table tbody tr:last-child td{border-bottom:0}
+.ndm-aga-v1__table th:first-child,.ndm-aga-v1__table td:first-child{position:sticky;left:0;z-index:1;background:#f5f7fa;text-align:left;font-weight:700;color:#516172;min-width:132px}
+.ndm-aga-v1__table thead th{background:#2f445c;color:#fff;font-size:14px}
+.ndm-aga-v1__table thead th.is-recommend{background:#f4ede2;color:#2f445c}
+.ndm-aga-v1__table td.is-recommend{background:#fcf8f1}
+.ndm-aga-v1__visual{display:flex;justify-content:center}
+.ndm-aga-v1__shot{display:block;width:138px;max-width:100%;height:auto;border:1px solid #d8dee8;background:#fff;box-shadow:0 10px 18px rgba(47,68,92,.12)}
+.ndm-aga-v1__recommend-label{display:inline-block;margin-bottom:8px;padding:3px 10px;border-radius:2px;background:#e7a34b;color:#fff;font-size:11px;font-weight:700}
+.ndm-aga-v1__tag{display:inline-block;margin-bottom:8px;padding:3px 10px;border-radius:2px;background:#f2f4f7;color:#5f6f80;font-size:11px;font-weight:700}
+.ndm-aga-v1__table td.is-recommend .ndm-aga-v1__tag{background:#f8e7c9;color:#87561d}
+.ndm-aga-v1__clinic{font-size:17px;font-weight:800;color:#23344a}
+.ndm-aga-v1__price{font-size:26px;font-weight:800;color:#c53d2f}
+.ndm-aga-v1__sub{font-size:12px;color:#6c7b8d}
+.ndm-aga-v1__btn{display:inline-block;padding:11px 18px;border-radius:2px;background:#2f445c;color:#fff;text-decoration:none;font-weight:700}
+.ndm-aga-v1__btn.is-main{background:#d86a2c}
+.ndm-aga-v1__note{margin:14px 0 0;font-size:12px;line-height:1.8;color:#6e7f95}
+@media (max-width:767px){
+  .ndm-aga-v1{padding:16px}
+  .ndm-aga-v1__title{font-size:21px}
+  .ndm-aga-v1__table th,.ndm-aga-v1__table td{padding:10px 10px;font-size:13px;line-height:1.65}
+  .ndm-aga-v1__clinic{font-size:16px}
+  .ndm-aga-v1__price{font-size:23px}
+  .ndm-aga-v1__btn{font-size:13px}
 }
-.editor-comment__avatar {
-  flex: 0 0 auto;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: #1e3a8a;
-  color: #fff;
+
+/* === 内部リンクボックス (ndm-related-link) === */
+.ndm-related-link{margin:24px auto;max-width:680px;padding:18px 20px;background:#f3f4f6;border-radius:6px;font-family:"Hiragino Sans","Yu Gothic",sans-serif}
+.ndm-related-link__intro{margin:0 0 8px;font-size:14px;font-weight:700;color:#243446;line-height:1.6}
+.ndm-related-link__anchor{display:inline-block;color:#0d8a72;font-size:14px;font-weight:600;line-height:1.6;text-decoration:underline;text-decoration-color:#0d8a72;text-underline-offset:3px}
+.ndm-related-link__anchor:hover{color:#0a6e5a;text-decoration-color:#0a6e5a}
+@media(max-width:480px){
+  .ndm-related-link{padding:14px 16px;margin:20px auto}
+  .ndm-related-link__intro{font-size:13px}
+  .ndm-related-link__anchor{font-size:13px}
+}
+
+/* ===== AGAクリニック診断UI（品川記事から転用） ===== */
+/* ========================================
+   AGA診断UI - div版CSS (WordPress安全)
+   ======================================== */
+.aga-diagnosis-wrap {
+  --aga-primary: #4a8fd6;
+  --aga-primary-dark: #3a7bc2;
+  --aga-primary-light: #eef6ff;
+  --aga-primary-soft: #dbeafe;
+  --aga-text: #2d3748;
+  --aga-text-sub: #8694a5;
+  --aga-border: #e8eef5;
+  --aga-bg: #f5f9fd;
+  --aga-white: #ffffff;
+  --aga-shadow: 0 4px 20px rgba(74, 143, 214, 0.08);
+  --aga-shadow-hover: 0 8px 28px rgba(74, 143, 214, 0.18);
+
+  max-width: 640px;
+  margin: 32px auto;
+  padding: 0 12px;
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic", Meiryo, sans-serif;
+  color: var(--aga-text);
+  line-height: 1.6;
+}
+.aga-diagnosis-wrap *,
+.aga-diagnosis-wrap *::before,
+.aga-diagnosis-wrap *::after {
+  box-sizing: border-box;
+}
+
+/* ヘッダー */
+.aga-diagnosis-wrap .aga-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+.aga-diagnosis-wrap .aga-header-badge {
+  display: inline-block;
+  background: var(--aga-primary-soft);
+  color: var(--aga-primary-dark);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 100px;
+  margin-bottom: 10px;
+  letter-spacing: 0.04em;
+}
+.aga-diagnosis-wrap .aga-header-title {
+  font-size: 22px;
+  font-weight: 800;
+  margin: 0 0 6px;
+  letter-spacing: -0.02em;
+  line-height: 1.4;
+}
+.aga-diagnosis-wrap .aga-header-sub {
+  font-size: 13px;
+  color: var(--aga-text-sub);
+  margin: 0;
+}
+
+/* プログレスバー */
+.aga-diagnosis-wrap .aga-progress-wrap {
+  margin-bottom: 18px;
+  padding: 0 4px;
+}
+.aga-diagnosis-wrap .aga-progress {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.aga-diagnosis-wrap .aga-progress-bar {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  width: 28px;
+  height: 28px;
+  background: var(--aga-white);
+  border: 2px solid var(--aga-border);
+  border-radius: 50%;
   font-weight: 700;
-  line-height: 1.2;
+  font-size: 12px;
+  color: var(--aga-text-sub);
+  transition: all 0.3s;
+  flex-shrink: 0;
+}
+.aga-diagnosis-wrap .aga-progress-bar.active {
+  background: var(--aga-primary);
+  border-color: var(--aga-primary);
+  color: #fff;
+  box-shadow: 0 0 0 4px rgba(74, 143, 214, 0.18);
+}
+.aga-diagnosis-wrap .aga-progress-bar.done {
+  background: var(--aga-primary);
+  border-color: var(--aga-primary);
+  color: #fff;
+}
+.aga-diagnosis-wrap .aga-progress-bar.done span {
+  display: none;
+}
+.aga-diagnosis-wrap .aga-progress-bar.done::before {
+  content: "✓";
+  font-size: 14px;
+  font-weight: 800;
+}
+.aga-diagnosis-wrap .aga-progress-line {
+  flex: 1;
+  height: 2px;
+  background: var(--aga-border);
+  margin: 0 4px;
+  transition: background 0.3s;
+}
+.aga-diagnosis-wrap .aga-progress-line.done {
+  background: var(--aga-primary);
+}
+.aga-diagnosis-wrap .aga-progress-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--aga-text-sub);
+  font-weight: 600;
+}
+.aga-diagnosis-wrap .aga-progress-labels span {
+  flex: 1;
   text-align: center;
 }
-.editor-comment__body {
-  flex: 1 1 auto;
-  min-width: 0;
+.aga-diagnosis-wrap .aga-progress-labels span:first-child { text-align: left; }
+.aga-diagnosis-wrap .aga-progress-labels span:last-child { text-align: right; }
+
+/* ステップ */
+.aga-diagnosis-wrap .aga-step {
+  display: none;
+  background: var(--aga-white);
+  border: 1px solid var(--aga-border);
+  border-radius: 14px;
+  padding: 20px 16px;
+  box-shadow: var(--aga-shadow);
+  animation: agaFadeIn 0.4s ease;
 }
-.editor-comment__label {
+.aga-diagnosis-wrap .aga-step.active {
+  display: block;
+}
+@keyframes agaFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.aga-diagnosis-wrap .aga-step-head {
+  margin-bottom: 10px;
+}
+.aga-diagnosis-wrap .aga-step-num {
   display: inline-block;
-  margin: 0 0 4px;
+  background: var(--aga-primary-soft);
+  color: var(--aga-primary-dark);
+  font-size: 12px;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 6px;
+  letter-spacing: 0.04em;
+  margin-right: 6px;
+}
+.aga-diagnosis-wrap .aga-step-count {
+  font-size: 11px;
+  color: var(--aga-text-sub);
+  font-weight: 600;
+}
+.aga-diagnosis-wrap .aga-question {
+  font-size: 17px;
+  font-weight: 800;
+  margin: 0 0 6px;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+}
+.aga-diagnosis-wrap .aga-question-sub {
+  font-size: 12px;
+  color: var(--aga-text-sub);
+  margin: 0 0 16px;
+  line-height: 1.5;
+}
+
+/* 選択肢 */
+.aga-diagnosis-wrap .aga-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.aga-diagnosis-wrap .aga-option {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 12px;
+  width: 100%;
+  background: #ffffff;
+  border: 1.5px solid #e8eef5;
+  border-radius: 10px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  line-height: 1.5;
+  user-select: none;
+  -webkit-tap-highlight-color: rgba(74, 143, 214, 0.1);
+}
+.aga-diagnosis-wrap .aga-option:hover {
+  border-color: #4a8fd6;
+  background: #eef6ff;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 28px rgba(74, 143, 214, 0.18);
+}
+.aga-diagnosis-wrap .aga-option:hover .aga-option-icon {
+  background: #4a8fd6;
+  color: #fff;
+}
+.aga-diagnosis-wrap .aga-option:hover .aga-option-arrow {
+  color: #4a8fd6;
+  transform: translateX(3px);
+}
+.aga-diagnosis-wrap .aga-option:focus {
+  outline: 2px solid #4a8fd6;
+  outline-offset: 2px;
+}
+.aga-diagnosis-wrap .aga-option-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  max-width: 36px;
+  background: #eef6ff;
+  color: #4a8fd6;
+  border-radius: 8px;
+  flex: 0 0 36px;
+  transition: all 0.2s;
+  font-size: 18px;
+  line-height: 1;
+}
+.aga-diagnosis-wrap .aga-option-body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  text-align: left;
+}
+.aga-diagnosis-wrap .aga-option-title {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  color: #2d3748;
+  line-height: 1.4;
+}
+.aga-diagnosis-wrap .aga-option-sub {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  color: #8694a5;
+  line-height: 1.5;
+}
+.aga-diagnosis-wrap .aga-option-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 700;
+  color: #8694a5;
+  transition: all 0.2s;
+  flex: 0 0 auto;
+  margin-left: 4px;
+  width: 16px;
+}
+
+/* 結果 */
+.aga-diagnosis-wrap .aga-result {
+  display: none;
+  background: var(--aga-white);
+  border: 1px solid var(--aga-border);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: var(--aga-shadow);
+  animation: agaFadeIn 0.5s ease;
+}
+.aga-diagnosis-wrap .aga-result.active {
+  display: block;
+}
+.aga-diagnosis-wrap .aga-result-top {
+  background: linear-gradient(135deg, #eef6ff 0%, #dbeafe 100%);
+  color: var(--aga-text);
+  padding: 22px 18px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  border-bottom: 1px solid var(--aga-border);
+}
+.aga-diagnosis-wrap .aga-result-badge {
+  display: inline-block;
+  background: #fff;
+  border: 1px solid var(--aga-primary-soft);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 100px;
+  margin-bottom: 10px;
+  letter-spacing: 0.04em;
+  color: var(--aga-primary-dark);
+  box-shadow: 0 2px 6px rgba(74, 143, 214, 0.1);
+}
+.aga-diagnosis-wrap .aga-result-lead {
+  font-size: 12px;
+  margin: 0 0 6px;
+  color: var(--aga-text-sub);
+  font-weight: 600;
+}
+.aga-diagnosis-wrap .aga-result-name {
+  font-size: 19px;
+  font-weight: 800;
+  margin: 0;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  color: var(--aga-primary-dark);
+}
+
+.aga-diagnosis-wrap .aga-result-reason-wrap {
+  padding: 18px 16px 0;
+}
+.aga-diagnosis-wrap .aga-result-reason-label,
+.aga-diagnosis-wrap .aga-result-features-label {
   font-size: 12px;
   font-weight: 700;
-  color: #1e3a8a;
-  letter-spacing: .04em;
+  color: var(--aga-primary);
+  margin-bottom: 8px;
+  letter-spacing: 0.02em;
 }
-.editor-comment__text {
+.aga-diagnosis-wrap .aga-result-features-label {
+  padding: 0 16px;
+  margin-top: 18px;
+}
+.aga-diagnosis-wrap .aga-result-reason {
+  background: var(--aga-bg);
+  border-left: 3px solid var(--aga-primary);
+  border-radius: 0 8px 8px 0;
+  padding: 14px 14px;
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--aga-text);
+}
+
+.aga-diagnosis-wrap .aga-result-features {
+  list-style: none;
+  padding: 0 16px;
   margin: 0;
-  font-size: 14px;
-  line-height: 1.85;
-  color: #36465a;
 }
-@media (max-width: 767px) {
-  .editor-comment {
-    gap: 10px;
-    padding: 13px 14px;
-  }
-  .editor-comment__avatar {
-    width: 34px;
-    height: 34px;
-    font-size: 10px;
-  }
-  .editor-comment__text {
-    font-size: 13px;
-    line-height: 1.8;
-  }
+.aga-diagnosis-wrap .aga-result-features li {
+  position: relative;
+  padding: 10px 14px 10px 34px;
+  margin-bottom: 6px;
+  font-size: 13px;
+  line-height: 1.6;
+  background: var(--aga-bg);
+  border-radius: 8px;
+  color: var(--aga-text);
 }
+.aga-diagnosis-wrap .aga-result-features li::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  top: 13px;
+  width: 16px;
+  height: 16px;
+  background: var(--aga-primary);
+  border-radius: 50%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 10px;
+}
+
+.aga-diagnosis-wrap .aga-result-cta {
+  display: block;
+  text-align: center;
+  margin: 18px 16px 0;
+  background: linear-gradient(135deg, #5ba0e6 0%, #4a8fd6 100%);
+  color: #fff !important;
+  padding: 14px 22px;
+  border-radius: 10px;
+  font-weight: 800;
+  text-decoration: none;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+  transition: all 0.2s;
+  box-shadow: 0 4px 14px rgba(74, 143, 214, 0.35);
+  cursor: pointer;
+}
+.aga-diagnosis-wrap .aga-result-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(74, 143, 214, 0.45);
+}
+
+.aga-diagnosis-wrap .aga-restart {
+  display: inline-block;
+  margin: 10px auto 18px;
+  background: transparent;
+  border: 1px solid #e8eef5;
+  border-radius: 8px;
+  padding: 8px 18px;
+  font-size: 12px;
+  color: #8694a5;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 600;
+  text-align: center;
+  user-select: none;
+}
+/* restart要素を中央寄せ */
+.aga-diagnosis-wrap .aga-result {
+  position: relative;
+}
+.aga-diagnosis-wrap .aga-restart {
+  display: block;
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
+}
+.aga-diagnosis-wrap .aga-restart:hover {
+  background: #f5f9fd;
+  color: #2d3748;
+  border-color: #8694a5;
+}
+
+/* デスクトップ拡張 */
+@media (min-width: 768px) {
+  .aga-diagnosis-wrap {
+    max-width: 720px;
+    padding: 0 16px;
+  }
+  .aga-diagnosis-wrap .aga-header-title { font-size: 26px; }
+  .aga-diagnosis-wrap .aga-header-sub { font-size: 14px; }
+  .aga-diagnosis-wrap .aga-step { padding: 28px 24px; border-radius: 16px; }
+  .aga-diagnosis-wrap .aga-question { font-size: 20px; }
+  .aga-diagnosis-wrap .aga-question-sub { font-size: 13px; margin-bottom: 20px; }
+  .aga-diagnosis-wrap .aga-option {
+    padding: 14px 16px;
+    gap: 14px;
+    border-width: 2px;
+    border-radius: 12px;
+  }
+  .aga-diagnosis-wrap .aga-option-icon {
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    max-width: 42px;
+    flex: 0 0 42px;
+    border-radius: 10px;
+    font-size: 20px;
+  }
+  .aga-diagnosis-wrap .aga-option-title { font-size: 15px; }
+  .aga-diagnosis-wrap .aga-option-sub { font-size: 12px; }
+  .aga-diagnosis-wrap .aga-option-arrow { font-size: 17px; }
+  .aga-diagnosis-wrap .aga-progress-bar { width: 32px; height: 32px; font-size: 13px; }
+  .aga-diagnosis-wrap .aga-progress-labels { font-size: 11px; }
+  .aga-diagnosis-wrap .aga-result-top { padding: 28px 24px; }
+  .aga-diagnosis-wrap .aga-result-name { font-size: 23px; }
+  .aga-diagnosis-wrap .aga-result-reason-wrap { padding: 24px 24px 0; }
+  .aga-diagnosis-wrap .aga-result-reason { font-size: 14px; padding: 16px 18px; }
+  .aga-diagnosis-wrap .aga-result-features { padding: 0 24px; }
+  .aga-diagnosis-wrap .aga-result-features-label { padding: 0 24px; }
+  .aga-diagnosis-wrap .aga-result-features li { font-size: 14px; padding: 12px 16px 12px 38px; }
+  .aga-diagnosis-wrap .aga-result-cta { margin: 22px 24px 0; padding: 16px 26px; font-size: 16px; }
+}
+
+.tcg-fixed-line { display: none; }

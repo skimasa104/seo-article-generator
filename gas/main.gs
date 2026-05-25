@@ -63,7 +63,8 @@ const SITE_OPTIONS = [
   "明日のクリニック",
   "まめクリニック",
   "うつ予防",
-  "なんでも"
+  "なんでも",
+  "サードクリニック"
 ];
 const STATUS_OPTIONS = ["未実行", "待機中", "実行中", "完了", "エラー"];
 const VARIANT_COUNT_OPTIONS = ["1", "2", "3", "4", "5"];
@@ -110,14 +111,19 @@ const SITE_LABEL_MAP = {
   "なんでも": "sites/nandemo.json",
   "nandemo": "sites/nandemo.json",
   "sites/nandemo.json": "sites/nandemo.json",
-  "nandemo.trigger-tech.info": "sites/nandemo.json"
+  "nandemo.trigger-tech.info": "sites/nandemo.json",
+  "サードクリニック": "sites/thirdclinic.json",
+  "thirdclinic": "sites/thirdclinic.json",
+  "sites/thirdclinic.json": "sites/thirdclinic.json",
+  "thirdclinic.jp": "sites/thirdclinic.json"
 };
 const SITE_DISPLAY_MAP = {
   "sites/aurora_clinic.json": "オーロラクリニック",
   "sites/ashitano_clinic.json": "明日のクリニック",
   "sites/mame_clinic.json": "まめクリニック",
   "sites/utu_yobo.json": "うつ予防",
-  "sites/nandemo.json": "なんでも"
+  "sites/nandemo.json": "なんでも",
+  "sites/thirdclinic.json": "サードクリニック"
 };
 
 
@@ -247,7 +253,8 @@ function ensureDropdowns(sheet) {
     "明日のクリニック / sites/ashitano_clinic.json\n" +
     "まめクリニック / sites/mame_clinic.json（投稿は自動スキップ）\n" +
     "うつ予防 / sites/utu_yobo.json\n" +
-    "なんでも / sites/nandemo.json"
+    "なんでも / sites/nandemo.json\n" +
+    "サードクリニック / sites/thirdclinic.json"
   );
 
   sheet.getRange(2, 9, rowCount, 1).setNote(

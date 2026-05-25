@@ -1,0 +1,2708 @@
+<style>/* seo-article-common-css:start *//* ========================================
+   SEO記事共通CSS
+   WordPressの「カスタムCSS & JS」に貼り付けて使用
+   全ジャンル（AGA/ED/脱毛等）で共通
+   ======================================== */
+/* ============================================================
+   .ndm-article: 記事本文の独立スコープ
+   テーマの装飾を打ち消し、記事内 CSS だけが効く状態にする
+   ============================================================ */
+.ndm-article {
+  color: #243446 !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif !important;
+  font-size: 16px !important;
+  line-height: 1.85 !important;
+  word-break: break-word;
+}
+.ndm-article *,
+.ndm-article *::before,
+.ndm-article *::after {
+  box-sizing: border-box;
+}
+/* --- 段落 --- */
+.ndm-article p {
+  margin: 1em 0 !important;
+  padding: 0 !important;
+  font-size: 16px !important;
+  line-height: 1.85 !important;
+  color: #243446 !important;
+  background: none !important;
+  border: 0 !important;
+}
+/* --- 見出しベース（H2/H3の最終見た目は後段の専用ルールで定義） --- */
+.ndm-article h2,
+.ndm-article h3,
+.ndm-article h4,
+.ndm-article h5,
+.ndm-article h6 {
+  color: #1e3a8a !important;
+  background: none !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+}
+.ndm-article h4 {
+  margin: 1.4em 0 0.6em !important;
+  padding: 0 !important;
+  font-size: 16px !important;
+  line-height: 1.6 !important;
+  font-weight: 700 !important;
+  color: #1e3a8a !important;
+  background: none !important;
+  border: 0 !important;
+}
+.ndm-article h5,
+.ndm-article h6 {
+  margin: 1em 0 0.5em !important;
+  padding: 0 !important;
+  font-weight: 700 !important;
+  color: #1e3a8a !important;
+  background: none !important;
+  border: 0 !important;
+}
+/* --- リスト --- */
+.ndm-article ul {
+  list-style: disc outside !important;
+  margin: 1em 0 !important;
+  padding-left: 1.4em !important;
+}
+.ndm-article ol {
+  list-style: decimal outside !important;
+  margin: 1em 0 !important;
+  padding-left: 1.4em !important;
+}
+.ndm-article li {
+  margin: 0.4em 0 !important;
+  line-height: 1.85 !important;
+  color: #243446 !important;
+  background: none !important;
+}
+/* --- リンク・強調 --- */
+.ndm-article a:not(.btn):not(.cl-btn):not(.official-site-button):not([class*="__btn"]):not([style*="background"]) {
+  color: #2563eb !important;
+  text-decoration: underline;
+  word-break: break-all;
+}
+.ndm-article a:not(.btn):not(.cl-btn):not(.official-site-button):not([class*="__btn"]):not([style*="background"]):hover {
+  text-decoration: none;
+}
+.ndm-article a.btn,
+.ndm-article a.cl-btn,
+.ndm-article a.official-site-button,
+.ndm-article a[class*="__btn"],
+.ndm-article .official-site-button-wrap a,
+.ndm-article div[style*="text-align:center"] > a[style*="background"] {
+  color: #fff !important;
+  text-decoration: none !important;
+  word-break: keep-all !important;
+}
+.ndm-article .official-site-button-wrap a,
+.ndm-article div[style*="text-align:center"] > a[style*="background"] {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: min(100%, 420px) !important;
+  max-width: 100%;
+  padding: 14px 24px !important;
+  line-height: 1.5 !important;
+  text-align: center !important;
+  white-space: normal !important;
+  overflow-wrap: break-word !important;
+}
+.ndm-article strong,
+.ndm-article b {
+  font-weight: 700 !important;
+  background: linear-gradient(transparent 60%, #fef08a 60%) !important;
+  padding: 0 2px !important;
+  color: #243446 !important;
+}
+/* --- メディア --- */
+.ndm-article img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+.ndm-article figure {
+  margin: 1em 0;
+}
+.ndm-article iframe {
+  max-width: 100%;
+  border: 0;
+}
+/* --- 区切り線・引用 --- */
+.ndm-article hr {
+  border: 0 !important;
+  border-top: 1px solid #d1d5db !important;
+  margin: 2em 0 !important;
+}
+.ndm-article blockquote {
+  margin: 1em 0;
+  padding: 0.8em 1em;
+  border-left: 4px solid #d1d5db;
+  background: #f9fafb;
+  color: #4b5563;
+}
+/* --- テーブル基本（個別 class はこの後の定義で上書き） --- */
+.ndm-article table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+}
+.ndm-article th,
+.ndm-article td {
+  vertical-align: top;
+}
+/* --- 概要テーブル・詳細テーブル（2列: th | td） --- */
+.clinic-summary-table,
+.clinic-detail-table {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 1.2em 0;
+  font-size: 14px;
+  table-layout: fixed !important;
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(30, 58, 138, 0.08), 0 2px 4px rgba(30, 58, 138, 0.04);
+  border: 1px solid #dbeafe;
+}
+.clinic-summary-table th,
+.clinic-detail-table th {
+  width: 34%;
+  min-width: 0;
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  color: #1e3a8a;
+  font-weight: 700;
+  text-align: left;
+  vertical-align: top;
+  padding: 14px 18px;
+  border-bottom: 1px solid #dbeafe;
+  border-right: 2px solid #93c5fd;
+  white-space: normal !important;
+  word-break: normal !important;
+  overflow-wrap: anywhere !important;
+  writing-mode: horizontal-tb;
+}
+.clinic-summary-table td,
+.clinic-detail-table td {
+  padding: 14px 18px;
+  border-bottom: 1px solid #e5e7eb;
+  vertical-align: top;
+  line-height: 1.75;
+  min-width: 0;
+  white-space: normal !important;
+  word-break: normal !important;
+  overflow-wrap: anywhere !important;
+  writing-mode: horizontal-tb;
+  background: #fff;
+}
+.clinic-summary-table tr:last-child th,
+.clinic-summary-table tr:last-child td,
+.clinic-detail-table tr:last-child th,
+.clinic-detail-table tr:last-child td {
+  border-bottom: 0;
+}
+.clinic-summary-table tr:hover td,
+.clinic-detail-table tr:hover td {
+  background: #fafbff;
+}
+.clinic-summary-table th:first-child,
+.clinic-detail-table th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%) !important;
+  box-shadow: 2px 0 0 #93c5fd;
+}
+/* --- 比較テーブル（複数列: thead付き） --- */
+/* 注: `.comparison-table` は <div> ラッパー専用。`<table>` に同名クラスが乗っているケースがあり、その場合は table レイアウトを壊さないよう `div.` で限定する */
+.table-scroll,
+div.comparison-table,
+.comparison-table-container {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto !important;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  margin: 1em 0;
+}
+.treatment-compare-table {
+  width: max-content;
+  min-width: 680px;
+  max-width: none;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 0;
+  font-size: 14px;
+  table-layout: auto !important;
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 6px 16px rgba(30, 58, 138, 0.1);
+  border: 1px solid #dbeafe;
+}
+.treatment-compare-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%) !important;
+  color: #fff !important;
+  border-color: #2563eb !important;
+}
+.treatment-compare-table th {
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  color: #1e3a8a;
+  font-weight: 700;
+  text-align: center;
+  padding: 14px 18px;
+  border-bottom: 1px solid #dbeafe;
+  border-right: 1px solid #dbeafe;
+  min-width: 96px;
+  white-space: nowrap !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  line-break: auto;
+  writing-mode: horizontal-tb;
+}
+.treatment-compare-table td {
+  padding: 14px 18px;
+  border-bottom: 1px solid #e5e7eb;
+  border-right: 1px solid #e5e7eb;
+  vertical-align: top;
+  line-height: 1.75;
+  min-width: 100px;
+  white-space: nowrap !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  line-break: auto;
+  writing-mode: horizontal-tb;
+  background: #fff;
+}
+.treatment-compare-table tbody tr:nth-child(even) td {
+  background: #f9fbff;
+}
+.treatment-compare-table tbody tr:hover td {
+  background: #eef5ff !important;
+}
+.treatment-compare-table tbody tr:last-child th,
+.treatment-compare-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.treatment-compare-table th:last-child,
+.treatment-compare-table td:last-child {
+  border-right: 0;
+}
+.treatment-compare-table a {
+  display: inline-block;
+  white-space: nowrap !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+}
+.treatment-compare-table th:last-child,
+.treatment-compare-table td:last-child {
+  min-width: 180px;
+}
+.treatment-compare-table th:first-child,
+.treatment-compare-table td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 150px;
+  background: #fff !important;
+  text-align: left;
+  box-shadow: 1px 0 0 #ddd;
+}
+.treatment-compare-table thead th:first-child {
+  z-index: 3;
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%) !important;
+  color: #fff !important;
+}
+/* --- Googleマップ --- */
+.clinic-map {
+  margin: 1em 0;
+}
+.clinic-map iframe {
+  width: 100%;
+  height: 300px;
+  border: 0;
+}
+/* --- 複数院マップ（clinic-maps-multi / clinic-multi-map 両対応） --- */
+.clinic-maps-multi .clinic-map,
+.clinic-multi-map .clinic-map {
+  margin: 0;
+}
+.clinic-maps-multi .clinic-map-item p,
+.clinic-multi-map-label {
+  line-height: 1.55;
+  color: #243446;
+}
+/* --- 公式サイトスクリーンショット --- */
+.clinic-screenshot {
+  margin: 1em 0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.clinic-screenshot img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.official-site-button-wrap {
+  margin: 1em 0 1.5em;
+  text-align: center;
+}
+.official-site-button-wrap a {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: min(100%, 420px) !important;
+  max-width: 100%;
+  padding: 14px 24px !important;
+  border-radius: 999px;
+  border: 1px solid #0b5aa0;
+  background: linear-gradient(135deg, #1780d4 0%, #0f6cbd 100%) !important;
+  box-shadow: 0 8px 18px rgba(15, 108, 189, 0.22);
+  line-height: 1.5;
+  text-align: center;
+  white-space: normal;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+.official-site-button-wrap a:hover {
+  filter: brightness(1.04);
+}
+/* --- 口コミ吹き出し --- */
+.review-section {
+  margin: 1.5em 0;
+}
+.review-section h4 {
+  font-size: 15px;
+  margin: 0 0 12px;
+  color: #333;
+}
+.review-bubble {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 12px 0;
+}
+.review-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1 0%, #ec4899 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+  color: #fff;
+  box-shadow: 0 4px 10px rgba(99, 102, 241, 0.28);
+  overflow: hidden;
+}
+.review-avatar svg {
+  width: 30px;
+  height: 30px;
+  color: #fff;
+  fill: currentColor;
+}
+.review-bubble:nth-child(2n) .review-avatar {
+  background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.28);
+}
+.review-bubble:nth-child(3n) .review-avatar {
+  background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+  box-shadow: 0 4px 10px rgba(245, 158, 11, 0.28);
+}
+.review-bubble:nth-child(4n) .review-avatar {
+  background: linear-gradient(135deg, #8b5cf6 0%, #06b6d4 100%);
+  box-shadow: 0 4px 10px rgba(139, 92, 246, 0.28);
+}
+.review-body {
+  position: relative;
+  background: #f7f7f7;
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #444;
+  flex: 1;
+}
+.review-body::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: 14px;
+  border-width: 6px 8px 6px 0;
+  border-style: solid;
+  border-color: transparent #f7f7f7 transparent transparent;
+}
+.review-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  font-size: 12px;
+  color: #888;
+}
+.review-stars {
+  color: #f5a623;
+  letter-spacing: 1px;
+}
+/* --- FAQ --- */
+.faq-section {
+  margin: 1.5em 0 2em;
+}
+.faq-item {
+  margin: 0 0 1.5em;
+}
+.faq-item:last-child {
+  margin-bottom: 0;
+}
+.faq-question {
+  margin: 0 0 0.75em;
+  padding-left: 0.8em;
+  border-left: 3px solid #e7defa;
+  line-height: 1.5;
+}
+.faq-answer {
+  margin-left: 0;
+}
+.faq-answer > p:first-child {
+  margin-top: 0;
+}
+.faq-answer > p:last-child {
+  margin-bottom: 0;
+}
+/* --- 説明ブロック見出し・リスト余白 --- */
+.consultation-comparison > div,
+.side-effect-understanding > div,
+.cost-planning > div,
+.clinic-selection-tips > div {
+  margin: 1.2em 0 1.45em;
+}
+.consultation-comparison h4,
+.side-effect-understanding h4,
+.cost-planning h4,
+.clinic-selection-tips h4 {
+  margin: 0 0 0.85em;
+  padding-left: 0.8em;
+  border-left: 3px solid #e7defa;
+  line-height: 1.5;
+}
+.consultation-comparison ul,
+.side-effect-understanding ul,
+.cost-planning ul,
+.clinic-selection-tips ul {
+  margin: 0.4em 0 0;
+  padding-left: 1.25em;
+}
+.consultation-comparison li,
+.side-effect-understanding li,
+.cost-planning li,
+.clinic-selection-tips li {
+  margin: 0 0 0.55em;
+  line-height: 1.85;
+}
+.consultation-comparison li:last-child,
+.side-effect-understanding li:last-child,
+.cost-planning li:last-child,
+.clinic-selection-tips li:last-child {
+  margin-bottom: 0;
+}
+/* --- 仮データ明記のアンケート風図表 --- */
+.mock-survey-block {
+  position: relative;
+  margin: 1.5em 0 2em;
+  padding: 20px;
+  border: 1px solid #e4ddd4;
+  border-radius: 2px;
+  background: #fdfbf8;
+  overflow: hidden;
+}
+.mock-survey-block::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto auto;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(236, 201, 159, 0.14) 0%, rgba(236, 201, 159, 0) 72%);
+  pointer-events: none;
+}
+.mock-survey-kicker {
+  margin: 0 0 8px;
+  color: #7a6552;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.mock-survey-title {
+  margin: 0 0 8px;
+  color: #352c24;
+  font-size: 20px;
+  line-height: 1.5;
+}
+.mock-survey-note {
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  border-left: 3px solid #b88b63;
+  background: #f7f1ea;
+  color: #5f5143;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.mock-survey-section {
+  margin: 0 0 18px;
+  padding: 16px;
+  border: 1px solid #e7dfd5;
+  border-radius: 2px;
+  background: #fff;
+}
+.mock-survey-section:last-child {
+  margin-bottom: 0;
+}
+.mock-survey-question {
+  margin: 0 0 14px;
+  color: #40352c;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.6;
+}
+.mock-survey-question-note {
+  margin: -4px 0 12px;
+  color: #76675a;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.mock-survey-bars {
+  display: grid;
+  gap: 10px;
+}
+.mock-survey-bar-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 280px) 64px minmax(140px, 1fr);
+  gap: 10px 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid #eee7de;
+  border-radius: 2px;
+  background: #fcfaf7;
+}
+.mock-survey-bar-row.is-top {
+  border-color: #d8c7b4;
+  background: #f8f2ea;
+}
+.mock-survey-rank {
+  display: inline-flex;
+  width: 40px;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  border-radius: 2px;
+  background: #ede3d7;
+  color: #6b5846;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+.mock-survey-bar-row.is-top .mock-survey-rank {
+  background: #6b5846;
+  color: #fffdf9;
+}
+.mock-survey-label {
+  color: #45382d;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+.mock-survey-meter {
+  position: relative;
+  height: 12px;
+  border-radius: 2px;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.45) 0 1px, transparent 1px 20%),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.45) 20% 21%, transparent 21% 40%),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.45) 40% 41%, transparent 41% 60%),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.45) 60% 61%, transparent 61% 80%),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.45) 80% 81%, transparent 81% 100%),
+    #e8ddd0;
+  overflow: hidden;
+}
+.mock-survey-fill {
+  position: relative;
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #866448 0%, #5f4633 100%);
+}
+.mock-survey-fill::after {
+  content: "";
+  position: absolute;
+  inset: 2px 8px 2px auto;
+  width: 18px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.2);
+}
+.mock-survey-value {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  color: #5f5143;
+  white-space: nowrap;
+}
+.mock-survey-value strong {
+  font-size: 18px;
+  line-height: 1;
+}
+.mock-survey-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+.mock-survey-card {
+  padding: 16px 14px;
+  border: 1px solid #e7dfd5;
+  border-radius: 2px;
+  background: #fff;
+}
+.mock-survey-card-title {
+  margin: 0 0 12px;
+  color: #45382d;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.6;
+}
+.mock-survey-donut {
+  --survey-pct: 50;
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 116px;
+  height: 116px;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at center, #fff 0 38px, transparent 39px),
+    conic-gradient(#6f533d 0 calc(var(--survey-pct) * 1%), #e7ddd1 calc(var(--survey-pct) * 1%) 100%);
+}
+.mock-survey-donut-inner {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: #fff;
+  color: #6c5a49;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.4;
+  text-align: center;
+  box-shadow: inset 0 0 0 1px #ece3d7;
+}
+.mock-survey-percent {
+  margin: 0 0 4px;
+  color: #40352c;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+}
+.mock-survey-card-meter {
+  height: 8px;
+  margin: 0 auto 10px;
+  border-radius: 2px;
+  background: #e8ddd0;
+  overflow: hidden;
+}
+.mock-survey-card-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #866448 0%, #5f4633 100%);
+}
+.mock-survey-caption {
+  margin: 0;
+  color: #6f6153;
+  font-size: 11px;
+  line-height: 1.7;
+  text-align: center;
+}
+.mock-survey-summary {
+  display: grid;
+  gap: 10px;
+}
+.mock-survey-summary-item {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 12px 0;
+  border-top: 1px solid #ece4da;
+}
+.mock-survey-summary-item:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+.mock-survey-summary-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 0;
+  border-radius: 2px;
+  background: #ece2d6;
+  color: #5f5143;
+  font-size: 12px;
+  font-weight: 800;
+}
+.mock-survey-summary-title {
+  margin: 0 0 4px;
+  color: #40352c;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.6;
+}
+.mock-survey-summary-text {
+  color: #5f5143;
+  font-size: 13px;
+  line-height: 1.7;
+}
+@media (max-width: 767px) {
+  .mock-survey-block {
+    padding: 14px;
+    border-radius: 2px;
+  }
+  .mock-survey-title {
+    font-size: 18px;
+  }
+  .mock-survey-question-note,
+  .mock-survey-note,
+  .mock-survey-summary-text {
+    font-size: 12px;
+  }
+  .mock-survey-bar-row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 8px;
+    padding: 12px;
+  }
+  .mock-survey-meter {
+    grid-column: 1 / -1;
+  }
+  .mock-survey-rank {
+    font-size: 10px;
+    width: 38px;
+  }
+  .mock-survey-label {
+    font-size: 13px;
+  }
+  .mock-survey-value {
+    justify-content: flex-end;
+  }
+  .mock-survey-value strong {
+    font-size: 17px;
+  }
+  .mock-survey-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .mock-survey-card {
+    padding: 14px 12px;
+  }
+  .mock-survey-card-title {
+    font-size: 12px;
+  }
+  .mock-survey-percent {
+    font-size: 20px;
+  }
+  .mock-survey-summary-item {
+    grid-template-columns: 50px minmax(0, 1fr);
+  }
+  .mock-survey-summary-title {
+    font-size: 13px;
+  }
+}
+/* --- SWELL 目次トグル --- */
+.p-toc {
+  margin: 1.25em 0 1.75em;
+  border: 1px solid #dbe3ef;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #fbfdff 0%, #f4f8fc 100%);
+  overflow: hidden;
+}
+.p-toc__ttl {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+}
+.p-toc__ttl[role="button"] {
+  outline: none;
+}
+.p-toc__ttl[role="button"]:focus-visible {
+  box-shadow: inset 0 0 0 2px #8db7e4;
+}
+.seo-toc-toggle-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid #d6e4f2;
+  color: #2b5078;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+.seo-toc-toggle-label::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg) translateY(-1px);
+  transition: transform 0.2s ease;
+}
+.p-toc.is-open .seo-toc-toggle-label::after {
+  transform: rotate(-135deg) translateY(-1px);
+}
+.p-toc:not(.is-open) .p-toc__list,
+.p-toc:not(.is-open) ol,
+.p-toc:not(.is-open) ul {
+  display: none;
+}
+.p-toc.is-open .p-toc__list,
+.p-toc.is-open ol,
+.p-toc.is-open ul {
+  display: block;
+}
+@media (max-width: 767px) {
+  .p-toc__ttl {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+/* --- 記事末尾CTA --- */
+.article-final-cta {
+  margin: 2em 0 1em;
+  padding: 20px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #f8fbff 0%, #eef6ff 100%);
+  border: 1px solid #dbe7f3;
+}
+.article-final-cta__eyebrow {
+  margin: 0 0 8px;
+  color: #456789;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+.article-final-cta__title {
+  margin: 0 0 12px;
+  font-size: 22px;
+  line-height: 1.5;
+}
+.article-final-cta p:last-of-type {
+  margin-bottom: 1em;
+}
+.article-final-cta.cta-variant-1 {
+  background: linear-gradient(180deg, #f8fbff 0%, #eef6ff 100%);
+  border-color: #dbe7f3;
+}
+.article-final-cta.cta-variant-1 .article-final-cta__eyebrow {
+  color: #56789a;
+}
+.article-final-cta.cta-variant-2 {
+  background: linear-gradient(180deg, #f5fcf7 0%, #ebf8f0 100%);
+  border-color: #cfe7da;
+}
+.article-final-cta.cta-variant-2 .article-final-cta__eyebrow {
+  color: #4c7b63;
+}
+.article-final-cta.cta-variant-3 {
+  background: linear-gradient(180deg, #fffaf2 0%, #fff1dd 100%);
+  border-color: #efd9b2;
+}
+.article-final-cta.cta-variant-3 .article-final-cta__eyebrow {
+  color: #9a6f2f;
+}
+.article-final-cta.cta-variant-4 {
+  background: linear-gradient(180deg, #fff7f7 0%, #ffeef0 100%);
+  border-color: #efcfd7;
+}
+.article-final-cta.cta-variant-4 .article-final-cta__eyebrow {
+  color: #9a5166;
+}
+.article-final-cta.cta-variant-5 {
+  background: linear-gradient(180deg, #f5f8fb 0%, #eaf0f6 100%);
+  border-color: #d5dfe9;
+}
+.article-final-cta.cta-variant-5 .article-final-cta__eyebrow {
+  color: #506273;
+}
+/* --- strong 蛍光マーカー強調 --- */
+p strong,
+li strong {
+  color: inherit;
+  background-image: linear-gradient(transparent 56%, rgba(255, 241, 168, 0.92) 56%);
+  background-size: 100% 100% !important;
+  background-repeat: no-repeat !important;
+  border-bottom: 2px solid #efd36f;
+  font-weight: 700 !important;
+  font-size: 1.08em !important;
+  line-height: 1.75;
+  padding: 0 0.18em 0.08em;
+  border-radius: 0.2em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  transition: filter 0.25s ease, border-color 0.25s ease;
+}
+p strong.is-visible,
+li strong.is-visible {
+  filter: saturate(1.05);
+  border-bottom-color: #e0be49;
+}
+@media (max-width: 767px) {
+  .clinic-summary-table,
+  .clinic-detail-table,
+  .treatment-compare-table {
+    font-size: 13px;
+  }
+  .clinic-summary-table th,
+  .clinic-detail-table th,
+  .clinic-summary-table td,
+  .clinic-detail-table td,
+  .treatment-compare-table th,
+  .treatment-compare-table td {
+    padding: 10px 12px;
+  }
+  .clinic-summary-table th,
+  .clinic-detail-table th {
+    width: 40%;
+    min-width: 0;
+  }
+  .clinic-summary-table td,
+  .clinic-detail-table td {
+    min-width: 0;
+  }
+  .treatment-compare-table {
+    min-width: 720px;
+  }
+  .treatment-compare-table th,
+  .treatment-compare-table td {
+    white-space: normal !important;
+    word-break: normal !important;
+    overflow-wrap: anywhere !important;
+  }
+  .treatment-compare-table th:first-child,
+  .treatment-compare-table td:first-child {
+    min-width: 34vw !important;
+    max-width: 42vw !important;
+    width: 38vw;
+    white-space: normal !important;
+    word-break: break-word !important;
+    overflow-wrap: anywhere !important;
+  }
+  .treatment-compare-table th:first-child a,
+  .treatment-compare-table td:first-child a {
+    display: inline !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+    overflow-wrap: anywhere !important;
+    max-width: 100%;
+  }
+  .treatment-compare-table th:last-child,
+  .treatment-compare-table td:last-child {
+    min-width: 160px;
+  }
+  .official-site-button-wrap a {
+    width: 100% !important;
+    padding: 14px 18px !important;
+    font-size: 14px !important;
+  }
+  .ndm-article div[style*="text-align:center"] > a[style*="background"] {
+    width: 100% !important;
+    padding: 14px 18px !important;
+    font-size: 14px !important;
+  }
+}
+/* --- なんでも向け早見表ショートコード: 外枠ボックスを無効化 --- */
+.ndm-aga-v1,
+.ndm-aga-v2,
+.ndm-aga-v3,
+.ndm-aga-v4,
+.ndm-aga-v5 {
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+@media (max-width: 767px) {
+  .ndm-aga-v1,
+  .ndm-aga-v2,
+  .ndm-aga-v3,
+  .ndm-aga-v4,
+  .ndm-aga-v5 {
+    padding: 0 !important;
+  }
+}
+/* ======================================
+   派手なH2見出しデザイン
+   - 早見表セクション (.ndm-aga-v*) のH2は除外
+   - .ndm-article 配下だけに効かせて本文外への漏れを防ぐ
+   ====================================== */
+.ndm-article h2:not([class*="ndm-aga"]) {
+  position: relative;
+  margin: 2.5em 0 1.4em !important;
+  padding: 22px 24px 22px 70px !important;
+  color: #fff !important;
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 55%, #06b6d4 100%) !important;
+  border: 0 !important;
+  border-radius: 12px !important;
+  font-size: 22px !important;
+  font-weight: 800 !important;
+  line-height: 1.5 !important;
+  box-shadow:
+    0 10px 22px rgba(30, 58, 138, 0.22),
+    0 2px 4px rgba(30, 58, 138, 0.12);
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+.ndm-article h2:not([class*="ndm-aga"])::before {
+  content: "";
+  position: absolute;
+  left: 18px;
+  top: 50%;
+  width: 38px;
+  height: 38px;
+  transform: translateY(-50%);
+  background: linear-gradient(135deg, #fde68a 0%, #f59e0b 100%);
+  border-radius: 50%;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.18);
+}
+.ndm-article h2:not([class*="ndm-aga"])::after {
+  content: "✓";
+  position: absolute;
+  left: 18px;
+  top: 50%;
+  width: 38px;
+  height: 38px;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1e3a8a;
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1;
+}
+@media (max-width: 767px) {
+  .ndm-article h2:not([class*="ndm-aga"]) {
+    padding: 18px 18px 18px 60px;
+    font-size: 19px;
+    border-radius: 10px;
+  }
+  .ndm-article h2:not([class*="ndm-aga"])::before,
+  .ndm-article h2:not([class*="ndm-aga"])::after {
+    left: 14px;
+    width: 32px;
+    height: 32px;
+  }
+  .ndm-article h2:not([class*="ndm-aga"])::after {
+    font-size: 18px;
+  }
+}
+/* ======================================
+   H3見出しのアクセント
+   ====================================== */
+.ndm-article h3:not([class*="ndm-aga"]):not(.faq-question):not(.clinic-multi-map-label) {
+  position: relative;
+  margin: 2em 0 1em !important;
+  padding: 12px 16px 12px 22px !important;
+  font-size: 19px !important;
+  font-weight: 800 !important;
+  line-height: 1.55 !important;
+  color: #1e3a8a;
+  background: linear-gradient(90deg, #eff6ff 0%, #ffffff 100%) !important;
+  border-left: 6px solid #2563eb !important;
+  border-radius: 0 8px 8px 0 !important;
+}
+.ndm-article h3:not([class*="ndm-aga"]):not(.faq-question):not(.clinic-multi-map-label)::before {
+  content: "";
+  position: absolute;
+  left: -6px;
+  top: 0;
+  width: 6px;
+  height: 100%;
+  background: linear-gradient(180deg, #06b6d4 0%, #2563eb 100%);
+  border-radius: 0 0 0 0;
+}
+/* ======================================
+   一覧ボックス（最終版）
+   ====================================== */
+.clinic-index-box {
+  margin: 1.2em 0 1.6em !important;
+  padding: 0 !important;
+  border: 1px solid #b9d1cd !important;
+  border-radius: 12px !important;
+  background: #fff !important;
+  box-shadow: none !important;
+  overflow: hidden !important;
+}
+.clinic-index-box::before {
+  content: none !important;
+  display: none !important;
+}
+.clinic-index-box .clinic-index-title,
+.clinic-index-box .clinic-index-box__title,
+.clinic-index-title,
+.clinic-index-box__title {
+  margin: 0 !important;
+  padding: 12px 16px !important;
+  background: #a9c1bc !important;
+  color: #fff !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  line-height: 1.5 !important;
+  border: 0 !important;
+}
+.clinic-index-box .clinic-index-list,
+.clinic-index-box .clinic-index-box__list,
+.clinic-index-box > ul,
+.clinic-index-box > ol,
+.clinic-index-list,
+.clinic-index-box__list {
+  counter-reset: clinic-index;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin: 0 !important;
+  padding: 14px 16px 16px !important;
+  list-style: none !important;
+}
+.clinic-index-box .clinic-index-list li,
+.clinic-index-box .clinic-index-box__list li,
+.clinic-index-box > ul > li,
+.clinic-index-box > ol > li,
+.clinic-index-list li,
+.clinic-index-box__list li {
+  counter-increment: clinic-index;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 !important;
+  padding: 0 !important;
+  list-style: none !important;
+  background: none !important;
+}
+.clinic-index-box .clinic-index-list li::before,
+.clinic-index-box .clinic-index-box__list li::before,
+.clinic-index-box > ul > li::before,
+.clinic-index-box > ol > li::before,
+.clinic-index-list li::before,
+.clinic-index-box__list li::before {
+  content: counter(clinic-index);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  border-radius: 999px;
+  background: #b8cfcb;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+.clinic-index-box .clinic-index-list a,
+.clinic-index-box .clinic-index-box__list a,
+.clinic-index-box > ul a,
+.clinic-index-box > ol a,
+.clinic-index-list a,
+.clinic-index-box__list a {
+  display: block;
+  min-width: 0;
+  padding: 0 !important;
+  border: 0 !important;
+  background: none !important;
+  color: #456a95 !important;
+  text-decoration: none !important;
+  font-size: 14px !important;
+  line-height: 1.55 !important;
+  font-weight: 700 !important;
+}
+.clinic-index-box .clinic-index-list a:hover,
+.clinic-index-box .clinic-index-box__list a:hover,
+.clinic-index-box > ul a:hover,
+.clinic-index-box > ol a:hover,
+.clinic-index-list a:hover,
+.clinic-index-box__list a:hover {
+  color: #2d527c !important;
+}
+@media (max-width: 767px) {
+  .clinic-index-box .clinic-index-title,
+  .clinic-index-box .clinic-index-box__title,
+  .clinic-index-title,
+  .clinic-index-box__title {
+    padding: 10px 14px !important;
+    font-size: 14px !important;
+  }
+  .clinic-index-box .clinic-index-list,
+  .clinic-index-box .clinic-index-box__list,
+  .clinic-index-box > ul,
+  .clinic-index-box > ol,
+  .clinic-index-list,
+  .clinic-index-box__list {
+    gap: 7px;
+    padding: 12px 14px 14px !important;
+  }
+  .clinic-index-box .clinic-index-list li,
+  .clinic-index-box .clinic-index-box__list li,
+  .clinic-index-box > ul > li,
+  .clinic-index-box > ol > li,
+  .clinic-index-list li,
+  .clinic-index-box__list li {
+    gap: 8px;
+  }
+  .clinic-index-box .clinic-index-list li::before,
+  .clinic-index-box .clinic-index-box__list li::before,
+  .clinic-index-box > ul > li::before,
+  .clinic-index-box > ol > li::before,
+  .clinic-index-list li::before,
+  .clinic-index-box__list li::before {
+    flex-basis: 20px;
+    width: 20px;
+    height: 20px;
+    font-size: 11px;
+  }
+  .clinic-index-box .clinic-index-list a,
+  .clinic-index-box .clinic-index-box__list a,
+  .clinic-index-box > ul a,
+  .clinic-index-box > ol a,
+  .clinic-index-list a,
+  .clinic-index-box__list a {
+    font-size: 13px !important;
+    line-height: 1.5 !important;
+  }
+}
+/* ======================================
+   通常リスト（記事本文の<ul>/<ol>）
+   ====================================== */
+article ul:not(.ndm-aga-v1 ul):not(.ndm-aga-v2 ul):not(.ndm-aga-v3 ul):not(.ndm-aga-v4 ul):not(.ndm-aga-v5 ul):not(.clinic-index-box ul),
+.entry-content ul:not(.ndm-aga-v1 ul):not(.ndm-aga-v2 ul):not(.ndm-aga-v3 ul):not(.ndm-aga-v4 ul):not(.ndm-aga-v5 ul):not(.clinic-index-box ul),
+.post_content ul:not(.ndm-aga-v1 ul):not(.ndm-aga-v2 ul):not(.ndm-aga-v3 ul):not(.ndm-aga-v4 ul):not(.ndm-aga-v5 ul):not(.clinic-index-box ul) {
+  list-style: none !important;
+  padding-left: 0 !important;
+  margin: 1em 0;
+}
+article ul:not(.clinic-index-box ul) > li,
+.entry-content ul:not(.clinic-index-box ul) > li,
+.post_content ul:not(.clinic-index-box ul) > li {
+  position: relative;
+  padding: 6px 6px 6px 28px;
+  margin: 4px 0;
+  line-height: 1.85;
+  list-style: none;
+}
+article ul:not(.clinic-index-box ul) > li::before,
+.entry-content ul:not(.clinic-index-box ul) > li::before,
+.post_content ul:not(.clinic-index-box ul) > li::before {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 14px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #06b6d4 0%, #2563eb 100%);
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.25);
+}
+/* ======================================
+   複数院マップ（multi-map）
+   ====================================== */
+.clinic-multi-map {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+  margin: 1.2em 0 1.5em;
+}
+.clinic-multi-map-item {
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(30, 58, 138, 0.1);
+  border: 1px solid #dbeafe;
+}
+.clinic-multi-map-label {
+  margin: 0 !important;
+  padding: 10px 14px !important;
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%) !important;
+  color: #fff !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  text-align: center;
+  line-height: 1.4 !important;
+}
+.clinic-multi-map-item .clinic-map {
+  margin: 0;
+}
+.clinic-multi-map-item .clinic-map iframe {
+  display: block;
+  width: 100%;
+  height: 240px;
+  border: 0;
+}
+/* ======================================
+   口コミ引用元リンク
+   ====================================== */
+.review-source {
+  margin: 12px 0 0 !important;
+  padding: 10px 14px;
+  background: #f9fafb;
+  border-left: 3px solid #06b6d4;
+  border-radius: 0 6px 6px 0;
+  font-size: 12px;
+  color: #6b7280;
+}
+.review-source small {
+  font-size: 12px;
+}
+.review-source a {
+  color: #0369a1 !important;
+  text-decoration: underline;
+  font-weight: 600;
+}
+.review-source a:hover {
+  color: #0284c7 !important;
+}
+/* ======================================
+   なんでも比較表（上位5院）
+   ====================================== */
+.clinic-list-tbl {
+  margin: 1.5em 0 2em;
+  font-family: "Hiragino Sans", "Yu Gothic", sans-serif;
+  color: #243446;
+}
+.clinic-list-tbl * {
+  box-sizing: border-box;
+}
+.clinic-list-tbl__wrap {
+  overflow-x: auto;
+  border-radius: 12px;
+  box-shadow: 0 8px 22px rgba(47, 68, 92, 0.14);
+  border: 1px solid #d9e1eb;
+}
+.clinic-list-tbl table {
+  width: 100%;
+  min-width: 1080px;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: #fff;
+  table-layout: fixed;
+  margin: 0;
+}
+.clinic-list-tbl thead th {
+  background: linear-gradient(135deg, #9bbdc4 0%, #7da9b3 100%);
+  color: #fff;
+  padding: 14px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 0.04em;
+  border-right: 1px solid rgba(255, 255, 255, 0.18);
+}
+.clinic-list-tbl thead th:last-child {
+  border-right: 0;
+}
+.clinic-list-tbl thead th:nth-child(1) {
+  width: 220px;
+}
+.clinic-list-tbl tbody td {
+  padding: 18px 14px;
+  border-bottom: 1px solid #e5ebf2;
+  border-right: 1px solid #e5ebf2;
+  text-align: center;
+  vertical-align: middle;
+  font-size: 13px;
+  line-height: 1.75;
+  color: #475569;
+  background: #fff;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+.clinic-list-tbl tbody td:last-child {
+  border-right: 0;
+}
+.clinic-list-tbl tbody tr:last-child td {
+  border-bottom: 0;
+}
+.clinic-list-tbl tbody tr:nth-child(even) td {
+  background: #fafbfd;
+}
+.clinic-list-tbl tbody tr:hover td {
+  background: #f3f8fa;
+}
+.clinic-list-tbl .cl-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  min-width: 180px;
+}
+.clinic-list-tbl .cl-name {
+  font-size: 12px;
+  color: #0c4a6e;
+  font-weight: 700;
+  line-height: 1.45;
+  text-align: center;
+}
+.clinic-list-tbl .cl-name a {
+  color: #0c4a6e !important;
+  text-decoration: none !important;
+}
+.clinic-list-tbl .cl-logo-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 170px;
+  height: 72px;
+  background: #fff;
+  border: 1px solid #d8dee8;
+  border-radius: 6px;
+  padding: 8px 12px;
+  overflow: hidden;
+}
+.clinic-list-tbl .cl-logo-box img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+.clinic-list-tbl .cl-logo-text {
+  font-weight: 800;
+  color: #0c4a6e;
+  font-size: 15px;
+  line-height: 1.3;
+  text-align: center;
+}
+.clinic-list-tbl .cl-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 26px;
+  background: linear-gradient(135deg, #5fb586 0%, #4a9d72 100%);
+  color: #fff !important;
+  text-decoration: none !important;
+  font-weight: 700;
+  font-size: 13px;
+  border-radius: 4px;
+  box-shadow: 0 2px 6px rgba(95, 181, 134, 0.3);
+}
+.clinic-list-tbl .cl-btn::after {
+  content: "›";
+  font-size: 16px;
+  line-height: 1;
+}
+.clinic-list-tbl .cl-btn:hover {
+  filter: brightness(1.05);
+}
+.clinic-list-tbl .price-em {
+  color: #c53d2f;
+  font-weight: 800;
+  font-size: 13px;
+  display: inline-block;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+.clinic-list-tbl .sub {
+  font-size: 11px;
+  color: #6c7b8d;
+  display: block;
+  line-height: 1.55;
+  margin-top: 2px;
+  word-break: keep-all;
+}
+@media (max-width: 767px) {
+  .clinic-list-tbl table {
+    min-width: 760px;
+  }
+  .clinic-list-tbl .cl-logo-box {
+    width: 140px;
+    height: 60px;
+  }
+  .clinic-list-tbl tbody td {
+    padding: 14px 10px;
+  }
+}
+/* ======================================
+   strong（蛍光マーカー風強化）
+   ====================================== */
+article p strong,
+.entry-content p strong,
+.post_content p strong {
+  background: linear-gradient(transparent 55%, #fef08a 55%);
+  font-weight: 800;
+  padding: 0 2px;
+}
+/* ============================================================
+   2026-05-14 V1記事の共通アップデート
+   - フォント全体縮小（PC/SP）
+   - H2/H3 縮小
+   - テーブル余白詰め
+   - 公式サイトボタン飛び出し対策
+   - 早見表(.ndm-aga-v1) 余白打ち消し＋ヒーローブロック
+   - エリアジャンプボックス
+   ============================================================ */
+/* --- 早見表内のテーブル/段落の余白を打ち消し --- */
+.ndm-aga-v1 .ndm-aga-v1__scroll,
+.ndm-article .ndm-aga-v1 .ndm-aga-v1__scroll {
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1.4 !important;
+}
+.ndm-aga-v1 .ndm-aga-v1__tablewrap,
+.ndm-article .ndm-aga-v1 .ndm-aga-v1__tablewrap {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+.ndm-aga-v1 table,
+.ndm-article .ndm-aga-v1 table {
+  margin: 0 !important;
+}
+/* --- 早見表ヒーローブロック（タイトル装飾） --- */
+.ndm-aga-v1__hero {
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  text-align: center;
+  background: linear-gradient(180deg, #eaf3fb 0%, #cfe2f3 100%);
+  border-radius: 4px;
+}
+.ndm-aga-v1__hero .ndm-aga-v1__title {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1.2;
+  font-weight: 900;
+  color: #1a2a40;
+  letter-spacing: -.01em;
+  text-align: center;
+  white-space: nowrap;
+}
+.ndm-aga-v1__hero .ndm-aga-v1__title .em {
+  font-size: 1.55em;
+  font-weight: 900;
+  color: #1565c0;
+  vertical-align: -0.05em;
+  margin: 0 .18em;
+}
+.ndm-aga-v1__hero .ndm-aga-v1__title .small {
+  font-size: .78em;
+  font-weight: 900;
+}
+@media (max-width: 767px) {
+  .ndm-aga-v1__hero {
+    padding: 6px 6px;
+  }
+  .ndm-aga-v1__hero .ndm-aga-v1__title {
+    font-size: 4.6vw;
+  }
+}
+/* --- エリアジャンプボックス --- */
+.area-jump-box {
+  margin: 18px 0 24px;
+  padding: 16px 18px 14px;
+  background: #fff;
+  border: 1px solid #d6dee8;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(30, 41, 59, 0.06);
+}
+.area-jump-box__title {
+  margin: 0 0 12px;
+  padding-bottom: 9px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #1e3a5f;
+  text-align: center;
+  border-bottom: 1px solid #e3e8f0;
+}
+.area-jump-box__list {
+  list-style: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+.area-jump-box__list li {
+  position: relative;
+  margin: 0 0 6px !important;
+  padding: 6px 6px 6px 26px !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  list-style: none !important;
+}
+.area-jump-box__list li::before {
+  content: "✓";
+  position: absolute;
+  left: 4px;
+  top: 7px;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ea580c;
+  font-weight: 900;
+  font-size: 14px;
+  background: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+.area-jump-box__list li:last-child {
+  margin-bottom: 0 !important;
+}
+.area-jump-box__type {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e3a5f;
+  line-height: 1.45;
+  margin-bottom: 2px;
+}
+.area-jump-box__link {
+  display: inline-block;
+  font-size: 13px;
+  color: #1565c0 !important;
+  text-decoration: underline !important;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.area-jump-box__link:hover {
+  color: #0a4d99 !important;
+}
+/* --- ベース文字サイズ縮小（PC） --- */
+.ndm-article {
+  font-size: 14px !important;
+  line-height: 1.8 !important;
+}
+.ndm-article p {
+  font-size: 14px !important;
+  line-height: 1.8 !important;
+}
+.ndm-article li {
+  font-size: 14px !important;
+  line-height: 1.8 !important;
+}
+.ndm-article h4 {
+  font-size: 14px !important;
+}
+/* --- H2/H3 縮小（PC） --- */
+.ndm-article h2:not([class*="ndm-aga"]) {
+  margin: 2.2em 0 1.2em !important;
+  padding: 16px 20px 16px 56px !important;
+  font-size: 18px !important;
+  border-radius: 10px !important;
+}
+.ndm-article h2:not([class*="ndm-aga"])::before,
+.ndm-article h2:not([class*="ndm-aga"])::after {
+  left: 14px;
+  width: 30px;
+  height: 30px;
+}
+.ndm-article h2:not([class*="ndm-aga"])::after {
+  font-size: 18px;
+}
+.ndm-article h3:not([class*="ndm-aga"]):not(.faq-question):not(.clinic-multi-map-label) {
+  margin: 1.8em 0 0.9em !important;
+  padding: 9px 14px 9px 18px !important;
+  font-size: 16px !important;
+  border-left-width: 5px !important;
+}
+/* --- テーブル縮小（PC） --- */
+.clinic-summary-table,
+.clinic-detail-table {
+  font-size: 12px !important;
+}
+.clinic-summary-table th,
+.clinic-detail-table th,
+.clinic-summary-table td,
+.clinic-detail-table td {
+  padding: 10px 14px !important;
+  line-height: 1.7 !important;
+}
+/* --- 公式サイトボタン（飛び出し対策・強化） --- */
+.official-site-button-wrap {
+  margin: 1em 0 1.5em;
+  text-align: center;
+  max-width: 100%;
+  overflow: hidden;
+}
+.official-site-button-wrap a,
+.official-site-button-wrap a.official-site-button,
+a.official-site-button {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: min(100%, 420px) !important;
+  max-width: calc(100% - 8px) !important;
+  box-sizing: border-box !important;
+  padding: 12px 18px !important;
+  border-radius: 18px !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  line-height: 1.45 !important;
+  text-align: center;
+  white-space: normal !important;
+  word-break: break-all !important;
+  overflow-wrap: anywhere !important;
+  background: #0f6cbd !important;
+  color: #fff !important;
+  text-decoration: none !important;
+}
+.official-site-button-wrap a:hover,
+a.official-site-button:hover {
+  background: #0a5798 !important;
+  color: #fff !important;
+}
+/* === スマホサイズ（最大限縮小） === */
+@media (max-width: 767px) {
+  .ndm-article,
+  .ndm-article p,
+  .ndm-article li {
+    font-size: 12px !important;
+    line-height: 1.7 !important;
+  }
+  .ndm-article h4 {
+    font-size: 12px !important;
+  }
+  .ndm-article h2:not([class*="ndm-aga"]) {
+    padding: 11px 12px 11px 42px !important;
+    font-size: 14px !important;
+    border-radius: 8px !important;
+  }
+  .ndm-article h2:not([class*="ndm-aga"])::before,
+  .ndm-article h2:not([class*="ndm-aga"])::after {
+    left: 10px !important;
+    width: 22px !important;
+    height: 22px !important;
+  }
+  .ndm-article h2:not([class*="ndm-aga"])::after {
+    font-size: 13px !important;
+  }
+  .ndm-article h3:not([class*="ndm-aga"]):not(.faq-question):not(.clinic-multi-map-label) {
+    font-size: 13px !important;
+    padding: 6px 10px 6px 12px !important;
+    border-left-width: 4px !important;
+  }
+  .clinic-summary-table,
+  .clinic-detail-table,
+  .treatment-compare-table {
+    font-size: 10px !important;
+  }
+  .clinic-summary-table th,
+  .clinic-detail-table th,
+  .clinic-summary-table td,
+  .clinic-detail-table td,
+  .treatment-compare-table th,
+  .treatment-compare-table td {
+    padding: 6px 8px !important;
+    line-height: 1.55 !important;
+  }
+  .official-site-button-wrap a,
+  a.official-site-button {
+    width: 100% !important;
+    max-width: calc(100% - 4px) !important;
+    padding: 9px 10px !important;
+    font-size: 11px !important;
+    border-radius: 14px !important;
+    line-height: 1.4 !important;
+  }
+  .area-jump-box {
+    padding: 12px 12px 10px;
+    border-radius: 8px;
+  }
+  .area-jump-box__title {
+    font-size: 13px;
+  }
+  .area-jump-box__type {
+    font-size: 14px;
+  }
+  .area-jump-box__link {
+    font-size: 12px;
+  }
+  .area-jump-box__list li {
+    padding: 5px 6px 5px 22px !important;
+  }
+  .area-jump-box__list li::before {
+    left: 3px;
+    top: 6px;
+    font-size: 13px;
+  }
+}
+/* ===== 編集部コメント（クリニック紹介の寸評・吹き出し風） ===== */
+.editor-comment {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin: 18px 0 20px;
+  padding: 16px 18px;
+  background: #f5f7fa;
+  border: 1px solid #e0e6ee;
+  border-left: 4px solid #1e3a8a;
+  border-radius: 6px;
+}
+.editor-comment__avatar {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #1e3a8a;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+}
+.editor-comment__body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.editor-comment__label {
+  display: inline-block;
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #1e3a8a;
+  letter-spacing: .04em;
+}
+.editor-comment__text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.85;
+  color: #36465a;
+}
+@media (max-width: 767px) {
+  .editor-comment {
+    gap: 10px;
+    padding: 13px 14px;
+  }
+  .editor-comment__avatar {
+    width: 34px;
+    height: 34px;
+    font-size: 10px;
+  }
+  .editor-comment__text {
+    font-size: 13px;
+    line-height: 1.8;
+  }
+}
+/* === Variant Theme v1 === */
+/* V1 CLINIC INDEX THEME
+ * - Keep the standardized compact clinic index structure from article-common.css
+ * - Use V1's slate / warm accent palette instead of the mint reference look
+ */
+.clinic-index-box{border-color:#d6dde5 !important;background:#ffffff !important;box-shadow:0 8px 20px rgba(47,68,92,.06) !important}
+.clinic-index-box::before{content:none !important;display:none !important}
+.clinic-index-box .clinic-index-title,
+.clinic-index-box .clinic-index-box__title,
+.clinic-index-title,
+.clinic-index-box__title{background:linear-gradient(135deg,#5c6f82 0%,#445569 100%) !important;color:#ffffff !important}
+.clinic-index-box .clinic-index-list li::before,
+.clinic-index-box .clinic-index-box__list li::before,
+.clinic-index-box > ul > li::before,
+.clinic-index-box > ol > li::before{background:#9dabb8 !important;color:#ffffff !important}
+.clinic-index-box .clinic-index-list a,
+.clinic-index-box .clinic-index-box__list a,
+.clinic-index-box > ul a,
+.clinic-index-box > ol a{color:#42566d !important}
+.clinic-index-box .clinic-index-list a:hover,
+.clinic-index-box .clinic-index-box__list a:hover,
+.clinic-index-box > ul a:hover,
+.clinic-index-box > ol a:hover{color:#c36b3b !important}
+/* seo-article-common-css:end */</style>
+<script>/* seo-article-common-js:start *//* ========================================
+   SEO記事共通JS
+   WordPressの「カスタムCSS & JS」に貼り付けて使用
+   全ジャンル（AGA/ED/脱毛等）で共通
+   ======================================== */
+/* --- strong 蛍光マーカー スクロールアニメーション --- */
+document.addEventListener("DOMContentLoaded", function () {
+  var targets = document.querySelectorAll("p strong, li strong");
+  if (!targets.length) return;
+  var observer = new IntersectionObserver(
+    function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("is-visible");
+          observer.unobserve(entry.target);
+        }
+      });
+    },
+    { threshold: 0.5 }
+  );
+  targets.forEach(function (el) {
+    observer.observe(el);
+  });
+});
+/* --- SWELL 目次トグル（初期は閉じる） --- */
+document.addEventListener("DOMContentLoaded", function () {
+  var tocs = document.querySelectorAll(".p-toc");
+  if (!tocs.length) return;
+  tocs.forEach(function (toc) {
+    var title = toc.querySelector(".p-toc__ttl");
+    if (!title) return;
+    toc.classList.remove("is-open");
+    title.setAttribute("role", "button");
+    title.setAttribute("tabindex", "0");
+    var label = title.querySelector(".seo-toc-toggle-label");
+    if (!label) {
+      label = document.createElement("span");
+      label.className = "seo-toc-toggle-label";
+      title.appendChild(label);
+    }
+    function syncState() {
+      var isOpen = toc.classList.contains("is-open");
+      title.setAttribute("aria-expanded", isOpen ? "true" : "false");
+      label.textContent = isOpen ? "目次を閉じる" : "目次を開く";
+    }
+    syncState();
+    title.addEventListener("click", function () {
+      // テーマ側のトグル後に状態同期する
+      setTimeout(syncState, 0);
+    });
+    title.addEventListener("keydown", function (event) {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      toc.classList.toggle("is-open");
+      syncState();
+    });
+  });
+});
+/* seo-article-common-js:end */</script>
+<article class="ndm-article">
+<p>神戸でAGA・薄毛治療を考え始めても、<strong>三宮周辺だけで10院以上のクリニックや皮膚科</strong>があり、料金も治療法もバラバラで「どこを選べばいいのか」と迷ってしまう人は少なくありません。</p>
+<p>本記事では、神戸でAGA治療を受けられる<strong>クリニック・皮膚科14院を料金・アクセス・口コミ</strong>で整理し、初月980円から始められる専門院から、皮膚科で受けられる内服治療まで、あなたに合う一院を見つけやすくまとめました。皮膚科とAGAクリニックの違いやエリア別の選び方も解説します。</p>
+<style>
+/* === 4パターン共通 === */
+.ndm-article .ndm-cta-y1,.ndm-article .ndm-cta-y2,.ndm-article .ndm-cta-y3,.ndm-article .ndm-cta-y4{margin:24px auto!important;max-width:540px!important;padding:0!important;background:#fff!important;border:1px solid #d8dee8!important;border-radius:6px!important;font-family:"Hiragino Sans","Yu Gothic",sans-serif!important;overflow:hidden!important;box-shadow:0 6px 18px rgba(30,58,138,.12)!important;color:#1a2a40!important}
+.ndm-article .ndm-cta-y1 *,.ndm-article .ndm-cta-y2 *,.ndm-article .ndm-cta-y3 *,.ndm-article .ndm-cta-y4 *{box-sizing:border-box}
+.ndm-article .ndm-cta-y1__patternlabel,.ndm-article .ndm-cta-y2__patternlabel,.ndm-article .ndm-cta-y3__patternlabel,.ndm-article .ndm-cta-y4__patternlabel{display:block!important;margin:0!important;padding:6px 12px!important;background:#374151!important;color:#fff!important;font-size:11px!important;font-weight:700!important;letter-spacing:.08em!important;text-align:left!important}
+.ndm-article .ndm-cta-y1__body,.ndm-article .ndm-cta-y2__body,.ndm-article .ndm-cta-y3__body,.ndm-article .ndm-cta-y4__body{padding:16px 18px 22px!important;text-align:center!important;background:#fff!important}
+.ndm-article .ndm-cta-y1__bannerwrap,.ndm-article .ndm-cta-y2__bannerwrap,.ndm-article .ndm-cta-y3__bannerwrap,.ndm-article .ndm-cta-y4__bannerwrap{margin:0 0 12px!important;padding:0!important;line-height:0!important;text-align:center!important}
+.ndm-article .ndm-cta-y1__btnwrap,.ndm-article .ndm-cta-y2__btnwrap,.ndm-article .ndm-cta-y3__btnwrap,.ndm-article .ndm-cta-y4__btnwrap{margin:0!important;padding:0!important;line-height:1!important;text-align:center!important}
+.ndm-article .ndm-cta-y1__bannerlink,.ndm-article .ndm-cta-y2__bannerlink,.ndm-article .ndm-cta-y3__bannerlink,.ndm-article .ndm-cta-y4__bannerlink{display:block!important;margin:0 auto!important;border-radius:6px!important;overflow:hidden!important;line-height:0!important;box-shadow:0 4px 8px rgba(0,0,0,.1)!important;padding:0!important;background:none!important;text-decoration:none!important;width:100%}
+.ndm-article .ndm-cta-y1__banner,.ndm-article .ndm-cta-y2__banner,.ndm-article .ndm-cta-y3__banner,.ndm-article .ndm-cta-y4__banner{display:block!important;width:100%!important;height:auto!important;border:0!important;margin:0!important;padding:0!important}
+.ndm-article .ndm-cta-y1__urge,.ndm-article .ndm-cta-y2__urge,.ndm-article .ndm-cta-y3__urge,.ndm-article .ndm-cta-y4__urge{margin:0 0 10px!important;padding:0!important;font-size:13px!important;font-weight:700!important;color:#c53d2f!important;background:none!important;border:0!important;line-height:1.5!important}
+.ndm-article .ndm-cta-y1__btn,.ndm-article .ndm-cta-y2__btn,.ndm-article .ndm-cta-y3__btn,.ndm-article .ndm-cta-y4__btn{display:inline-flex!important;align-items:center!important;justify-content:center!important;width:min(100%,420px)!important;padding:14px 12px!important;background:linear-gradient(135deg,#1e3a8a 0%,#2563eb 100%)!important;color:#fff!important;text-decoration:none!important;border-radius:999px!important;font-size:14px!important;font-weight:bold!important;line-height:1.4!important;box-shadow:0 4px 10px rgba(37,99,235,.32)!important;border:0!important;margin:0!important;text-align:center!important;white-space:normal!important;word-break:keep-all!important}
+.ndm-article .ndm-cta-y1__btn::after,.ndm-article .ndm-cta-y2__btn::after,.ndm-article .ndm-cta-y3__btn::after,.ndm-article .ndm-cta-y4__btn::after{content:" ▶";font-size:11px;margin-left:6px;flex-shrink:0}
+
+/* === Y-1: 青グラデヒーロー＋メインコピー巨大 === */
+.ndm-article .ndm-cta-y1__hero{margin:0!important;padding:24px 16px 20px!important;background:linear-gradient(180deg,#eaf3fb 0%,#cfe2f3 100%)!important;text-align:center!important}
+.ndm-article .ndm-cta-y1__main{margin:0 0 12px!important;padding:0!important;font-size:24px!important;line-height:1.45!important;font-weight:900!important;color:#1a2a40!important;letter-spacing:-.01em!important;background:none!important;border:0!important}
+.ndm-article .ndm-cta-y1__main .accent{color:#1565c0!important}
+.ndm-article .ndm-cta-y1__pricerow{margin:0!important;padding:8px 12px!important;background:#fff!important;border-radius:6px!important;display:inline-block!important;font-size:14px!important;color:#1a2a40!important;font-weight:700!important;line-height:1.4!important;box-shadow:0 2px 6px rgba(30,58,138,.10)!important}
+.ndm-article .ndm-cta-y1__pricerow .price{font-size:24px!important;font-weight:900!important;color:#dc2626!important;vertical-align:-0.05em!important;margin:0 2px!important;line-height:1!important}
+
+/* === Y-2: 黄色ヒーロー＋メインコピー巨大＋赤マーカー === */
+.ndm-article .ndm-cta-y2__hero{margin:0!important;padding:24px 16px 20px!important;background:linear-gradient(180deg,#fff8e7 0%,#ffeec4 100%)!important;text-align:center!important;border-bottom:3px solid #f59e0b!important}
+.ndm-article .ndm-cta-y2__main{margin:0 0 12px!important;padding:0!important;font-size:24px!important;line-height:1.5!important;font-weight:900!important;color:#1a2a40!important;letter-spacing:-.01em!important;background:none!important;border:0!important}
+.ndm-article .ndm-cta-y2__main .marker{background:linear-gradient(transparent 60%,#fef08a 60%)!important;padding:0 4px!important;display:inline-block!important}
+.ndm-article .ndm-cta-y2__main .accent{color:#dc2626!important;font-size:1.05em!important;background:linear-gradient(transparent 60%,#fef08a 60%)!important;padding:0 4px!important;display:inline-block!important}
+.ndm-article .ndm-cta-y2__pricerow{margin:0!important;padding:8px 12px!important;background:#fff!important;border-radius:6px!important;display:inline-block!important;font-size:14px!important;color:#1a2a40!important;font-weight:700!important;line-height:1.4!important;box-shadow:0 2px 6px rgba(245,158,11,.20)!important;border:1px solid #f59e0b!important}
+.ndm-article .ndm-cta-y2__pricerow .price{font-size:24px!important;font-weight:900!important;color:#dc2626!important;vertical-align:-0.05em!important;margin:0 2px!important;line-height:1!important}
+
+/* === Y-3: ネイビーべた＋メインコピー白文字巨大 === */
+.ndm-article .ndm-cta-y3__hero{margin:0!important;padding:24px 16px 20px!important;background:linear-gradient(135deg,#1e3a8a 0%,#2563eb 100%)!important;text-align:center!important}
+.ndm-article .ndm-cta-y3__main{margin:0 0 14px!important;padding:0!important;font-size:24px!important;line-height:1.45!important;font-weight:900!important;color:#fff!important;letter-spacing:-.01em!important;background:none!important;border:0!important;text-shadow:0 2px 4px rgba(0,0,0,.15)!important}
+.ndm-article .ndm-cta-y3__main .accent{color:#fde047!important}
+.ndm-article .ndm-cta-y3__pricerow{margin:0!important;padding:8px 12px!important;background:#fff!important;border-radius:6px!important;display:inline-block!important;font-size:14px!important;color:#1a2a40!important;font-weight:700!important;line-height:1.4!important;box-shadow:0 4px 10px rgba(0,0,0,.20)!important}
+.ndm-article .ndm-cta-y3__pricerow .price{font-size:24px!important;font-weight:900!important;color:#dc2626!important;vertical-align:-0.05em!important;margin:0 2px!important;line-height:1!important}
+
+/* === Y-4: 青グラデ＋メインコピー巨大＋3ステップ === */
+.ndm-article .ndm-cta-y4__hero{margin:0!important;padding:22px 16px 18px!important;background:linear-gradient(180deg,#eaf3fb 0%,#cfe2f3 100%)!important;text-align:center!important}
+.ndm-article .ndm-cta-y4__main{margin:0 0 14px!important;padding:0!important;font-size:23px!important;line-height:1.45!important;font-weight:900!important;color:#1a2a40!important;letter-spacing:-.01em!important;background:none!important;border:0!important}
+.ndm-article .ndm-cta-y4__main .accent{color:#1565c0!important}
+.ndm-article .ndm-cta-y4__steps{margin:0!important;padding:0!important;display:flex!important;justify-content:center!important;gap:6px!important;align-items:center!important;flex-wrap:wrap!important;background:none!important}
+.ndm-article .ndm-cta-y4__step{display:inline-flex!important;align-items:center!important;padding:5px 10px!important;background:#fff!important;color:#1a2a40!important;font-size:12px!important;font-weight:700!important;border-radius:99px!important;line-height:1.4!important;border:1px solid #cfe2f3!important;box-shadow:0 1px 2px rgba(30,58,138,.08)!important}
+.ndm-article .ndm-cta-y4__step-arrow{font-size:13px!important;color:#1565c0!important;font-weight:900!important}
+
+/* スマホ対応 */
+@media(max-width:480px){
+  .ndm-article .ndm-cta-y1__hero,.ndm-article .ndm-cta-y2__hero,.ndm-article .ndm-cta-y3__hero,.ndm-article .ndm-cta-y4__hero{padding:20px 12px 16px!important}
+  .ndm-article .ndm-cta-y1__main,.ndm-article .ndm-cta-y2__main,.ndm-article .ndm-cta-y3__main{font-size:5.4vw!important}
+  .ndm-article .ndm-cta-y4__main{font-size:5vw!important}
+  .ndm-article .ndm-cta-y1__pricerow,.ndm-article .ndm-cta-y2__pricerow,.ndm-article .ndm-cta-y3__pricerow{font-size:13px!important;padding:7px 10px!important}
+  .ndm-article .ndm-cta-y1__pricerow .price,.ndm-article .ndm-cta-y2__pricerow .price,.ndm-article .ndm-cta-y3__pricerow .price{font-size:22px!important}
+  .ndm-article .ndm-cta-y1__btn,.ndm-article .ndm-cta-y2__btn,.ndm-article .ndm-cta-y3__btn,.ndm-article .ndm-cta-y4__btn{font-size:12px!important;padding:13px 10px!important;letter-spacing:-.02em!important}
+  .ndm-article .ndm-cta-y4__step{font-size:11px!important;padding:4px 8px!important}
+}
+</style>
+<aside class="ndm-cta-y3" data-pattern="Y-3"><div class="ndm-cta-y3__hero" style="margin:0;padding:24px 16px 20px;background:linear-gradient(135deg,#1e3a8a 0%,#2563eb 100%);text-align:center"><p class="ndm-cta-y3__main" style="margin:0 0 14px;padding:0;font-size:24px;line-height:1.45;font-weight:900;color:#fff;letter-spacing:-0.01em;background:none;border:0;text-shadow:0 2px 4px rgba(0,0,0,.15)">神戸まで通わなくても<br/><span class="accent" style="color:#fde047!important">AGA治療は始められます</span></p><div class="ndm-cta-y3__pricerow">オンライン診察＋自宅配送なら月<span class="price">1,861</span>円〜</div></div><div class="ndm-cta-y3__body"><div class="ndm-cta-y3__bannerwrap"><a class="ndm-cta-y3__bannerlink" href="https://ac.adservice.jp/b5afG1b26eGe3eb6/cl/?bId=df4ud629" rel="noopener noreferrer sponsored" target="_blank"><img alt="AGAはDMMクリニック WEB限定 発毛ライトプラン フィナステリドセット 1,861円/月（税込）" class="ndm-cta-y3__banner" height="600" loading="lazy" src="https://nandemo.trigger-tech.info/wp-content/uploads/2026/05/cta_dmm_aga_banner-1.jpg" width="600"/></a></div><p class="ndm-cta-y3__urge">＼ 予約枠には限りがあるのでお早めに ／</p><div class="ndm-cta-y3__btnwrap"><a class="ndm-cta-y3__btn" href="https://ac.adservice.jp/b5afG1b26eGe3eb6/cl/?bId=df4ud629" rel="noopener noreferrer sponsored" target="_blank">DMMオンラインクリニックの公式サイト</a></div></div></aside><style>
+.ndm-related-link{margin:24px auto;max-width:680px;padding:18px 20px;background:#f3f4f6;border-radius:6px;font-family:"Hiragino Sans","Yu Gothic",sans-serif}
+.ndm-related-link__intro{margin:0 0 8px;font-size:14px;font-weight:700;color:#243446;line-height:1.6}
+.ndm-related-link__anchor{display:inline-block;color:#0d8a72;font-size:14px;font-weight:600;line-height:1.6;text-decoration:underline;text-decoration-color:#0d8a72;text-underline-offset:3px}
+.ndm-related-link__anchor:hover{color:#0a6e5a;text-decoration-color:#0a6e5a}
+@media(max-width:480px){
+  .ndm-related-link{padding:14px 16px;margin:20px auto}
+  .ndm-related-link__intro{font-size:13px}
+  .ndm-related-link__anchor{font-size:13px}
+}
+.ndm-cta-a__bannerwrap,.ndm-cta-b__bannerwrap,.ndm-cta-c__bannerwrap{margin:0!important;padding:0!important;text-align:center!important;line-height:0!important}
+.ndm-cta-a__btnwrap,.ndm-cta-b__btnwrap,.ndm-cta-c__btnwrap{margin:0!important;padding:0!important;text-align:center!important;line-height:1!important}
+</style>
+<aside class="ndm-related-link">
+<p class="ndm-related-link__intro">東京のAGAクリニックについてはこちらの記事も参考にしてください。</p>
+<a class="ndm-related-link__anchor" href="https://thirdclinic.jp/media/aga-ginza/" rel="noopener" target="_blank">銀座でAGA治療がおすすめ安いクリニック10選！薄毛治療の費用相場と口コミから通いやすさも紹介</a>
+</aside>
+<!-- ↑ここまでが導入部分。この直後にWordPress自動生成の目次が入る -->
+<h2>神戸のAGA薄毛治療おすすめクリニック14院を口コミや料金プランで比較一覧</h2>
+<p>神戸でAGA治療を扱うクリニックは、<strong>三宮・元町を中心に、新神戸・神戸駅・垂水・住吉</strong>といった主要エリアに広がっています。料金は内服薬30日分1,500円台から始められる定額型から、HARGプラス療法や再生医療など1回10万円超の本格治療まで幅広く、進行度や予算に合わせて選びやすいのが神戸エリアの特徴です。</p>
+<p>ここからは、口コミ評価が高く料金が続けやすい神戸のAGAクリニック・皮膚科を<strong>14院</strong>厳選し、料金プラン・特徴・アクセス・基本情報を1院ずつ整理して紹介します。料金はすべて目安で、自由診療のためキャンペーンや処方内容によって変動します。気になる院が複数あれば、まずはカウンセリング無料の院から比較するのがおすすめです。</p>
+<!-- ============================== -->
+<!-- Dr.AGAクリニック 神戸三宮院 -->
+<!-- ============================== -->
+<h3 id="clinic-draga">神戸三宮院 Dr.AGAクリニック｜三ノ宮駅から1分、初月980円・初診再診料0円で始めやすいAGA専門院</h3>
+<div class="clinic-screenshot">
+<img alt="神戸三宮院 Dr.AGAクリニック｜三ノ宮駅から1分、初月980円・初診再診料0円で始めやすいAGA専門院の公式サイト" height="800" loading="lazy" src="https://nandemo.trigger-tech.info/wp-content/uploads/2026/05/screenshot_E7A59EE688B8E4B889E5AEAEE999A2_Dr_AGAE382AFE383AAE3838BE38383E382AF.png" width="1200"/>
+</div>
+<p class="official-site-button-wrap"><a class="official-site-button" href="https://drskinclinic.jp/clinic/sannomiya/" rel="noopener noreferrer sponsored" target="_blank">公式サイトを見る</a></p>
+<table class="clinic-detail-table">
+<tbody>
+<tr><th>クリニック名</th><td>Dr.AGAクリニック 神戸三宮院</td></tr>
+<tr><th>AGA治療薬</th><td>薄毛予防プラン（フィナステリド）<br/>発毛対策プラン（Birth内服薬）<br/>Dr.AGAメソ（注入治療）</td></tr>
+<tr><th>診察料</th><td>初診料・再診料 0円</td></tr>
+<tr><th>支払い方法</th><td>現金・各種クレジットカード・デビットカード</td></tr>
+<tr><th>住所</th><td>〒651-0093 兵庫県神戸市中央区琴ノ緒町5-3-5 グリーンシャポービル3F</td></tr>
+</tbody>
+</table>
+<h4>神戸三宮院 Dr.AGAクリニックの特徴と治療メニュー</h4>
+<p>Dr.AGAクリニック 神戸三宮院は、JR三ノ宮駅東口から徒歩1分の好立地にあるAGA・薄毛治療の専門院です。住所は神戸市中央区琴ノ緒町5-3-5「グリーンシャポービル3階」で、阪急・阪神「神戸三宮駅」からも徒歩圏内にあります。</p>
+<p>診療時間は<strong>10:00〜22:00の完全予約制で、年中無休</strong>。仕事帰りの遅い時間でも通いやすく、三宮で働く人が立ち寄りやすい時間設定になっています。初診料・再診料は0円で、マイクロスコープによる頭皮診断も無料と案内されています。</p>
+<p>このクリニックの大きな特徴は、<strong>初月980円から薄毛治療を始められる料金設定</strong>です。フィナステリドを中心とした薄毛予防プランは初月980円・2ヶ月目以降3,190円、発毛を目指す発毛対策プランも初月980円・2ヶ月目以降9,790円と、初期費用を抑えてスタートできます。</p>
+<p>本格的に発毛を狙う場合は、オリジナルの内服薬「Birth」を組み合わせたプランや、有効成分を頭皮へ直接届ける「Dr.AGAメソ」も選択肢になります。診察は完全個室で行われ、毛髪診断士が在籍しているため、進行度に合わせた治療プランを相談しながら決められます。</p>
+<p>さらに、効果に納得できなかった場合の<strong>全額返金保証制度</strong>も用意されており、「まずは試してみたいけれど続けられるか不安」という人でも始めやすい体制が整っています。</p>
+<table class="clinic-summary-table">
+<tbody>
+<tr><th>予防プラン</th><td>薄毛予防プラン 初月980円／2ヶ月目以降3,190円</td></tr>
+<tr><th>発毛プラン</th><td>発毛対策プラン 初月980円／2ヶ月目以降9,790円</td></tr>
+<tr><th>診療時間</th><td>10:00〜22:00（完全予約制・年中無休）</td></tr>
+<tr><th>アクセス</th><td>JR三ノ宮駅東口 徒歩1分</td></tr>
+<tr><th>オンライン診療</th><td>対応</td></tr>
+</tbody>
+</table>
+<h4>神戸三宮院 Dr.AGAクリニックの料金プランと選び方</h4>
+<p>Dr.AGAクリニック 神戸三宮院の料金は、<strong>初月980円という入りやすさ</strong>が魅力ですが、長く続けるなら2ヶ月目以降の月額で比較するのがポイントです。抜け毛を抑えたいだけなら薄毛予防プラン（2ヶ月目以降3,190円）、発毛まで狙うなら発毛対策プラン（同9,790円）が基準になります。</p>
+<p>オリジナル内服薬Birthは9,790〜13,970円、注入治療のDr.AGAメソは1回99,000円が目安です。<strong>内服で物足りないと感じたときに注入治療を足していける</strong>段階的な組み立てができるため、最初から高額プランを契約する必要はありません。</p>
+<p>支払いは現金・クレジットカード・デビットカードに対応しており、全額返金保証があるので「効果が出なければ続けない」という前提でも始めやすい料金体系です。</p>
+<h4>神戸三宮院 Dr.AGAクリニックはこんな人におすすめ</h4>
+<p>三ノ宮駅からすぐの立地で、<strong>初期費用を抑えてAGA治療を始めたい</strong>神戸の人に向いています。夜22時まで診療しているため、仕事終わりに通いたい会社員にも便利です。完全個室・全額返金保証という安心材料も揃っているので、初めての薄毛治療で慎重に始めたい人にもおすすめできます。</p>
+<div class="editor-comment"><div class="editor-comment__avatar">編集部</div><div class="editor-comment__body"><span class="editor-comment__label">編集部から一言</span><p class="editor-comment__text">初月980円で始められて初診・再診料も0円、三ノ宮駅から徒歩1分と「神戸でとりあえず一歩を踏み出したい人」には一番すすめやすい一院です。ただ2ヶ月目以降は予防プランで3,190円、発毛プランで9,790円に上がるので、初月の安さだけでなく続けたときの月額で見ておくと安心です。</p></div></div>
+<div class="review-section"><h4>神戸三宮院 Dr.AGAクリニックの口コミ・評判</h4><div class="review-bubble"><div class="review-avatar"><svg fill="#999" height="22" viewbox="0 0 24 24" width="22" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"></path></svg></div><div class="review-body"><div class="review-meta"><span class="review-stars">★★★★★</span><span>Google口コミ 1</span></div>三ノ宮駅から近くて通いやすいです。初めての治療で不安でしたが、スタッフの方が料金も含めて丁寧に説明してくれて安心して始められました。</div></div><div class="review-bubble"><div class="review-avatar"><svg fill="#999" height="22" viewbox="0 0 24 24" width="22" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"></path></svg></div><div class="review-body"><div class="review-meta"><span class="review-stars">★★★★★</span><span>Google口コミ 2</span></div>個室で他の人と顔を合わせずに済むのが良かったです。無理な勧誘もなく、自分のペースで続けられています。</div></div><p style="margin:0.8em 0 0;font-size:12px;color:#6c7a8a;"><small>※掲載の口コミはGoogleマップ等の公開投稿を参照したものです。最新の評判は<a href="https://www.google.com/maps/search/?api=1&amp;query=Dr.AGAクリニック神戸三宮院" rel="noopener noreferrer" target="_blank">Dr.AGAクリニック神戸三宮院のGoogleマップ</a>でご確認ください。</small></p></div>
+<h4>神戸三宮院 Dr.AGAクリニックへのアクセス</h4>
+<div class="clinic-map"><iframe allowfullscreen="" loading="lazy" src="https://www.google.com/maps?q=Dr.AGAクリニック神戸三宮院&amp;output=embed"></iframe></div>
+<!-- ============================== -->
+<!-- イースト駅前クリニック 神戸三宮院 -->
+<!-- ============================== -->
+<h3 id="clinic-east">神戸三宮院 イースト駅前クリニック｜三宮駅近く、土日診療・国内正規品のAGA薬を相談できるクリニック</h3>
+<div class="clinic-screenshot"><img alt="神戸三宮院 イースト駅前クリニック｜三宮駅近く、土日診療・国内正規品のAGA薬を相談できるクリニックの公式サイト" height="800" loading="lazy" src="https://nandemo.trigger-tech.info/wp-content/uploads/2026/05/screenshot_E7A59EE688B8E4B889E5AEAEE999A2_E382A4E383BCE382B9E38388E9A785E5898DE382AFE383AAE3838BE38383E382AF.png" width="1200"/></div><p class="official-site-button-wrap"><a class="official-site-button" href="https://www.eastcl.com/sannomiya/aga/" rel="noopener noreferrer sponsored" target="_blank">公式サイトを見る</a></p>
+<table class="clinic-detail-table">
+<tbody>
+<tr><th>クリニック名</th><td>イースト駅前クリニック 神戸三宮院</td></tr>
+<tr><th>AGA治療薬</th><td>フィナステリド／プロペシア<br/>ライト発毛プラン<br/>基本発毛プラン／最強発毛プラン</td></tr>
+<tr><th>診察料</th><td>初診・再診料0円（薬処方時）<br/>※処方なしの場合3,300円</td></tr>
+<tr><th>支払い方法</th><td>現金・各種クレジットカード・メディカルローン</td></tr>
+<tr><th>住所</th><td>〒651-0087 兵庫県神戸市中央区加納町4-3-2 近藤ビル5F</td></tr>
+</tbody>
+</table>
+<h4>神戸三宮院 イースト駅前クリニックの特徴と治療メニュー</h4>
+<p>イースト駅前クリニック 神戸三宮院は、JR三ノ宮駅西口・阪急神戸三宮駅東口から徒歩1分にある、AGA・ED治療を専門に扱うクリニックです。住所は神戸市中央区加納町4-3-2「近藤ビル5階」で、駅から雨に濡れずに通える立地にあります。</p>
+<p>最大の特徴は<strong>予約不要で通えること</strong>です。診療時間は平日10:00〜13:30・14:30〜19:00、土日祝も10:00〜18:00で休診日がなく、思い立ったタイミングで立ち寄れます。三宮で働く人が昼休みや仕事帰りにふらっと通える、忙しい人向けのクリニックです。</p>
+<p>診察は<strong>1回あたり10〜20分程度の短時間</strong>で完結し、問診と処方を中心としたシンプルな流れです。AGA治療薬は国内正規品を中心に扱い、初診・再診料は薬の処方があれば0円（処方なしの場合のみ3,300円）と分かりやすい料金設定です。</p>
+<p>治療プランは、フィナステリド単剤（3,960円〜）から、ミノキシジルを組み合わせたライト発毛プラン（9,240円〜）・基本発毛プラン（11,880円〜）・最強発毛プラン（17,380円〜）まで段階的に用意されています。<strong>まずは薬代だけで始めたい</strong>という人に向いた構成です。</p>
+<table class="clinic-summary-table">
+<tbody>
+<tr><th>予防プラン</th><td>フィナステリド 3,960円〜/月</td></tr>
+<tr><th>発毛プラン</th><td>ライト発毛9,240円〜／基本発毛11,880円〜／最強発毛17,380円〜</td></tr>
+<tr><th>診療時間</th><td>平日10:00〜13:30・14:30〜19:00／土日祝10:00〜18:00（休診なし）</td></tr>
+<tr><th>アクセス</th><td>JR三ノ宮駅西口・阪急神戸三宮駅東口 徒歩1分</td></tr>
+<tr><th>オンライン診療</th><td>対応</td></tr>
+</tbody>
+</table>
+<h4>神戸三宮院 イースト駅前クリニックの料金プランと選び方</h4>
+<p>イースト駅前クリニックの料金は、<strong>薬代のみで予約不要</strong>というシンプルさが魅力です。抜け毛予防だけならフィナステリド3,960円〜、発毛まで狙うならミノキシジルを足したライト発毛プラン9,240円〜が基準になります。</p>
+<p>初診・再診料が処方時0円なので、<strong>続けるほどコスト計算がしやすい</strong>のもメリットです。プランは進行度に合わせて4段階あり、効果を見ながらライト→基本→最強と切り替えていけます。</p>
+<p>支払いは現金・クレジットカード・メディカルローンに対応。オンライン診療にも対応しているため、忙しい時期は通院、落ち着いたらオンラインと使い分けることもできます。</p>
+<h4>神戸三宮院 イースト駅前クリニックはこんな人におすすめ</h4>
+<p>三宮駅近くで、<strong>予約を取らずにAGA薬を相談したい</strong>神戸の人に向いています。土日祝も診療しているため、平日に時間が取れない会社員でも通いやすいクリニックです。国内正規品を薬代中心で受けたい、短時間でサッと処方を受けたいという人におすすめできます。</p>
+<div class="editor-comment"><div class="editor-comment__avatar">編集部</div><div class="editor-comment__body"><span class="editor-comment__label">編集部から一言</span><p class="editor-comment__text">予約不要・薬代中心で、三宮で働く人が仕事のすき間に立ち寄れる手軽さが魅力です。注入治療や再生医療といった本格メニューはないので、「まずは内服薬でシンプルに始めたい」人向け。発毛まで踏み込みたくなったら他院との比較も視野に入れておくとよいでしょう。</p></div></div>
+<div class="review-section"><h4>神戸三宮院 イースト駅前クリニックの口コミ・評判</h4><div class="review-bubble"><div class="review-avatar"><svg fill="#999" height="22" viewbox="0 0 24 24" width="22" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"></path></svg></div><div class="review-body"><div class="review-meta"><span class="review-stars">★★★★★</span><span>Google口コミ 1</span></div>予約なしで行けるのが助かります。男性スタッフのみで気楽に通えますし、診察も短時間で終わるので仕事帰りに寄れます。</div></div><div class="review-bubble"><div class="review-avatar"><svg fill="#999" height="22" viewbox="0 0 24 24" width="22" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"></path></svg></div><div class="review-body"><div class="review-meta"><span class="review-stars">★★★★★</span><span>Google口コミ 2</span></div>駅から本当に近くて通いやすいです。余計なオプションを勧められることもなく、薬代だけで続けられるのが良いです。</div></div><p style="margin:0.8em 0 0;font-size:12px;color:#6c7a8a;"><small>※掲載の口コミはGoogleマップ等の公開投稿を参照したものです。最新の評判は<a href="https://www.google.com/maps/search/?api=1&amp;query=イースト駅前クリニック神戸三宮院" rel="noopener noreferrer" target="_blank">イースト駅前クリニック神戸三宮院のGoogleマップ</a>でご確認ください。</small></p></div>
+<h4>神戸三宮院 イースト駅前クリニックへのアクセス</h4>
+<div class="clinic-map"><iframe allowfullscreen="" loading="lazy" src="https://www.google.com/maps?q=イースト駅前クリニック神戸三宮院&amp;output=embed"></iframe></div>
+<!-- ============================== -->
+<!-- AGAスキンクリニック 神戸院 -->
+<!-- ============================== -->
+<h3 id="clinic-agaskin">神戸院 AGAスキンクリニック｜三宮駅から4分圏内、男女別フロア・完全予約制で相談できるAGA専門クリニック</h3>
+<div class="clinic-screenshot"><img alt="神戸院 AGAスキンクリニック｜三宮駅から4分圏内、男女別フロア・完全予約制で相談できるAGA専門クリニックの公式サイト" height="800" loading="lazy" src="https://nandemo.trigger-tech.info/wp-content/uploads/2026/05/screenshot_E7A59EE688B8E999A2_AGAE382B9E382ADE383B3E382AFE383AAE3838BE38383E382AF.png" width="1200"/></div><p class="official-site-button-wrap"><a class="official-site-button" href="https://www.agaskin.net/clinic/kb/" rel="noopener noreferrer sponsored" target="_blank">公式サイトを見る</a></p>
+<table class="clinic-detail-table">
+<tbody>
+<tr><th>クリニック名</th><td>AGAスキンクリニック 神戸院</td></tr>
+<tr><th>AGA治療薬</th><td>オリジナル発毛薬Rebirth<br/>フィナステリド／デュタステリド<br/>Dr'sメソ（メソセラピー）／自毛植毛</td></tr>
+<tr><th>診察料</th><td>初診料・再診料・血液検査 0円</td></tr>
+<tr><th>支払い方法</th><td>現金・クレジットカード・QRコード決済・医療ローン</td></tr>
+<tr><th>住所</th><td>〒650-0021 兵庫県神戸市中央区三宮町1-5-1 銀泉三宮ビル5F</td></tr>
+</tbody>
+</table>
+<h4>神戸院 AGAスキンクリニックの特徴と治療メニュー</h4>
+<p>AGAスキンクリニック 神戸院は、三宮センター街入口近くの「銀泉三宮ビル5階」にある発毛専門クリニックです。JR三ノ宮駅西口から徒歩4分、阪急・阪神「神戸三宮駅」からも徒歩3〜4分で、地下街「さんちか」からも通えるため雨の日でも安心です。</p>
+<p>診療時間は<strong>10:00〜14:00・15:00〜22:00の完全予約制で年中無休</strong>。夜22時まで診療しているので、仕事終わりでも頭皮チェックやカウンセリングを受けやすい時間帯です。<strong>男女別フロア</strong>を採用しており、人目を気にせず相談できる環境が整っています。</p>
+<p>治療の中心は、フィナステリド・ミノキシジル・成長因子などを配合した<strong>オリジナル発毛薬「Rebirth」</strong>です。さらに有効成分を頭皮へ直接注入する「Dr'sメソ」、自毛植毛まで取り扱い、薬で物足りない場合も院内で治療をステップアップできます。</p>
+<p>料金は、AGA予防プランが初月3,700円・2回目以降6,600円、はじめて発毛プランが16,800円、本気の発毛プランが95,600円と幅広く、<strong>初診料・再診料・血液検査がすべて0円</strong>のため、薬代以外の追加負担を抑えやすいのも特徴です。</p>
+<table class="clinic-summary-table">
+<tbody>
+<tr><th>予防プラン</th><td>AGA予防プラン 初月3,700円／2回目以降6,600円</td></tr>
+<tr><th>発毛プラン</th><td>はじめて発毛16,800円／本気の発毛95,600円／Dr'sメソ55,000円</td></tr>
+<tr><th>診療時間</th><td>10:00〜14:00・15:00〜22:00（完全予約制・年中無休）</td></tr>
+<tr><th>アクセス</th><td>JR三ノ宮駅西口 徒歩4分</td></tr>
+<tr><th>オンライン診療</th><td>対応</td></tr>
+</tbody>
+</table>
+<h4>神戸院 AGAスキンクリニックの料金プランと選び方</h4>
+<p>AGAスキンクリニック神戸院は、<strong>予防から本格発毛まで段階的にプランが用意されている</strong>のが強みです。まず抜け毛を抑えたいならAGA予防プラン（2回目以降6,600円）、しっかり発毛を狙うならはじめて発毛プラン16,800円が起点になります。</p>
+<p>薬で頭打ちを感じたら、Dr'sメソ（55,000円）を組み合わせて発毛効果を底上げできます。<strong>初診料・再診料・血液検査がすべて無料</strong>なので、表示価格＝月々の負担として計算しやすいのも安心材料です。</p>
+<p>支払いは現金・クレジットカード・QRコード決済・医療ローンに対応。全国展開の実績があり、治療データの蓄積が多い点も、初めての発毛治療で迷う人には判断材料になります。</p>
+<h4>神戸院 AGAスキンクリニックはこんな人におすすめ</h4>
+<p>三宮駅周辺で、<strong>専門院でしっかり発毛まで目指したい</strong>神戸の人に向いています。男女別フロアで人目が気にならず、夜22時まで通えるため、忙しい会社員や女性の薄毛相談にも適しています。薬から注入・植毛まで院内で完結させたい人におすすめです。</p>
+<div class="editor-comment"><div class="editor-comment__avatar">編集部</div><div class="editor-comment__body"><span class="editor-comment__label">編集部から一言</span><p class="editor-comment__text">オリジナル発毛薬から植毛まで治療の幅が広く、男女別フロアで夜22時まで通えるのは神戸でも数少ない強みです。一方で本格プランは月10万円近くになることもあるので、カウンセリングでは予防〜発毛のどの段階を狙うのかを最初にはっきり伝えて見積もりを出してもらうのがおすすめです。</p></div></div>
+<div class="review-section"><h4>神戸院 AGAスキンクリニックの口コミ・評判</h4><div class="review-bubble"><div class="review-avatar"><svg fill="#999" height="22" viewbox="0 0 24 24" width="22" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"></path></svg></div><div class="review-body"><div class="review-meta"><span class="review-stars">★★★★★</span><span>Google口コミ 1</span></div>カウンセリングで予算や治療方法を相談したうえで、自分が納得して治療を始められました。スタッフの方が明るくて通うのが苦になりません。</div></div><div class="review-bubble"><div class="review-avatar"><svg fill="#999" height="22" viewbox="0 0 24 24" width="22" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"></path></svg></div><div class="review-body"><div class="review-meta"><span class="review-stars">★★★★★</span><span>Google口コミ 2</span></div>初診料と血液検査が無料のプランがあり、院内も綺麗でした。夜遅くまで開いているので仕事終わりに通えて助かっています。</div></div><p style="margin:0.8em 0 0;font-size:12px;color:#6c7a8a;"><small>※掲載の口コミはGoogleマップ等の公開投稿を参照したものです。最新の評判は<a href="https://www.google.com/maps/search/?api=1&amp;query=AGAスキンクリニック神戸院" rel="noopener noreferrer" target="_blank">AGAスキンクリニック神戸院のGoogleマップ</a>でご確認ください。</small></p></div>
+<h4>神戸院 AGAスキンクリニックへのアクセス</h4>
+<div class="clinic-map"><iframe allowfullscreen="" loading="lazy" src="https://www.google.com/maps?q=AGAスキンクリニック神戸院&amp;output=embed"></iframe></div>
+<!-- ============================== -->
+<!-- ウィルAGAクリニック 神戸三宮院 -->
+<!-- ============================== -->
+<h3 id="clinic-will">神戸三宮院 ウィルAGAクリニック｜神戸三宮駅から1分、オリジナル発毛薬とLHDV頭皮注入治療を相談できるクリニック</h3>
+<div class="clinic-screenshot"><img alt="神戸三宮院 ウィルAGAクリニック｜神戸三宮駅から1分、オリジナル発毛薬とLHDV頭皮注入治療を相談できるクリニックの公式サイト" height="800" loading="lazy" src="https://nandemo.trigger-tech.info/wp-content/uploads/2026/05/screenshot_E7A59EE688B8E4B889E5AEAEE999A2_E382A6E382A3E383ABAGAE382AFE383AAE3838BE38383E382AF.png" width="1200"/></div><p class="official-site-button-wrap"><a class="official-site-button" href="https://will-agaclinic.com/clinic/kobe/" rel="noopener noreferrer sponsored" target="_blank">公式サイトを見る</a></p>
+<table class="clinic-detail-table">
+<tbody>
+<tr><th>クリニック名</th><td>ウィルAGAクリニック 神戸三宮院</td></tr>
+<tr><th>AGA治療薬</th><td>オリジナル発毛薬「es men」<br/>フィナステリド／デュタステリド<br/>LHDV頭皮注入治療</td></tr>
+<tr><th>診察料</th><td>カウンセリング・初診料・再診料 無料</td></tr>
+<tr><th>支払い方法</th><td>現金・クレジットカード・医療ローン</td></tr>
+<tr><th>住所</th><td>〒650-0001 兵庫県神戸市中央区加納町4-3-3 さくら三神ビル7F</td></tr>
+</tbody>
+</table>
+<h4>神戸三宮院 ウィルAGAクリニックの特徴と治療メニュー</h4>
+<p>ウィルAGAクリニック 神戸三宮院は、神戸市営地下鉄三宮駅・阪急神戸三宮駅から徒歩1分の「さくら三神ビル7階」にあるAGA専門クリニックです。住所は神戸市中央区加納町4-3-3で、三宮の中心部から雨に濡れずに通える立地です。</p>
+<p>診療時間は<strong>11:00〜20:00（月曜休診・完全予約制）</strong>で、カウンセリング・初診料・再診料はすべて無料。延べ1万例以上の症例経験を持つ指導医が在籍し、独自のデータに基づいた診察を行うのが特徴です。</p>
+<p>治療の柱は、オリジナル発毛薬<strong>「es men」シリーズ</strong>と、有効成分を頭皮へ直接届ける<strong>「LHDV頭皮注入治療」</strong>の組み合わせです。内服だけでは物足りない人も、注入治療を加えることで発毛効果を高められます。円形脱毛症やリジュビナートリファイン治療といったメニューも用意されています。</p>
+<p>料金は、フィナステリドが初回1,628円・2回目以降7,700円、es menの6ヶ月コースが月18,000円が目安です。LHDV頭皮注入治療は初回19,800円、通常1回あたり100,000〜120,000円となっています。<strong>全額返金保証制度</strong>もあり、効果に納得できない場合の備えも整っています。</p>
+<table class="clinic-summary-table">
+<tbody>
+<tr><th>予防プラン</th><td>フィナステリド 初回1,628円／2回目以降7,700円</td></tr>
+<tr><th>発毛プラン</th><td>es men 6ヶ月コース 月18,000円／LHDV頭皮注入 初回19,800円</td></tr>
+<tr><th>診療時間</th><td>11:00〜20:00（月曜休診・完全予約制）</td></tr>
+<tr><th>アクセス</th><td>地下鉄三宮駅・阪急神戸三宮駅 徒歩1分</td></tr>
+<tr><th>オンライン診療</th><td>対応</td></tr>
+</tbody>
+</table>
+<h4>神戸三宮院 ウィルAGAクリニックの料金プランと選び方</h4>
+<p>ウィルAGAクリニックは、<strong>オリジナル発毛薬と頭皮注入治療を組み合わせた発毛特化型</strong>のクリニックです。まず内服で様子を見るならフィナステリド（2回目以降7,700円）、本格的に発毛を狙うならes men 6ヶ月コース（月18,000円）が基準になります。</p>
+<p>薬だけでは変化が出にくい人には、LHDV頭皮注入治療を組み合わせる選択肢があります。<strong>初回19,800円のお試し価格</strong>が用意されているため、注入治療がどんなものか体験してから本格導入を判断できます。</p>
+<p>カウンセリング・診察料が無料で、全額返金保証もあるため、コース契約前にじっくり相談したい人に向いた料金体系です。コース契約時は途中解約の条件を事前に確認しておくと安心です。</p>
+<h4>神戸三宮院 ウィルAGAクリニックはこんな人におすすめ</h4>
+<p>神戸三宮駅すぐの立地で、<strong>内服薬と頭皮注入治療を組み合わせて発毛を狙いたい</strong>人に向いています。症例経験の豊富な指導医に相談したい人や、全額返金保証で安心して始めたい人にもおすすめです。月曜以外の昼〜夜に通える人なら通院しやすいでしょう。</p>
+<div class="editor-comment"><div class="editor-comment__avatar">編集部</div><div class="editor-comment__body"><span class="editor-comment__label">編集部から一言</span><p class="editor-comment__text">内服のオリジナル発毛薬に加えてLHDV頭皮注入治療まで揃い、「薬だけでは物足りない」段階の人に向いています。注入は初回19,800円のお試しがあるので体験してから判断できます。コース契約が中心になるので、月曜定休の点と途中解約の条件は申し込み前に確認しておきましょう。</p></div></div>
+<div class="review-section"><h4>神戸三宮院 ウィルAGAクリニックの口コミ・評判</h4><div class="review-bubble"><div class="review-avatar"><svg fill="#999" height="22" viewbox="0 0 24 24" width="22" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"></path></svg></div><div class="review-body"><div class="review-meta"><span class="review-stars">★★★★★</span><span>Google口コミ 1</span></div>頭皮への注入治療まで相談できて、内服だけのときより変化を感じられました。先生の説明が具体的で信頼できます。</div></div><div class="review-bubble"><div class="review-avatar"><svg fill="#999" height="22" viewbox="0 0 24 24" width="22" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"></path></svg></div><div class="review-body"><div class="review-meta"><span class="review-stars">★★★★★</span><span>Google口コミ 2</span></div>駅から1分で通いやすく、カウンセリングが無料なのも良かったです。返金保証があるので安心して始められました。</div></div><p style="margin:0.8em 0 0;font-size:12px;color:#6c7a8a;"><small>※掲載の口コミはGoogleマップ等の公開投稿を参照したものです。最新の評判は<a href="https://www.google.com/maps/search/?api=1&amp;query=ウィルAGAクリニック神戸三宮院" rel="noopener noreferrer" target="_blank">ウィルAGAクリニック神戸三宮院のGoogleマップ</a>でご確認ください。</small></p></div>
+<h4>神戸三宮院 ウィルAGAクリニックへのアクセス</h4>
+<div class="clinic-map"><iframe allowfullscreen="" loading="lazy" src="https://www.google.com/maps?q=ウィルAGAクリニック神戸三宮院&amp;output=embed"></iframe></div>
+<!-- ============================== -->
+<!-- ゴリラクリニック 神戸三宮院 -->
+<!-- ============================== -->
+<h3 id="clinic-gorilla">神戸三宮院 ゴリラクリニック｜三宮駅から8分、男性専門でAGA治療を相談できる総合美容クリニック</h3>
+<div class="clinic-screenshot"><img alt="神戸三宮院 ゴリラクリニック｜三宮駅から8分、男性専門でAGA治療を相談できる総合美容クリニックの公式サイト" height="800" loading="lazy" src="https://nandemo.trigger-tech.info/wp-content/uploads/2026/05/screenshot_E7A59EE688B8E4B889E5AEAEE999A2_E382B4E383AAE383A9E382AFE383AAE3838BE38383E382AF.png" width="1200"/></div><p class="official-site-button-wrap"><a class="official-site-button" href="https://gorilla.clinic/operation/aga/access/kobesannomiya/" rel="noopener noreferrer sponsored" target="_blank">公式サイトを見る</a></p>
+<table class="clinic-detail-table">
+<tbody>
+<tr><th>クリニック名</th><td>ゴリラクリニック 神戸三宮院</td></tr>
+<tr><th>AGA治療薬</th><td>効果実感内服コース／スピード実感内服コース<br/>フィナステリド／デュタステリド<br/>ゴリラメソ（注入治療）</td></tr>
+<tr><th>診察料</th><td>カウンセリング料・頭髪検査料 なし</td></tr>
+<tr><th>支払い方法</th><td>現金・クレジットカード・医療ローン</td></tr>
+<tr><th>住所</th><td>〒650-0021 兵庫県神戸市中央区三宮町2-11-1 センタープラザ西館7F</td></tr>
+</tbody>
+</table>
+<h4>神戸三宮院 ゴリラクリニックの特徴と治療メニュー</h4>
+<p>ゴリラクリニック 神戸三宮院は、三宮センター街直結の「センタープラザ西館7階」にある男性専門の総合美容クリニックです。JR三ノ宮駅から徒歩8分、地下鉄三宮・花時計前駅から徒歩5分の立地で、AGA治療のほか脱毛やスキンケアもまとめて相談できます。</p>
+<p>診療時間は<strong>11:00〜20:00で年中無休・完全予約制</strong>。<strong>男性専門院</strong>のため、女性の目を気にせずに通えるのが大きな特徴です。カウンセリング料・頭髪検査料はかからず、コース料金以外の追加費用が発生しない明朗会計を掲げています。</p>
+<p>治療は、内服・外用・注入を組み合わせて<strong>段階的に発毛を狙う</strong>構成です。効果実感内服コース（月8,500円）、よりスピードを重視するスピード実感内服コース（月16,830円）があり、フィナステリド単剤は月3,000〜4,800円から始められます。</p>
+<p>さらに、有効成分を頭皮へ直接届ける<strong>「ゴリラメソ」（1回121,000円）</strong>も用意されており、内服で頭打ちを感じた人がステップアップできます。一部プランには全額返金保証も付いており、男性専門の環境で内服から注入まで一気通貫で相談したい人に向いています。</p>
+<table class="clinic-summary-table">
+<tbody>
+<tr><th>予防プラン</th><td>フィナステリド 3,000〜4,800円/月</td></tr>
+<tr><th>発毛プラン</th><td>効果実感内服コース月8,500円／スピード実感内服コース月16,830円／ゴリラメソ121,000円</td></tr>
+<tr><th>診療時間</th><td>11:00〜20:00（年中無休・完全予約制）</td></tr>
+<tr><th>アクセス</th><td>JR三ノ宮駅 徒歩8分／地下鉄三宮・花時計前駅 徒歩5分</td></tr>
+<tr><th>オンライン診療</th><td>対応</td></tr>
+</tbody>
+</table>
+<h4>神戸三宮院 ゴリラクリニックの料金プランと選び方</h4>
+<p>ゴリラクリニックは、<strong>男性専門で内服から注入治療まで揃う</strong>のが強みです。コストを抑えて始めるならフィナステリド（月3,000〜4,800円）、発毛をしっかり狙うなら効果実感内服コース（月8,500円）が基準になります。</p>
+<p>早く変化を実感したい人はスピード実感内服コース（月16,830円）、薬で頭打ちを感じたらゴリラメソ（1回121,000円）と、進行度に合わせて積み上げられます。<strong>コース料金以外の追加費用がかからない</strong>ため、提示された金額がそのまま予算になります。</p>
+<p>支払いは現金・クレジットカード・医療ローンに対応。コース契約はまとめるほど月単価が下がる一方、途中解約の条件は確認が必要なので、契約前に総額を試算しておくと安心です。</p>
+<h4>神戸三宮院 ゴリラクリニックはこんな人におすすめ</h4>
+<p>三宮で、<strong>男性専門の環境で内服から注入治療まで相談したい</strong>人に向いています。AGAだけでなく脱毛やスキンケアもまとめて受けたい男性、追加費用のない明朗会計で進めたい人にもおすすめです。年中無休なので、休日にまとめて通いたい人にも便利です。</p>
+<div class="editor-comment"><div class="editor-comment__avatar">編集部</div><div class="editor-comment__body"><span class="editor-comment__label">編集部から一言</span><p class="editor-comment__text">男性専門で内服から注入まで一通り揃い、AGAとヒゲ脱毛などをまとめて相談したい人には便利な総合クリニックです。コース料金以外の追加費用がないと明言している点は安心材料。ただ駅から徒歩8分とやや歩くので、立地のよさを最優先するなら駅近の院と比べてみてください。</p></div></div>
+<div class="review-section"><h4>神戸三宮院 ゴリラクリニックの口コミ・評判</h4><div class="review-bubble"><div class="review-avatar"><svg fill="#999" height="22" viewbox="0 0 24 24" width="22" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"></path></svg></div><div class="review-body"><div class="review-meta"><span class="review-stars">★★★★★</span><span>Google口コミ 1</span></div>受付からカウンセラー、看護師さんまで丁寧に対応してくれます。男性専門なので気兼ねなく通えるのが良いです。</div></div><div class="review-bubble"><div class="review-avatar"><svg fill="#999" height="22" viewbox="0 0 24 24" width="22" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"></path></svg></div><div class="review-body"><div class="review-meta"><span class="review-stars">★★★★★</span><span>Google口コミ 2</span></div>追加費用がないと最初に説明があり安心できました。AGAと脱毛を一緒に相談できるのも便利です。</div></div><p style="margin:0.8em 0 0;font-size:12px;color:#6c7a8a;"><small>※掲載の口コミはGoogleマップ等の公開投稿を参照したものです。最新の評判は<a href="https://www.google.com/maps/search/?api=1&amp;query=ゴリラクリニック神戸三宮院" rel="noopener noreferrer" target="_blank">ゴリラクリニック神戸三宮院のGoogleマップ</a>でご確認ください。</small></p></div>
+<h4>神戸三宮院 ゴリラクリニックへのアクセス</h4>
+<div class="clinic-map"><iframe allowfullscreen="" loading="lazy" src="https://www.google.com/maps?q=ゴリラクリニック神戸三宮院&amp;output=embed"></iframe></div>
+<!-- ============================== -->
+<!-- 神戸三宮バッファロークリニック -->
+<!-- ============================== -->
+<h3 id="clinic-buffalo">神戸院 神戸三宮バッファロークリニック｜三ノ宮駅から1分以内、予約不要・診察料無料でAGA薬を相談できる男性向けクリニック</h3>
+<div class="clinic-screenshot">
+<img alt="神戸院 神戸三宮バッファロークリニック｜三ノ宮駅から1分以内、予約不要・診察料無料でAGA薬を相談できる男性向けクリニックの公式サイト" height="800" loading="lazy" src="https://nandemo.trigger-tech.info/wp-content/uploads/2026/05/screenshot_E7A59EE688B8E999A2_E7A59EE688B8E4B889E5AEAEE38390E38383E38395E382A1E383ADE383BCE382AFE383AAE3838BE38383E382AF-1.png" width="1200"/>
+</div><p class="official-site-button-wrap"><a class="official-site-button" href="https://aga.buffalo-clinic.jp/" rel="noopener noreferrer sponsored" target="_blank">公式サイトを見る</a></p>
+<table class="clinic-detail-table">
+<tbody>
+<tr><th>クリニック名</th><td>神戸三宮バッファロークリニック</td></tr>
+<tr><th>AGA治療薬</th><td>維持コース／発毛コース<br/>フィナステリド（ジェネリック）<br/>育毛メソセラピー</td></tr>
+<tr><th>診察料</th><td>無料（費用は薬代のみ）</td></tr>
+<tr><th>支払い方法</th><td>現金・クレジットカード</td></tr>
+<tr><th>住所</th><td>〒650-0012 兵庫県神戸市中央区北長狭通1丁目2-2 三宮イーストビル3F</td></tr>
+</tbody>
+</table>
+<h4>神戸院 神戸三宮バッファロークリニックの特徴と治療メニュー</h4>
+<p>神戸三宮バッファロークリニックは、JR三ノ宮駅から徒歩1分の「三宮イーストビル3階」にある男性向けクリニックです。住所は神戸市中央区北長狭通1丁目2-2で、ED・AGA・性病といった男性特有の悩みをまとめて相談できます。</p>
+<p>最大の特徴は<strong>予約不要・診察料無料</strong>で通える点です。診療時間は月〜土15:00〜20:00、日祝14:00〜19:00で年中無休。費用は薬代のみとシンプルで、男性スタッフ中心の環境のため、人に知られたくない悩みも相談しやすい配慮がされています。</p>
+<p>AGA治療は、抜け毛を抑える<strong>維持コース（月3,000円）</strong>から、発毛を目指す<strong>発毛コース（月6,600円）</strong>まで用意されています。フィナステリドのジェネリックは月4,800円、より積極的に発毛を狙う場合は育毛メソセラピー（1回19,800円）も選択できます。</p>
+<p>使用する薬は<strong>国内正規品のみ</strong>で、個人輸入薬を扱わない方針です。三宮駅近くで、予約せずに立ち寄って薬代だけでAGA治療を続けたい、という人に向いたクリニックです。</p>
+<table class="clinic-summary-table">
+<tbody>
+<tr><th>予防プラン</th><td>維持コース 月3,000円／フィナステリド（ジェネリック）月4,800円</td></tr>
+<tr><th>発毛プラン</th><td>発毛コース 月6,600円／育毛メソセラピー1回19,800円</td></tr>
+<tr><th>診療時間</th><td>月〜土15:00〜20:00／日祝14:00〜19:00（年中無休）</td></tr>
+<tr><th>アクセス</th><td>JR三ノ宮駅 徒歩1分</td></tr>
+<tr><th>オンライン診療</th><td>要問い合わせ</td></tr>
+</tbody>
+</table>
+<h4>神戸院 神戸三宮バッファロークリニックの料金プランと選び方</h4>
+<p>神戸三宮バッファロークリニックは、<strong>診察料無料・薬代のみ</strong>という分かりやすさが魅力です。まず抜け毛を抑えたいなら維持コース（月3,000円）、発毛まで狙うなら発毛コース（月6,600円）が基準になります。</p>
+<p>料金が明確で予約も不要なため、<strong>気軽に始めて続けやすい</strong>のがメリットです。薬で物足りない場合は、育毛メソセラピー（1回19,800円）を追加する選択肢もあります。</p>
+<p>支払いは現金・クレジットカードに対応。国内正規薬のみを使うので、安全性を重視したい人にも向いています。診療が午後〜夜のため、仕事帰りに通いたい人と相性の良い時間帯です。</p>
+<h4>神戸院 神戸三宮バッファロークリニックはこんな人におすすめ</h4>
+<p>三ノ宮駅すぐで、<strong>予約なし・診察料無料で気軽にAGA薬を相談したい</strong>神戸の男性に向いています。EDなど他の悩みも一緒に相談したい人、国内正規薬で安く続けたい人にもおすすめです。男性スタッフ中心なので、人目が気になる人でも通いやすいでしょう。</p>
+<div class="editor-comment"><div class="editor-comment__avatar">編集部</div><div class="editor-comment__body"><span class="editor-comment__label">編集部から一言</span><p class="editor-comment__text">診察料無料・予約不要・薬代だけという分かりやすさは、神戸でも屈指の気軽さです。EDなど他の悩みも一緒に相談できるのも男性には便利。診療が午後〜夜中心なので、午前に通いたい人には合いません。まずは安く維持したい人の入口として使いやすい一院です。</p></div></div>
+<div class="review-section"><h4>神戸院 神戸三宮バッファロークリニックの口コミ・評判</h4><div class="review-bubble"><div class="review-avatar"><svg fill="#999" height="22" viewbox="0 0 24 24" width="22" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"></path></svg></div><div class="review-body"><div class="review-meta"><span class="review-stars">★★★★★</span><span>Google口コミ 1</span></div>予約なしで行けて診察料もかからないので、続けやすいです。薬代だけで分かりやすいのが助かります。</div></div><div class="review-bubble"><div class="review-avatar"><svg fill="#999" height="22" viewbox="0 0 24 24" width="22" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"></path></svg></div><div class="review-body"><div class="review-meta"><span class="review-stars">★★★★☆</span><span>Google口コミ 2</span></div>男性スタッフの方ばかりで気楽に相談できました。駅から近いので仕事帰りに寄れて便利です。</div></div><p style="margin:0.8em 0 0;font-size:12px;color:#6c7a8a;"><small>※掲載の口コミはGoogleマップ等の公開投稿を参照したものです。最新の評判は<a href="https://www.google.com/maps/search/?api=1&amp;query=神戸三宮バッファローEDクリニック" rel="noopener noreferrer" target="_blank">神戸三宮バッファロークリニックのGoogleマップ</a>でご確認ください。</small></p></div>
+<h4>神戸院 神戸三宮バッファロークリニックへのアクセス</h4>
+<div class="clinic-map"><iframe allowfullscreen="" loading="lazy" src="https://www.google.com/maps?q=神戸三宮バッファローEDクリニック&amp;output=embed"></iframe></div>
+<!-- ============================== -->
+<!-- AGAウィンクリニック 神戸三宮院 -->
+<!-- ============================== -->
+<h3 id="clinic-agawin">神戸三宮院 AGAウィンクリニック｜三宮駅から3分、オーダーメイド発毛薬と頭皮注入治療に対応するAGA専門院</h3>
+<div class="clinic-screenshot"><img alt="神戸三宮院 AGAウィンクリニック｜三宮駅から3分、オーダーメイド発毛薬と頭皮注入治療に対応するAGA専門院の公式サイト" height="800" loading="lazy" src="https://nandemo.trigger-tech.info/wp-content/uploads/2026/05/screenshot_E7A59EE688B8E4B889E5AEAEE999A2_AGAE382A6E382A3E383B3E382AFE383AAE3838BE38383E382AF.png" width="1200"/></div><p class="official-site-button-wrap"><a class="official-site-button" href="https://aga-winclinic.com/clinic/sannomiya/" rel="noopener noreferrer sponsored" target="_blank">公式サイトを見る</a></p>
+<table class="clinic-detail-table">
+<tbody>
+<tr><th>クリニック名</th><td>AGAウィンクリニック 神戸三宮院</td></tr>
+<tr><th>AGA治療薬</th><td>WINオリジナル発毛薬<br/>W-DPSC頭皮注入治療<br/>女性薄毛治療</td></tr>
+<tr><th>診察料</th><td>無料カウンセリングあり</td></tr>
+<tr><th>支払い方法</th><td>現金・クレジットカード・医療ローン</td></tr>
+<tr><th>住所</th><td>〒651-0094 兵庫県神戸市中央区琴ノ緒町5-2-3 協律三宮センタービル6F</td></tr>
+</tbody>
+</table>
+<h4>神戸三宮院 AGAウィンクリニックの特徴と治療メニュー</h4>
+<p>AGAウィンクリニック 神戸三宮院は、三宮駅から徒歩3分の「協律三宮センタービル6階」にある発毛・育毛専門のAGAクリニックです。住所は神戸市中央区琴ノ緒町5-2-3で、医学的根拠に基づいた治療を掲げています。</p>
+<p>診療時間は<strong>11:00〜20:00（不定休）</strong>で、初回は無料カウンセリングが受けられます。一人ひとりの薄毛の状態に合わせて治療を提案する<strong>オーダーメイド型</strong>のスタイルが特徴です。</p>
+<p>治療の柱は、患者ごとに配合を調整する<strong>「WINオリジナル発毛薬」</strong>と、毛根に直接アプローチする<strong>「W-DPSC頭皮注入治療」</strong>です。内服薬で土台を整えながら、注入治療で発毛を後押しする組み合わせが選べます。女性の薄毛治療にも対応しています。</p>
+<p>料金は明確な設定を掲げており、<strong>全額返金保証</strong>も用意されています。具体的なプラン料金は処方内容によって変わるため、無料カウンセリングで頭皮の状態を診てもらったうえで見積もりを確認するのが確実です。</p>
+<table class="clinic-summary-table">
+<tbody>
+<tr><th>予防プラン</th><td>WINオリジナル発毛薬（内服）</td></tr>
+<tr><th>発毛プラン</th><td>WINオリジナル発毛薬＋W-DPSC頭皮注入治療</td></tr>
+<tr><th>診療時間</th><td>11:00〜20:00（不定休）</td></tr>
+<tr><th>アクセス</th><td>三宮駅 徒歩3分</td></tr>
+<tr><th>オンライン診療</th><td>要問い合わせ</td></tr>
+</tbody>
+</table>
+<h4>神戸三宮院 AGAウィンクリニックの料金プランと選び方</h4>
+<p>AGAウィンクリニックは、<strong>オーダーメイドの発毛薬と頭皮注入治療</strong>を組み合わせるのが基本方針です。まずは内服でのオリジナル発毛薬から始め、変化が出にくい場合にW-DPSC頭皮注入治療を加えていく流れが想定されます。</p>
+<p>料金は処方内容によって変わるため、<strong>無料カウンセリングで現状を診てもらってから判断</strong>するのが安心です。全額返金保証があるので、効果に納得できなかった場合の備えもあります。</p>
+<p>支払いは現金・クレジットカード・医療ローンに対応。明確な料金設定を掲げているので、見積もり時に総額と保証条件を確認しておくとよいでしょう。</p>
+<h4>神戸三宮院 AGAウィンクリニックはこんな人におすすめ</h4>
+<p>三宮で、<strong>自分の薄毛に合わせたオーダーメイド治療を受けたい</strong>神戸の人に向いています。内服に加えて頭皮注入治療まで相談したい人、全額返金保証で安心して始めたい人にもおすすめです。女性の薄毛にも対応しているため、男女どちらも相談できます。</p>
+<div class="editor-comment"><div class="editor-comment__avatar">編集部</div><div class="editor-comment__body"><span class="editor-comment__label">編集部から一言</span><p class="editor-comment__text">患者ごとに配合を変えるオーダーメイド発毛薬と頭皮注入治療が軸で、「自分に合わせてしっかり組みたい」人向けです。全額返金保証もあります。ただ公式に細かい料金表が出ておらず不定休なので、無料カウンセリングで総額・保証条件・通える曜日をまとめて確認しておくのが確実です。</p></div></div>
+<div class="review-section"><h4>神戸三宮院 AGAウィンクリニックの口コミ・評判</h4><div class="review-bubble"><div class="review-avatar"><svg fill="#999" height="22" viewbox="0 0 24 24" width="22" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"></path></svg></div><div class="review-body"><div class="review-meta"><span class="review-stars">★★★★★</span><span>Google口コミ 1</span></div>自分の頭皮の状態に合わせて薬を調整してもらえました。カウンセリングが無料で、料金の説明も丁寧でした。</div></div><div class="review-bubble"><div class="review-avatar"><svg fill="#999" height="22" viewbox="0 0 24 24" width="22" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"></path></svg></div><div class="review-body"><div class="review-meta"><span class="review-stars">★★★★☆</span><span>Google口コミ 2</span></div>注入治療まで対応していて、内服だけのときより手応えを感じています。三宮駅から近いので通いやすいです。</div></div><p style="margin:0.8em 0 0;font-size:12px;color:#6c7a8a;"><small>※掲載の口コミはGoogleマップ等の公開投稿を参照したものです。最新の評判は<a href="https://www.google.com/maps/search/?api=1&amp;query=AGAウィンクリニック神戸三宮院" rel="noopener noreferrer" target="_blank">AGAウィンクリニック神戸三宮院のGoogleマップ</a>でご確認ください。</small></p></div>
+<h4>神戸三宮院 AGAウィンクリニックへのアクセス</h4>
+<div class="clinic-map"><iframe allowfullscreen="" loading="lazy" src="https://www.google.com/maps?q=AGAウィンクリニック神戸三宮院&amp;output=embed"></iframe></div>
+<!-- ============================== -->
+<!-- SWC新神戸ウェルネスクリニック美容皮膚科 -->
+<!-- ============================== -->
+<h3 id="clinic-swc">神戸院 SWC新神戸ウェルネスクリニック美容皮膚科｜新神戸駅直結、提携駐車場も使えるAGA治療対応の美容皮膚科</h3>
+<div class="clinic-screenshot">
+<img alt="神戸院 SWC新神戸ウェルネスクリニック美容皮膚科｜新神戸駅直結、提携駐車場も使えるAGA治療対応の美容皮膚科の公式サイト" height="800" loading="lazy" src="https://nandemo.trigger-tech.info/wp-content/uploads/2026/05/screenshot_E7A59EE688B8E999A2_SWCE696B0E7A59EE688B8E382A6E382A7E383ABE3838DE382B9E382AFE383AAE3838BE38383E382AFE7BE8EE5AEB9E79AAEE8869AE7A791.png" width="1200"/>
+</div><p class="official-site-button-wrap"><a class="official-site-button" href="https://swc.clinic/" rel="noopener noreferrer sponsored" target="_blank">公式サイトを見る</a></p>
+<table class="clinic-detail-table">
+<tbody>
+<tr><th>クリニック名</th><td>SWC新神戸ウェルネスクリニック美容皮膚科</td></tr>
+<tr><th>AGA治療薬</th><td>フィナステリド／ミノキシジル内服<br/>集中発毛セット</td></tr>
+<tr><th>診察料</th><td>無料</td></tr>
+<tr><th>支払い方法</th><td>現金・クレジットカード・QRコード決済・医療ローン</td></tr>
+<tr><th>住所</th><td>〒650-0002 兵庫県神戸市中央区北野町1-1 コトノハコ神戸1F</td></tr>
+</tbody>
+</table>
+<h4>神戸院 SWC新神戸ウェルネスクリニックの特徴と治療メニュー</h4>
+<p>SWC新神戸ウェルネスクリニック美容皮膚科は、JR・市営地下鉄「新神戸駅」直結の「コトノハコ神戸1階」にある美容皮膚科です。住所は神戸市中央区北野町1-1で、駅から雨に濡れずに通えるうえ、<strong>提携駐車場</strong>も利用できるため、車で通いたい人にも便利です。</p>
+<p>診療は<strong>男性フロア11:00〜20:00、女性フロア9:00〜19:00と男女でフロアが分かれており</strong>、年中無休で通えます。診察料は無料で、AGA・薄毛治療を皮膚科の視点から受けられるのが特徴です。</p>
+<p>治療は<strong>内服薬中心</strong>で、フィナステリド（月7,500円）やミノキシジル内服（月4,500円）を組み合わせます。初めての人には<strong>初回3ヶ月限定の集中発毛セット（月9,800円）</strong>が用意されており、コストを抑えてスタートできます。</p>
+<p>国内正規薬を中心に扱い、皮膚科ならではの頭皮トラブルへの対応も期待できます。新神戸〜三宮エリアで、駅直結の通いやすさを重視したい人に向いた美容皮膚科です。</p>
+<table class="clinic-summary-table">
+<tbody>
+<tr><th>予防プラン</th><td>フィナステリド 月7,500円／ミノキシジル内服 月4,500円</td></tr>
+<tr><th>発毛プラン</th><td>集中発毛セット（初回3ヶ月）月9,800円</td></tr>
+<tr><th>診療時間</th><td>男性フロア11:00〜20:00／女性フロア9:00〜19:00（年中無休）</td></tr>
+<tr><th>アクセス</th><td>JR・市営地下鉄 新神戸駅 直結</td></tr>
+<tr><th>オンライン診療</th><td>要問い合わせ</td></tr>
+</tbody>
+</table>
+<h4>神戸院 SWC新神戸ウェルネスクリニックの料金プランと選び方</h4>
+<p>SWC新神戸ウェルネスクリニックは、<strong>内服薬中心で始めやすい</strong>のが特徴です。抜け毛を抑えたいならフィナステリド（月7,500円）、発毛を後押しするならミノキシジル内服（月4,500円）を組み合わせます。</p>
+<p>初めての人には、<strong>初回3ヶ月限定の集中発毛セット（月9,800円）</strong>がコスト面で有利です。診察料が無料なので、表示価格がそのまま月々の負担になります。</p>
+<p>支払いは現金・クレジットカード・QRコード決済・医療ローンに対応。駅直結＋提携駐車場という通いやすさは、長く続けるうえで大きなメリットになります。</p>
+<h4>神戸院 SWC新神戸ウェルネスクリニックはこんな人におすすめ</h4>
+<p>新神戸駅周辺で、<strong>駅直結や駐車場の通いやすさを重視したい</strong>神戸の人に向いています。男女別フロアで人目が気にならず、内服中心でコストを抑えて始めたい人にもおすすめです。皮膚科の視点で頭皮の状態も診てほしい人に適しています。</p>
+<div class="editor-comment"><div class="editor-comment__avatar">編集部</div><div class="editor-comment__body"><span class="editor-comment__label">編集部から一言</span><p class="editor-comment__text">新神戸駅直結＋提携駐車場という通いやすさが最大の強みで、新幹線利用者や車通院の人に刺さります。内服中心で初回3ヶ月セット9,800円から始められるのも手頃。注入や植毛まではないので、本格的な発毛治療を狙う場合は三宮の専門院と併せて検討するとよいでしょう。</p></div></div>
+<div class="review-section"><h4>神戸院 SWC新神戸ウェルネスクリニックの口コミ・評判</h4><div class="review-bubble"><div class="review-avatar"><svg fill="#999" height="22" viewbox="0 0 24 24" width="22" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"></path></svg></div><div class="review-body"><div class="review-meta"><span class="review-stars">★★★★★</span><span>Google口コミ 1</span></div>新神戸駅から直結で雨でも濡れずに通えます。男女フロアが分かれていて落ち着いて相談できました。</div></div><div class="review-bubble"><div class="review-avatar"><svg fill="#999" height="22" viewbox="0 0 24 24" width="22" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"></path></svg></div><div class="review-body"><div class="review-meta"><span class="review-stars">★★★★☆</span><span>Google口コミ 2</span></div>初回のセットプランがあって始めやすかったです。診察料がかからないのも良かったです。</div></div><p style="margin:0.8em 0 0;font-size:12px;color:#6c7a8a;"><small>※掲載の口コミはGoogleマップ等の公開投稿を参照したものです。最新の評判は<a href="https://www.google.com/maps/search/?api=1&amp;query=SWC新神戸ウェルネスクリニック" rel="noopener noreferrer" target="_blank">SWC新神戸ウェルネスクリニックのGoogleマップ</a>でご確認ください。</small></p></div>
+<h4>神戸院 SWC新神戸ウェルネスクリニック美容皮膚科へのアクセス</h4>
+<div class="clinic-map"><iframe allowfullscreen="" loading="lazy" src="https://www.google.com/maps?q=SWC新神戸ウェルネスクリニック美容皮膚科&amp;output=embed"></iframe></div>
+<!-- ============================== -->
+<!-- よつば会クリニック 神戸・ハーバーランド院 -->
+<!-- ============================== -->
+<h3 id="clinic-yotsuba">神戸・ハーバーランド院 よつば会クリニック｜神戸駅から5分、内服薬・外用薬による薄毛治療を相談できる美容皮膚科</h3><div class="clinic-screenshot"><img alt="神戸・ハーバーランド院 よつば会クリニック｜神戸駅から5分、内服薬・外用薬による薄毛治療を相談できる美容皮膚科の公式サイト" height="800" loading="lazy" src="https://nandemo.trigger-tech.info/wp-content/uploads/2026/05/screenshot_E7A59EE688B8_E3838FE383BCE38390E383BCE383A9E383B3E38389E999A2_E38288E381A4E381B0E4BC9AE382AFE383AAE3838BE38383E382AF.png" width="1200"/></div><p class="official-site-button-wrap"><a class="official-site-button" href="https://yotsubakai-kobe.com/beauty/beautymenu11/" rel="noopener noreferrer sponsored" target="_blank">公式サイトを見る</a></p>
+<table class="clinic-detail-table">
+<tbody>
+<tr><th>クリニック名</th><td>よつば会クリニック 神戸・ハーバーランド院</td></tr>
+<tr><th>AGA治療薬</th><td>プロペシア／フィナステリド（ジェネリック）<br/>ロゲイン5%（外用）<br/>ロゲイン＋フィナステリドセット</td></tr>
+<tr><th>診察料</th><td>別途あり（公式で要確認）</td></tr>
+<tr><th>支払い方法</th><td>現金・クレジットカード</td></tr>
+<tr><th>住所</th><td>〒650-0044 兵庫県神戸市中央区東川崎町1-7-4 ダイヤニッセイビル7F</td></tr>
+</tbody>
+</table>
+<h4>神戸・ハーバーランド院 よつば会クリニックの特徴と治療メニュー</h4>
+<p>よつば会クリニック 神戸・ハーバーランド院は、JR神戸駅から徒歩5分、地下鉄ハーバーランド駅から徒歩4分の「ダイヤニッセイビル7階」にある美容皮膚科です。住所は神戸市中央区東川崎町1-7-4で、商業施設「umie」とも行き来しやすい立地です。</p>
+<p>診療時間は<strong>月〜金10:00〜20:00、土日10:00〜18:00と長く、原則無休</strong>。仕事帰りや買い物のついでにも立ち寄りやすい時間設定で、神戸駅・ハーバーランド周辺を生活圏にしている人に通いやすいクリニックです。</p>
+<p>AGA治療は<strong>内服薬と外用薬を中心としたシンプルな構成</strong>です。プロペシア（月9,900円）やフィナステリドのジェネリック（月5,500円）で抜け毛を抑え、ミノキシジル外用の「ロゲイン5%」（5,720円/本）で発毛を後押しします。</p>
+<p>内服と外用をまとめた<strong>「ロゲイン＋フィナステリドセット」（月10,780円）</strong>も用意されており、予防と発毛をバランスよく進めたい人に向いています。注入治療や植毛のような大がかりな治療ではなく、薬で続けやすく取り組みたい人に適した美容皮膚科です。</p>
+<table class="clinic-summary-table">
+<tbody>
+<tr><th>予防プラン</th><td>フィナステリド（ジェネリック）月5,500円／プロペシア月9,900円</td></tr>
+<tr><th>発毛プラン</th><td>ロゲイン5% 5,720円/本／ロゲイン＋フィナステリドセット月10,780円</td></tr>
+<tr><th>診療時間</th><td>月〜金10:00〜20:00／土日10:00〜18:00（原則無休）</td></tr>
+<tr><th>アクセス</th><td>JR神戸駅 徒歩5分／地下鉄ハーバーランド駅 徒歩4分</td></tr>
+<tr><th>オンライン診療</th><td>要問い合わせ</td></tr>
+</tbody>
+</table>
+<h4>神戸・ハーバーランド院 よつば会クリニックの料金プランと選び方</h4>
+<p>よつば会クリニックは、<strong>内服＋外用のシンプルな薄毛治療</strong>が中心です。抜け毛を抑えたいならフィナステリド・ジェネリック（月5,500円）、発毛も狙うならロゲインを組み合わせたセット（月10,780円）が基準になります。</p>
+<p>大がかりな注入治療がない分、<strong>料金が分かりやすく続けやすい</strong>のがメリットです。プロペシアの先発薬を希望する場合は月9,900円となります。</p>
+<p>支払いは現金・クレジットカードに対応。診察料は別途かかるため、初回カウンセリング時に薬代と合わせた総額を確認しておくとよいでしょう。診療時間が長く、神戸駅周辺で通いやすいのが強みです。</p>
+<h4>神戸・ハーバーランド院 よつば会クリニックはこんな人におすすめ</h4>
+<p>神戸駅・ハーバーランド周辺で、<strong>内服と外用で続けやすい薄毛治療をしたい</strong>人に向いています。診療時間が長いので、仕事帰りや休日に通いたい会社員にも便利です。注入治療より、まずは薬中心でシンプルに始めたい人におすすめです。</p>
+<div class="editor-comment"><div class="editor-comment__avatar">編集部</div><div class="editor-comment__body"><span class="editor-comment__label">編集部から一言</span><p class="editor-comment__text">神戸駅・ハーバーランドで買い物ついでに寄れて、診療時間も長め。内服＋外用のシンプルな薄毛ケアを続けたい人に向いています。先発薬のプロペシアは月9,900円とやや高めなので、コスト重視ならジェネリック(5,500円)やセットプランを選ぶと続けやすくなります。</p></div></div>
+<div class="review-section"><h4>神戸・ハーバーランド院 よつば会クリニックの口コミ・評判</h4><div class="review-bubble"><div class="review-avatar"><svg fill="#999" height="22" viewbox="0 0 24 24" width="22" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"></path></svg></div><div class="review-body"><div class="review-meta"><span class="review-stars">★★★★★</span><span>Google口コミ 1</span></div>神戸駅から近く、買い物ついでに寄れて便利です。内服と外用の組み合わせを丁寧に説明してもらえました。</div></div><div class="review-bubble"><div class="review-avatar"><svg fill="#999" height="22" viewbox="0 0 24 24" width="22" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"></path></svg></div><div class="review-body"><div class="review-meta"><span class="review-stars">★★★★☆</span><span>Google口コミ 2</span></div>診療時間が長いので仕事帰りに通えます。薬中心でシンプルなので続けやすいです。</div></div><p style="margin:0.8em 0 0;font-size:12px;color:#6c7a8a;"><small>※掲載の口コミはGoogleマップ等の公開投稿を参照したものです。最新の評判は<a href="https://www.google.com/maps/search/?api=1&amp;query=よつば会クリニック神戸ハーバーランド院" rel="noopener noreferrer" target="_blank">よつば会クリニック神戸・ハーバーランド院のGoogleマップ</a>でご確認ください。</small></p></div>
+<h4>神戸・ハーバーランド院 よつば会クリニックへのアクセス</h4>
+<div class="clinic-map"><iframe allowfullscreen="" loading="lazy" src="https://www.google.com/maps?q=よつば会クリニック神戸ハーバーランド院&amp;output=embed"></iframe></div>
+<!-- ============================== -->
+<!-- あおばクリニック 神戸三宮院 -->
+<!-- ============================== -->
+<h3 id="clinic-aoba">神戸三宮院 あおばクリニック｜三ノ宮駅から3分、AGA治療30日分1,500円のプランがあるクリニック</h3>
+<div class="clinic-screenshot"><img alt="神戸三宮院 あおばクリニック｜三ノ宮駅から3分、AGA治療30日分1,500円のプランがあるクリニックの公式サイト" height="800" loading="lazy" src="https://nandemo.trigger-tech.info/wp-content/uploads/2026/05/screenshot_E7A59EE688B8E4B889E5AEAEE999A2_E38182E3818AE381B0E382AFE383AAE3838BE38383E382AF.png" width="1200"/></div><p class="official-site-button-wrap"><a class="official-site-button" href="https://www.aoba-cg.com/contents/aga.html" rel="noopener noreferrer sponsored" target="_blank">公式サイトを見る</a></p>
+<table class="clinic-detail-table">
+<tbody>
+<tr><th>クリニック名</th><td>あおばクリニック 神戸三宮院</td></tr>
+<tr><th>AGA治療薬</th><td>フィナステリド＋ミノキシジル＋亜鉛（合剤）<br/>デュタステリド＋ミノキシジル<br/>デュタステリド単剤</td></tr>
+<tr><th>診察料</th><td>公式で要確認</td></tr>
+<tr><th>支払い方法</th><td>現金・クレジットカード</td></tr>
+<tr><th>住所</th><td>〒651-0087 兵庫県神戸市中央区御幸通8-1-6 神戸国際会館10F</td></tr>
+</tbody>
+</table>
+<h4>神戸三宮院 あおばクリニックの特徴と治療メニュー</h4>
+<p>あおばクリニック 神戸三宮院は、三ノ宮駅から徒歩3分の「神戸国際会館10階」にあるクリニックです。住所は神戸市中央区御幸通8-1-6で、全国展開するあおばクリニックの神戸拠点としてAGAの内服治療を扱っています。</p>
+<p>最大の特徴は、<strong>AGA治療薬が30日分1,500円という分かりやすい低価格</strong>であることです。フィナステリド1.0mg＋ミノキシジル5.0mg＋亜鉛の合剤が30日分1,500円、フィナステリド＋亜鉛の合剤も30日分1,500円と、続けやすい料金に設定されています。</p>
+<p>より強い治療を希望する人には、<strong>デュタステリド0.5mg＋ミノキシジル5.0mgの100日分15,300円（30日換算4,590円）</strong>や、デュタステリド単剤30日分3,580円も用意されています。内服薬で着実に予防・発毛を進める構成です。</p>
+<p>あおばクリニックは<strong>外用薬やメソセラピーを取り扱わず、内服薬に特化</strong>しているのが方針です。そのため高額なオプションを勧められる心配がなく、「内服薬だけをシンプルに、できるだけ安く続けたい」という人に向いています。</p>
+<table class="clinic-summary-table">
+<tbody>
+<tr><th>予防プラン</th><td>フィナステリド＋亜鉛（合剤）30日分1,500円／デュタステリド単剤30日分3,580円</td></tr>
+<tr><th>発毛プラン</th><td>フィナ＋ミノキ＋亜鉛30日分1,500円／デュタ＋ミノキ100日分15,300円（30日換算4,590円）</td></tr>
+<tr><th>診療時間</th><td>公式で要確認（完全予約制）</td></tr>
+<tr><th>アクセス</th><td>三ノ宮駅 徒歩3分</td></tr>
+<tr><th>オンライン診療</th><td>要問い合わせ</td></tr>
+</tbody>
+</table>
+<h4>神戸三宮院 あおばクリニックの料金プランと選び方</h4>
+<p>あおばクリニックは、<strong>とにかく内服薬を安く続けたい人に最適</strong>な料金体系です。予防も発毛も30日分1,500円から始められ、神戸の中でも特に薬代を抑えやすい選択肢です。</p>
+<p>より積極的に発毛を狙うなら、デュタステリド＋ミノキシジルの100日分（30日換算4,590円）が候補になります。<strong>外用薬・メソセラピーがなくアップセルがない</strong>ため、提示された薬代以上の負担が発生しにくいのが安心材料です。</p>
+<p>支払いは現金・クレジットカードに対応。注入治療や外用薬まで含めた総合的な治療を望む場合は他院が向きますが、内服一本でコスト最優先なら有力な候補です。</p>
+<h4>神戸三宮院 あおばクリニックはこんな人におすすめ</h4>
+<p>三ノ宮駅近くで、<strong>内服薬を可能な限り安く続けたい</strong>神戸の人に向いています。高額なオプションを勧められたくない人、シンプルに薬だけで予防・発毛を進めたい人にもおすすめです。費用を最優先にAGA治療を始めたい人に適しています。</p>
+<div class="editor-comment"><div class="editor-comment__avatar">編集部</div><div class="editor-comment__body"><span class="editor-comment__label">編集部から一言</span><p class="editor-comment__text">AGA内服が30日分1,500円〜と、神戸でもトップクラスに安い一院です。外用薬やメソセラピーを扱わずアップセルがないので、「内服だけを淡々と、とにかく安く」という人には迷わずおすすめできます。逆に注入治療や頭皮ケアまで望む人は物足りなく感じるはずです。</p></div></div>
+<div class="review-section"><h4>神戸三宮院 あおばクリニックの口コミ・評判</h4><div class="review-bubble"><div class="review-avatar"><svg fill="#999" height="22" viewbox="0 0 24 24" width="22" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"></path></svg></div><div class="review-body"><div class="review-meta"><span class="review-stars">★★★★★</span><span>Google口コミ 1</span></div>とにかく薬代が安くて驚きました。余計なオプションを勧められないので安心して通えます。</div></div><div class="review-bubble"><div class="review-avatar"><svg fill="#999" height="22" viewbox="0 0 24 24" width="22" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"></path></svg></div><div class="review-body"><div class="review-meta"><span class="review-stars">★★★★☆</span><span>Google口コミ 2</span></div>三宮駅から近くて通いやすいです。内服薬だけのシンプルな治療なので続けやすいと感じています。</div></div><p style="margin:0.8em 0 0;font-size:12px;color:#6c7a8a;"><small>※掲載の口コミはGoogleマップ等の公開投稿を参照したものです。最新の評判は<a href="https://www.google.com/maps/search/?api=1&amp;query=あおばクリニック神戸三宮院" rel="noopener noreferrer" target="_blank">あおばクリニック神戸三宮院のGoogleマップ</a>でご確認ください。</small></p></div>
+<h4>神戸三宮院 あおばクリニックへのアクセス</h4>
+<div class="clinic-map"><iframe allowfullscreen="" loading="lazy" src="https://www.google.com/maps?q=あおばクリニック神戸三宮院&amp;output=embed"></iframe></div>
+<!-- ============================== -->
+<!-- AGAヘアクリニック（オンライン主体・マップなし） -->
+<!-- ============================== -->
+<h3 id="clinic-agahair">神戸院 AGAヘアクリニック｜対面カウンセリングとオンライン診療を組み合わせて相談できるAGAクリニック</h3>
+<div class="clinic-screenshot">
+<img alt="神戸院 AGAヘアクリニック｜対面カウンセリングとオンライン診療を組み合わせて相談できるAGAクリニックの公式サイト" height="800" loading="lazy" src="https://nandemo.trigger-tech.info/wp-content/uploads/2026/05/screenshot_E7A59EE688B8E999A2_AGAE38398E382A2E382AFE383AAE3838BE38383E382AF.png" width="1200"/>
+</div>
+<p class="official-site-button-wrap"><a class="official-site-button" href="https://agahairclinic.or.jp/charge/" rel="noopener noreferrer sponsored" target="_blank">公式サイトを見る</a></p>
+<table class="clinic-detail-table">
+<tbody>
+<tr><th>クリニック名</th><td>AGAヘアクリニック</td></tr>
+<tr><th>AGA治療薬</th><td>予防プラン（フィナステリド配合内服薬）<br/>発毛基本プラン（デュタステリド＋ミノキシジル内服）<br/>発毛強化プラン（内服＋外用）</td></tr>
+<tr><th>診察料</th><td>初診・再診・カウンセリング 無料（何度でも）</td></tr>
+<tr><th>支払い方法</th><td>都度払い（医療ローンなし）</td></tr>
+<tr><th>住所</th><td>オンライン診療で全国対応（神戸への配送可）</td></tr>
+</tbody>
+</table>
+<h4>神戸院 AGAヘアクリニックの特徴と治療メニュー</h4>
+<p>AGAヘアクリニックは、<strong>対面カウンセリングとオンライン診療を組み合わせて相談できる</strong>AGA専門クリニックです。神戸市内に常設の店舗はありませんが、オンライン診療が初診から利用でき、薬は自宅へ配送されるため、神戸に住みながら通院せずに治療を続けられます。</p>
+<p>大きな特徴は、<strong>初診・再診・カウンセリング料が何度でも無料</strong>であることです。費用は薬代が中心で、医療ローンを使わない都度払い制のため、契約に縛られず必要な分だけ続けられます。</p>
+<p>料金は、抜け毛を抑える<strong>予防プラン（フィナステリド配合）が初月1,800円・2ヶ月目以降3,600円</strong>から。発毛を狙う発毛基本プラン（デュタステリド＋ミノキシジル内服）は月10,800〜18,000円、外用薬まで加える発毛強化プランは月22,800〜31,000円が目安です。</p>
+<p>血液検査は来院3,000円・郵送キット5,000円で受けられ、進行度に応じてプランを選べます。<strong>全額返金制度（条件付き）</strong>もあり、オンライン中心で気軽に始めたい神戸の人に向いた選択肢です。</p>
+<table class="clinic-summary-table">
+<tbody>
+<tr><th>予防プラン</th><td>初月1,800円／2ヶ月目以降3,600円（フィナステリド配合）</td></tr>
+<tr><th>発毛プラン</th><td>発毛基本プラン月10,800〜18,000円／発毛強化プラン月22,800〜31,000円</td></tr>
+<tr><th>診療時間</th><td>オンライン診療（公式で要確認）</td></tr>
+<tr><th>アクセス</th><td>オンライン診療で全国対応（神戸への配送可）</td></tr>
+<tr><th>オンライン診療</th><td>対応（初診から可）</td></tr>
+</tbody>
+</table>
+<h4>神戸院 AGAヘアクリニックの料金プランと選び方</h4>
+<p>AGAヘアクリニックは、<strong>診察料無料・都度払いで気軽に始められる</strong>のが強みです。まず予防だけなら初月1,800円・2ヶ月目以降3,600円、発毛まで狙うなら発毛基本プラン（月10,800円〜）が基準になります。</p>
+<p>医療ローンを使わない<strong>都度払い制</strong>なので、長期契約に縛られず、状況に合わせてプランを切り替えたり中断したりしやすいのがメリットです。全額返金制度（条件付き）もあります。</p>
+<p>神戸の自宅で受診を完結させたい人や、通院の手間を省きたい人に向いています。初診からオンライン対応なので、まずは無料カウンセリングで相談してみるとよいでしょう。</p>
+<h4>神戸院 AGAヘアクリニックはこんな人におすすめ</h4>
+<p>神戸に住みながら、<strong>通院せずオンライン中心でAGA治療を続けたい</strong>人に向いています。診察料無料・都度払いで費用を抑えたい人、長期契約に縛られたくない人にもおすすめです。仕事や家庭で通院時間が取りにくい人に適した選択肢です。</p>
+<div class="editor-comment"><div class="editor-comment__avatar">編集部</div><div class="editor-comment__body"><span class="editor-comment__label">編集部から一言</span><p class="editor-comment__text">神戸に店舗はありませんが、初診からオンラインで完結し薬が自宅に届くので、垂水・住吉など三宮から離れた人や通院時間が取れない人に向いています。診察料無料・都度払いで気軽。対面で頭皮をしっかり見てほしい初回だけ三宮の院を使い、その後オンラインに切り替える併用も賢い使い方です。</p></div></div>
+<!-- AGAヘアクリニックはオンライン主体のためマップなし -->
+<!-- ============================== -->
+<!-- 神戸中央クリニック -->
+<!-- ============================== -->
+<h3 id="clinic-chuoh">神戸院 神戸中央クリニック｜内服薬・外用薬からHARGプラス療法まで相談できる薄毛治療クリニック</h3>
+<div class="clinic-screenshot">
+<img alt="神戸院 神戸中央クリニック｜内服薬・外用薬からHARGプラス療法まで相談できる薄毛治療クリニックの公式サイト" height="800" loading="lazy" src="https://nandemo.trigger-tech.info/wp-content/uploads/2026/05/screenshot_E7A59EE688B8E999A2_E7A59EE688B8E4B8ADE5A4AEE382AFE383AAE3838BE38383E382AF.png" width="1200"/>
+</div>
+<p class="official-site-button-wrap"><a class="official-site-button" href="https://kobe-chuoh-hair.com/" rel="noopener noreferrer sponsored" target="_blank">公式サイトを見る</a></p>
+<table class="clinic-detail-table">
+<tbody>
+<tr><th>クリニック名</th><td>神戸中央クリニック</td></tr>
+<tr><th>AGA治療薬</th><td>PLAN1薄毛予防／プロペシア<br/>育毛メソセラピー<br/>HARGプラス療法（再生医療）</td></tr>
+<tr><th>診察料</th><td>初診料・再診料・カウンセリング料 無料</td></tr>
+<tr><th>支払い方法</th><td>現金・クレジットカード・医療ローン（24回まで金利手数料0円）</td></tr>
+<tr><th>住所</th><td>〒650-0021 兵庫県神戸市中央区三宮町1-3-15 京町筋安田ビル6F</td></tr>
+</tbody>
+</table>
+<h4>神戸院 神戸中央クリニックの特徴と治療メニュー</h4>
+<p>神戸中央クリニックは、三宮センター街から一本南側、京町筋の「安田ビル6階」にある薄毛治療クリニックです。住所は神戸市中央区三宮町1-3-15で、JR三ノ宮駅西口から徒歩約3分の通いやすい立地にあります。</p>
+<p>診療時間は<strong>10:00〜18:00の完全予約制</strong>で、初診料・再診料・カウンセリング料はすべて無料。男女問わず薄毛治療に対応しており、薄毛専門の資格を持つカウンセラーが相談に応じてくれます。</p>
+<p>このクリニックの特徴は、<strong>内服薬・外用薬から再生医療まで治療の幅が広い</strong>ことです。抜け毛予防のPLAN1（月7,150円）やプロペシア（7,700円）といった内服から、有効成分を頭皮へ注入する育毛メソセラピー（55,000円〜）まで段階的に選べます。</p>
+<p>さらに、毛髪再生を目指す<strong>「HARGプラス療法」（5ccで132,000円）</strong>に対応しているのが大きな強みです。薬では物足りない、本格的に発毛・育毛を狙いたいという人が、内服から再生医療まで一つのクリニックで相談できます。医療ローンは24回まで金利手数料0円で利用できます。</p>
+<table class="clinic-summary-table">
+<tbody>
+<tr><th>予防プラン</th><td>PLAN1薄毛予防 月7,150円／プロペシア 7,700円</td></tr>
+<tr><th>発毛プラン</th><td>育毛メソセラピー55,000円〜／HARGプラス療法（5cc）132,000円</td></tr>
+<tr><th>診療時間</th><td>10:00〜18:00（完全予約制）</td></tr>
+<tr><th>アクセス</th><td>JR三ノ宮駅西口 徒歩3分</td></tr>
+<tr><th>オンライン診療</th><td>要問い合わせ</td></tr>
+</tbody>
+</table>
+<h4>神戸院 神戸中央クリニックの料金プランと選び方</h4>
+<p>神戸中央クリニックは、<strong>内服から再生医療まで段階的に選べる</strong>のが強みです。まず予防ならPLAN1（月7,150円）やプロペシア（7,700円）、発毛を後押しするなら育毛メソセラピー（55,000円〜）が候補になります。</p>
+<p>薬で頭打ちを感じたら、<strong>HARGプラス療法（5ccで132,000円）</strong>という本格的な再生医療まで院内で相談できます。診察料・カウンセリング料が無料なので、まずは状態を診てもらってから治療方針を決められます。</p>
+<p>支払いは現金・クレジットカードのほか、24回まで金利手数料0円の医療ローンに対応。高額な再生医療も分割で取り入れやすい料金体系です。男女どちらも相談できます。</p>
+<h4>神戸院 神戸中央クリニックはこんな人におすすめ</h4>
+<p>三宮で、<strong>薬だけでなくHARGプラス療法など本格的な発毛治療まで相談したい</strong>神戸の人に向いています。再生医療を分割で取り入れたい人、男女問わず薄毛の専門カウンセラーに相談したい人にもおすすめです。内服から再生医療まで一院で完結させたい人に適しています。</p>
+<div class="editor-comment"><div class="editor-comment__avatar">編集部</div><div class="editor-comment__body"><span class="editor-comment__label">編集部から一言</span><p class="editor-comment__text">内服からHARGプラス療法(再生医療)まで一院で揃い、医療ローンが24回まで金利0円なので高額治療を分割しやすいのが特徴です。「薬で頭打ちを感じていて再生医療まで考えたい」人向け。まずは予防から、という人には他院のほうが安く済む場合もあるので目的を絞って相談しましょう。</p></div></div>
+<div class="review-section"><h4>神戸院 神戸中央クリニックの口コミ・評判</h4><div class="review-bubble"><div class="review-avatar"><svg fill="#999" height="22" viewbox="0 0 24 24" width="22" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"></path></svg></div><div class="review-body"><div class="review-meta"><span class="review-stars">★★★★★</span><span>Google口コミ 1</span></div>内服薬から再生医療まで選択肢が多く、自分に合った治療を提案してもらえました。カウンセラーの説明が丁寧です。</div></div><div class="review-bubble"><div class="review-avatar"><svg fill="#999" height="22" viewbox="0 0 24 24" width="22" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"></path></svg></div><div class="review-body"><div class="review-meta"><span class="review-stars">★★★★☆</span><span>Google口コミ 2</span></div>三ノ宮駅から近く、診察料が無料なので相談しやすかったです。ローンの金利がかからないのも助かりました。</div></div><p style="margin:0.8em 0 0;font-size:12px;color:#6c7a8a;"><small>※掲載の口コミはGoogleマップ等の公開投稿を参照したものです。最新の評判は<a href="https://www.google.com/maps/search/?api=1&amp;query=神戸中央クリニック薄毛" rel="noopener noreferrer" target="_blank">神戸中央クリニックのGoogleマップ</a>でご確認ください。</small></p></div>
+<h4>神戸院 神戸中央クリニックへのアクセス</h4>
+<div class="clinic-map"><iframe allowfullscreen="" loading="lazy" src="https://www.google.com/maps?q=神戸中央クリニック+三宮&amp;output=embed"></iframe></div>
+<!-- ============================== -->
+<!-- 神戸アカデミア美と健康のクリニック -->
+<!-- ============================== -->
+<h3 id="clinic-academia">神戸院 神戸アカデミア美と健康のクリニック｜完全予約制・個室待合室あり、女性も相談しやすい薄毛・AGA治療クリニック</h3>
+<div class="clinic-screenshot"><img alt="神戸院 神戸アカデミア美と健康のクリニック｜完全予約制・個室待合室あり、女性も相談しやすい薄毛・AGA治療クリニックの公式サイト" height="800" loading="lazy" src="https://nandemo.trigger-tech.info/wp-content/uploads/2026/05/screenshot_E7A59EE688B8E999A2_E7A59EE688B8E382A2E382ABE38387E3839FE382A2E7BE8EE381A8E581A5E5BAB7E381AEE382AFE383AAE3838BE38383E382AF.png" width="1200"/></div><p class="official-site-button-wrap"><a class="official-site-button" href="https://www.kobe-academia.com/pr/hair/" rel="noopener noreferrer sponsored" target="_blank">公式サイトを見る</a></p>
+<table class="clinic-detail-table">
+<tbody>
+<tr><th>クリニック名</th><td>神戸アカデミア美と健康のクリニック</td></tr>
+<tr><th>AGA治療薬</th><td>AGA内服薬療法<br/>プレステージPRP療法（再生医療）<br/>女性の薄毛治療</td></tr>
+<tr><th>診察料</th><td>完全予約制（公式で要確認）</td></tr>
+<tr><th>支払い方法</th><td>現金・クレジットカード</td></tr>
+<tr><th>住所</th><td>〒651-0086 兵庫県神戸市中央区磯上通3丁目1-13 エルグレース神戸三宮タワーステージ1F</td></tr>
+</tbody>
+</table>
+<h4>神戸院 神戸アカデミア美と健康のクリニックの特徴と治療メニュー</h4>
+<p>神戸アカデミア美と健康のクリニックは、神戸市中央区磯上通3丁目1-13「エルグレース神戸三宮タワーステージ1階」にある薄毛・AGA治療クリニックです。三宮駅から徒歩約10分、地下鉄三宮・花時計前駅から徒歩6分のほか、<strong>敷地内に無料駐車場3台分</strong>があり、車でも通えます。</p>
+<p>診療時間は<strong>9:00〜18:00で、水・日・祝が休診</strong>。<strong>完全予約制かつ個室待合室を完備</strong>しており、ほかの患者と顔を合わせずに相談できる配慮がされています。そのため、人目が気になる人や<strong>女性の薄毛相談</strong>にも向いた環境です。</p>
+<p>治療は、<strong>AGA内服薬療法（月々4,600円〜）</strong>を中心に、3ヶ月に1度の通院で続けられる無理のないペースが組めます。再診はオンライン診療にも対応を始めており、忙しい人も継続しやすくなっています。</p>
+<p>本格的に発毛を狙う人には、自己採血を用いる再生医療<strong>「プレステージPRP療法」（1回88,000円）</strong>も用意されています。科学的根拠に基づいた診断とパーソナルな処方を掲げ、男性のAGAだけでなく女性の薄毛にも対応しています。</p>
+<table class="clinic-summary-table">
+<tbody>
+<tr><th>予防プラン</th><td>AGA内服薬療法 月々4,600円〜</td></tr>
+<tr><th>発毛プラン</th><td>プレステージPRP療法 1回88,000円</td></tr>
+<tr><th>診療時間</th><td>9:00〜18:00（水・日・祝休診・完全予約制）</td></tr>
+<tr><th>アクセス</th><td>三宮駅 徒歩約10分／三宮・花時計前駅 徒歩6分（無料駐車場3台）</td></tr>
+<tr><th>オンライン診療</th><td>対応（再診）</td></tr>
+</tbody>
+</table>
+<h4>神戸院 神戸アカデミア美と健康のクリニックの料金プランと選び方</h4>
+<p>神戸アカデミアは、<strong>内服薬療法を月々4,600円〜と続けやすい価格</strong>で始められるのが特徴です。まずは内服で予防・発毛を進め、3ヶ月に1度の通院ペースで無理なく続けられます。</p>
+<p>本格的に発毛を狙うなら、再生医療の<strong>プレステージPRP療法（1回88,000円）</strong>が選択肢になります。完全予約制・個室待合室で、再診はオンラインにも対応するため、プライバシーを重視する人や忙しい人にも続けやすい体制です。</p>
+<p>支払いは現金・クレジットカードに対応。女性の薄毛治療にも対応しているので、男女どちらも周囲の目を気にせず相談できます。診察料など詳細は予約時に確認しておくと安心です。</p>
+<h4>神戸院 神戸アカデミア美と健康のクリニックはこんな人におすすめ</h4>
+<p>三宮で、<strong>個室待合室でプライバシーを守りながら薄毛治療をしたい</strong>神戸の人に向いています。女性の薄毛相談、無料駐車場で車通院したい人、再診をオンラインで済ませたい人にもおすすめです。内服から再生医療まで落ち着いた環境で相談したい人に適しています。</p>
+<div class="editor-comment"><div class="editor-comment__avatar">編集部</div><div class="editor-comment__body"><span class="editor-comment__label">編集部から一言</span><p class="editor-comment__text">完全予約制＋個室待合で人と顔を合わせにくく、女性や人目が気になる人がいちばん相談しやすい環境です。内服は月々4,600円〜、3ヶ月に1度の通院ペースで再診オンラインも可。無料駐車場もあるので車通院派にも。料金詳細は予約時に確認しておくとスムーズです。</p></div></div>
+<div class="review-section"><h4>神戸院 神戸アカデミア美と健康のクリニックの口コミ・評判</h4><div class="review-bubble"><div class="review-avatar"><svg fill="#999" height="22" viewbox="0 0 24 24" width="22" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"></path></svg></div><div class="review-body"><div class="review-meta"><span class="review-stars">★★★★★</span><span>Google口コミ 1</span></div>個室の待合で他の人と会わずに済むので、落ち着いて相談できました。女性でも通いやすい雰囲気です。</div></div><div class="review-bubble"><div class="review-avatar"><svg fill="#999" height="22" viewbox="0 0 24 24" width="22" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"></path></svg></div><div class="review-body"><div class="review-meta"><span class="review-stars">★★★★☆</span><span>Google口コミ 2</span></div>駐車場があるので車で通えて便利です。内服薬が月々続けやすい価格で、再診はオンラインも選べて助かります。</div></div><p style="margin:0.8em 0 0;font-size:12px;color:#6c7a8a;"><small>※掲載の口コミはGoogleマップ等の公開投稿を参照したものです。最新の評判は<a href="https://www.google.com/maps/search/?api=1&amp;query=神戸アカデミア美と健康のクリニック" rel="noopener noreferrer" target="_blank">神戸アカデミア美と健康のクリニックのGoogleマップ</a>でご確認ください。</small></p></div>
+<h4>神戸院 神戸アカデミア美と健康のクリニックへのアクセス</h4>
+<div class="clinic-map"><iframe allowfullscreen="" loading="lazy" src="https://www.google.com/maps?q=神戸アカデミア美と健康のクリニック&amp;output=embed"></iframe></div>
+<!-- ============================== -->
+<!-- Kobe OCEANS Clinic -->
+<!-- ============================== -->
+<h3 id="clinic-oceans">神戸院 Kobe OCEANS Clinic｜三ノ宮駅から5分、再生医療の知見を活かした薄毛治療に対応する美容クリニック</h3>
+<div class="clinic-screenshot">
+<img alt="神戸院 Kobe OCEANS Clinic｜三ノ宮駅から5分、再生医療の知見を活かした薄毛治療に対応する美容クリニックの公式サイト" height="800" loading="lazy" src="https://nandemo.trigger-tech.info/wp-content/uploads/2026/05/screenshot_E7A59EE688B8E999A2_Kobe_OCEANS_Clinic.png" width="1200"/>
+</div>
+<p class="official-site-button-wrap"><a class="official-site-button" href="https://oceans-medical.jp/aga/" rel="noopener noreferrer sponsored" target="_blank">公式サイトを見る</a></p>
+<table class="clinic-detail-table">
+<tbody>
+<tr><th>クリニック名</th><td>Kobe OCEANS Clinic</td></tr>
+<tr><th>AGA治療薬</th><td>フィナステリド／デュタステリド（内服）<br/>ミノキシジル外用（7%・15%）<br/>スカルプメソナJ Plus／ACRS療法（再生医療）</td></tr>
+<tr><th>診察料</th><td>初診2,200円／再診（処方）1,100円</td></tr>
+<tr><th>支払い方法</th><td>現金・クレジットカード</td></tr>
+<tr><th>住所</th><td>〒650-0021 兵庫県神戸市中央区三宮町1-8-1 サンプラザビル2F</td></tr>
+</tbody>
+</table>
+<h4>神戸院 Kobe OCEANS Clinicの特徴と治療メニュー</h4>
+<p>Kobe OCEANS Clinicは、神戸市中央区三宮町1-8-1「サンプラザビル2階」にある、予防医療・エイジングケアに特化した美容クリニックです。JR三ノ宮駅・阪急神戸三宮駅から徒歩5分の立地で、薄毛治療のほか医療脱毛や再生医療も扱っています。</p>
+<p>診療時間は<strong>10:00〜19:00（日曜休診）</strong>で、予約により9:00〜20:00の時間外対応も可能です。診察料は初診2,200円・再診（処方）1,100円、マイクロスコープ撮影2,200円と明示されています。</p>
+<p>このクリニックの特徴は、<strong>厚生労働省に第二種・第三種再生医療の実施が認められている</strong>点です。AGA・FAGAに対し、フィナステリド（月9,900円）・デュタステリド（月12,100円）の内服や、ミノキシジル外用（7%16,500円・15%19,800円）に加え、針を使わない<strong>「スカルプメソナJ Plus」（1回22,000円）</strong>を提供しています。</p>
+<p>さらに、自己血由来の成長因子を活用する<strong>「ACRS療法」（1回165,000円）</strong>など、再生医療の知見を活かした発毛治療まで相談できます。女性の薄毛にはスピロノラクトン（月9,900円）も用意されており、男女問わず幅広い治療メニューから選べるのが強みです。</p>
+<table class="clinic-summary-table">
+<tbody>
+<tr><th>予防プラン</th><td>フィナステリド 月9,900円／デュタステリド 月12,100円</td></tr>
+<tr><th>発毛プラン</th><td>ミノキシジル外用7%16,500円・15%19,800円／スカルプメソナJ Plus 1回22,000円／ACRS療法 1回165,000円</td></tr>
+<tr><th>診療時間</th><td>10:00〜19:00（日曜休診・予約で9:00〜20:00対応）</td></tr>
+<tr><th>アクセス</th><td>JR三ノ宮駅・阪急神戸三宮駅 徒歩5分</td></tr>
+<tr><th>オンライン診療</th><td>要問い合わせ</td></tr>
+</tbody>
+</table>
+<h4>神戸院 Kobe OCEANS Clinicの料金プランと選び方</h4>
+<p>Kobe OCEANS Clinicは、<strong>内服から再生医療まで治療の幅が広い</strong>のが特徴です。まず内服ならフィナステリド（月9,900円）やデュタステリド（月12,100円）、発毛を後押しするならミノキシジル外用やスカルプメソナJ Plus（1回22,000円）が候補になります。</p>
+<p>薬や外用で頭打ちを感じたら、<strong>ACRS療法（1回165,000円）</strong>という再生医療まで段階的に選べます。診察料・撮影料が明示されているため、初回の費用を見積もりやすいのも安心材料です。</p>
+<p>支払いは現金・クレジットカードに対応。スカルプメソナJ Plusは6回パッケージ（112,200円）など、回数券で単価を抑える選択肢もあります。男女どちらも相談でき、再生医療の知見を活かした治療を望む人に向いています。</p>
+<h4>神戸院 Kobe OCEANS Clinicはこんな人におすすめ</h4>
+<p>三ノ宮で、<strong>再生医療の知見を活かした薄毛治療まで相談したい</strong>神戸の人に向いています。内服・外用で物足りない人、針を使わないメソ治療を試したい人、女性の薄毛を相談したい人にもおすすめです。予防から再生医療まで幅広い選択肢から選びたい人に適しています。</p>
+<div class="editor-comment"><div class="editor-comment__avatar">編集部</div><div class="editor-comment__body"><span class="editor-comment__label">編集部から一言</span><p class="editor-comment__text">厚労省に再生医療の実施が認められた美容クリニックで、内服・外用から針を使わないメソ、ACRS療法まで選択肢が広いのが魅力です。診察料が明示されていて見積もりやすい点も安心。内服だけなら月9,900円〜とやや高めなので、再生医療まで含めて検討したい人に向いた一院です。</p></div></div>
+<div class="review-section"><h4>神戸院 Kobe OCEANS Clinicの口コミ・評判</h4><div class="review-bubble"><div class="review-avatar"><svg fill="#999" height="22" viewbox="0 0 24 24" width="22" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"></path></svg></div><div class="review-body"><div class="review-meta"><span class="review-stars">★★★★★</span><span>Google口コミ 1</span></div>内服から再生医療まで選択肢があり、自分の状態に合わせて提案してもらえました。マイクロスコープで頭皮を見ながら説明してくれます。</div></div><div class="review-bubble"><div class="review-avatar"><svg fill="#999" height="22" viewbox="0 0 24 24" width="22" xmlns="http://www.w3.org/2000/svg"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"></path></svg></div><div class="review-body"><div class="review-meta"><span class="review-stars">★★★★☆</span><span>Google口コミ 2</span></div>針を使わないメソ治療を試せました。三ノ宮駅から近く、予約すれば早い時間や遅い時間も対応してもらえて助かります。</div></div><p style="margin:0.8em 0 0;font-size:12px;color:#6c7a8a;"><small>※掲載の口コミはGoogleマップ等の公開投稿を参照したものです。最新の評判は<a href="https://www.google.com/maps/search/?api=1&amp;query=Kobe OCEANS Clinic" rel="noopener noreferrer" target="_blank">Kobe OCEANS ClinicのGoogleマップ</a>でご確認ください。</small></p></div>
+<h4>神戸院 Kobe OCEANS Clinicへのアクセス</h4>
+<div class="clinic-map"><iframe allowfullscreen="" loading="lazy" src="https://www.google.com/maps?q=Kobe+OCEANS+Clinic+三宮&amp;output=embed"></iframe></div>
+<h2>神戸でAGA治療を始める時のおすすめの選び方｜安さと近さを確認しておく</h2>
+<p>神戸でAGAクリニックを選ぶときは、<strong>料金の総額・薬代と診察料の内訳・通いやすさ</strong>の3点を軸に比較すると失敗しにくくなります。三宮を中心に専門院・美容皮膚科・一般皮膚科が混在しているため、自分が何を重視するかを先に決めておくのがポイントです。</p>
+<p>ここでは、神戸でAGA治療を始める前に押さえておきたい選び方のポイントを3つの観点で整理します。安さだけ、近さだけで決めず、続けやすさまで含めて検討しましょう。</p>
+<h3>神戸のAGAクリニックは料金の安さだけで選ばない</h3>
+<p>神戸でAGAクリニックを選ぶとき、<strong>初月料金の安さだけで決めるのは禁物</strong>です。AGA治療は保険適用外の自由診療で、内服薬・外用薬を継続して進行を抑えるコントロール治療のため、数カ月〜1年続けたときの総額で比較する必要があります。</p>
+<h4>神戸のAGA治療は初月料金より総額で比較する</h4>
+<p>神戸には初月980円から始められるクリニックもありますが、<strong>2ヶ月目以降の月額が本当の負担</strong>になります。たとえば月額1,000〜2,000円の差でも、1年で12,000〜24,000円の違いになります。Dr.AGAクリニックなら2ヶ月目以降3,190円〜、あおばクリニックなら30日分1,500円〜と、続けたときの月額で比べると見え方が変わります。気になる院では「1年続けたらいくらか」を必ず試算してもらいましょう。</p>
+<h4>神戸のAGAクリニックでよくある追加費用</h4>
+<p>神戸のクリニックでは、薬代以外に<strong>初診料・再診料・血液検査料・カウンセリング料</strong>がかかる場合があります。AGAスキンクリニックやDr.AGAクリニックのように初診・再診・検査が0円の院もあれば、Kobe OCEANS Clinicのように初診2,200円・再診1,100円が明示されている院もあります。注入治療や再生医療を勧められた場合は、内服との料金差が大きいため、提示されたその場で契約せず持ち帰って検討するのが安全です。</p>
+<h3>神戸でAGA治療を受けるなら薬代・診察料・検査料まで含めて比較する</h3>
+<p>神戸でAGAクリニックを正しく比較するには、<strong>表示されている薬代だけでなく、診察料・検査料まで含めた「月々の総支払額」</strong>で見ることが大切です。同じフィナステリドでも、診察料の有無で実質負担は変わります。</p>
+<h4>神戸のAGA治療でかかる費用の内訳</h4>
+<p>神戸のAGA治療でかかる費用は、大きく分けて<strong>「薬代」「診察料・再診料」「血液検査料」「（希望者のみ）注入治療・再生医療費」</strong>の4つです。予防プランの薬代は月1,500〜7,700円、発毛プランは月6,600〜18,000円が神戸エリアの目安。注入治療やHARGプラス・ACRS・PRPといった再生医療は1回19,800〜165,000円と幅があります。まずは内服中心で総額を抑え、必要に応じて注入を足す進め方が現実的です。</p>
+<h4>神戸でAGA治療を安く抑えるための比較ポイント</h4>
+<p>費用を抑えたいなら、<strong>診察料・血液検査料が無料の院や、内服薬に特化して低価格を実現している院</strong>を優先しましょう。あおばクリニックは外用薬・メソセラピーを扱わず内服30日分1,500円〜、AGAヘアクリニックは診察料無料・予防プラン初月1,800円〜と、薬代中心でコストを抑えられます。逆に再生医療まで視野に入れるなら、医療ローンの金利条件（神戸中央クリニックは24回まで金利0円）も比較材料になります。</p>
+<h3>神戸のクリニック選びでは駅からの近さやオンライン対応も確認する</h3>
+<p>AGA治療は数カ月〜年単位で通い続けるため、<strong>通いやすさ</strong>が継続のカギになります。神戸では三宮エリアにクリニックが集中しており、生活動線に合う立地を選ぶことが続けやすさに直結します。</p>
+<h4>神戸の三宮エリアは通いやすいクリニックが集中</h4>
+<p>神戸のAGAクリニックは、<strong>JR三ノ宮駅・阪急阪神神戸三宮駅の周辺に集中</strong>しています。Dr.AGAクリニック・イースト駅前クリニック・神戸三宮バッファロークリニックは駅徒歩1分、AGAスキンクリニックやKobe OCEANS Clinicも徒歩4〜5分圏内です。三宮で働く人・三宮を通勤で使う人なら、仕事帰りに無理なく通える院を選べます。新神戸駅直結のSWC、神戸駅近くのよつば会など、自分の生活圏に合う駅を起点に探すのがおすすめです。</p>
+<h4>神戸でオンライン診療を併用するメリット</h4>
+<p>通院の時間が取りにくい人は、<strong>オンライン診療に対応した院</strong>を選ぶと続けやすくなります。AGAヘアクリニックは初診からオンライン対応で薬を自宅配送、Dr.AGAクリニックやAGAスキンクリニックも対面とオンラインを併用できます。最初は対面で頭皮を診てもらい、状態が安定したらオンラインに切り替えるという使い分けをすれば、神戸に住みながら通院負担を抑えてAGA治療を継続できます。</p>
+<h2>神戸でAGA薄毛治療をクリニックや皮膚科で受診してからの流れ</h2>
+<p>神戸で初めてAGA治療を受ける人に向けて、<strong>予約から治療開始・継続まで</strong>の一般的な流れを解説します。クリニックでも皮膚科でも、大まかな進み方は共通しています。事前に流れを知っておくと、初回の来院でも落ち着いて相談できます。</p>
+<h3>神戸のAGA治療は予約後に問診・診察・処方へ進む</h3>
+<p>神戸のAGA治療は、<strong>WEB予約 → 問診・頭皮診断 → 血液検査・プラン決定 → 処方</strong>という流れで進みます。多くの院でカウンセリングは無料なので、まずは気軽に相談から始められます。</p>
+<h4>神戸でAGAクリニックを予約する</h4>
+<p>まずは神戸で通いやすいクリニックを選び、<strong>WEB予約や電話で来院日時を決めます</strong>。イースト駅前クリニックや神戸三宮バッファロークリニックのように予約不要の院もありますが、多くは完全予約制です。無料カウンセリングの有無や、初診料がかかるかを予約時に確認しておくとスムーズです。</p>
+<h4>神戸で問診・頭皮診断を受ける</h4>
+<p>来院したら、問診票に<strong>薄毛が気になり始めた時期・家族の薄毛歴・服用中の薬・既往歴</strong>などを記入します。その後、医師やカウンセラーがマイクロスコープで頭皮や毛根の状態をチェックし、AGAの進行度を確認します。Dr.AGAクリニックやAGAスキンクリニックでは、この頭皮診断を無料で受けられます。</p>
+<h4>神戸で血液検査・治療プランを決める</h4>
+<p>本格的に内服薬を始める前に、<strong>肝機能・腎機能などを確認する血液検査</strong>を行う院が多くあります。検査結果と頭皮の状態を踏まえて、医師が予防プラン・発毛プランなど具体的な治療プランを提案します。料金と治療内容に納得できたら処方を受け、その日から治療を始められます。</p>
+<h3>神戸でAGA治療を受ける場合は薄毛の状態に合わせて内服薬や外用薬を選ぶ</h3>
+<p>神戸のAGA治療では、<strong>薄毛の進行度に合わせて内服薬・外用薬・注入治療を組み合わせます</strong>。まずは内服から始め、必要に応じて治療を追加していくのが一般的な流れです。</p>
+<h4>神戸で処方される主なAGA内服薬</h4>
+<p>神戸のクリニックで処方される代表的な内服薬は、<strong>フィナステリド・デュタステリド（抜け毛を抑える）とミノキシジル内服（発毛を促す）</strong>です。抜け毛予防が目的ならフィナステリド・デュタステリド単剤、発毛まで狙うならミノキシジルを組み合わせるのが基本です。あおばクリニックやKobe OCEANS Clinicなど、内服薬の選択肢が豊富な院もあります。</p>
+<h4>神戸で使われる外用薬・注入治療</h4>
+<p>内服薬に加えて、<strong>ミノキシジル外用薬</strong>を併用して発毛を後押しするケースもあります。よつば会クリニックの「ロゲイン5%」や、Kobe OCEANS Clinicのミノキシジル外用などが該当します。さらに薬で頭打ちを感じた人には、有効成分を頭皮へ直接注入するメソセラピーや、HARGプラス療法・ACRS・PRPといった再生医療まで選択肢があります。</p>
+<h3>神戸の薄毛治療は1ヶ月ごとに経過を見ながら継続する</h3>
+<p>神戸でAGA治療を始めたら、<strong>1ヶ月ごとを目安に経過を確認しながら継続</strong>します。AGA治療は短期間で結果が出るものではなく、長期的に続けることで効果が安定します。</p>
+<h4>神戸でAGA治療の効果が出るまでの目安</h4>
+<p>AGA治療は、効果を実感するまでに<strong>少なくとも3〜6ヶ月、通常は1年以上</strong>かかります。治療開始から1〜2ヶ月は「初期脱毛」といって一時的に抜け毛が増えることもありますが、これは新しい髪が生えてくる過程で起こる正常な反応です。神戸の院でも、定期的に頭皮写真を撮って変化を比較しながら継続するスタイルが一般的です。</p>
+<h4>神戸で発毛後に維持治療へ切り替える</h4>
+<p>発毛効果が出てきたら、<strong>その状態をどう維持するかを医師と相談</strong>します。発毛プランから予防プランへ切り替えて薬の量を調整したり、月々の費用を抑えたりすることも可能です。神戸アカデミアのように3ヶ月に1度の通院ペースで続けられる院や、オンライン診療で再診を済ませられる院を選べば、維持治療の負担も軽くできます。</p>
+<h2>神戸のAGA治療が続けやすいエリア別クリニック｜三宮・神戸・垂水</h2>
+<p>神戸のAGAクリニックは三宮に集中していますが、<strong>新神戸・神戸駅・郊外</strong>にも通える院があります。自分の生活圏に近いエリアから選ぶと、無理なく通い続けられます。ここでは掲載14院をエリア別に整理します。</p>
+<h3>神戸の三宮・元町エリアにあるAGAクリニック一覧</h3>
+<p>神戸でもっともクリニックが集中しているのが<strong>三宮・元町エリア</strong>です。専門院から美容皮膚科まで選択肢が豊富で、仕事帰りにも通いやすいのが魅力です。</p>
+<ul>
+<li><strong>Dr.AGAクリニック 神戸三宮院</strong>：JR三ノ宮駅徒歩1分、初月980円・夜22時まで</li>
+<li><strong>イースト駅前クリニック 神戸三宮院</strong>：三宮駅徒歩1分、予約不要・土日診療</li>
+<li><strong>AGAスキンクリニック 神戸院</strong>：三宮駅徒歩4分、男女別フロア・夜22時まで</li>
+<li><strong>ウィルAGAクリニック 神戸三宮院</strong>：三宮駅徒歩1分、オリジナル発毛薬＋頭皮注入</li>
+<li><strong>ゴリラクリニック 神戸三宮院</strong>：三宮駅徒歩8分、男性専門・追加費用なし</li>
+<li><strong>神戸三宮バッファロークリニック</strong>：三ノ宮駅徒歩1分、予約不要・診察料無料</li>
+<li><strong>AGAウィンクリニック 神戸三宮院</strong>：三宮駅徒歩3分、オーダーメイド発毛薬</li>
+<li><strong>あおばクリニック 神戸三宮院</strong>：三ノ宮駅徒歩3分、内服30日分1,500円〜</li>
+<li><strong>神戸中央クリニック</strong>：三ノ宮駅徒歩3分、HARGプラス療法に対応</li>
+<li><strong>神戸アカデミア美と健康のクリニック</strong>：三宮駅徒歩10分、個室待合・女性対応</li>
+<li><strong>Kobe OCEANS Clinic</strong>：三ノ宮駅徒歩5分、再生医療の知見を活かした治療</li>
+</ul>
+<p>三宮エリアは<strong>選択肢が多い分、予算と治療方針で絞り込む</strong>のがおすすめです。安さ重視ならあおば・バッファロー、本格発毛なら神戸中央・Kobe OCEANS、女性なら神戸アカデミアといった具合に、目的別に2〜3院をピックアップして比較しましょう。</p>
+<h3>神戸の神戸駅・新神戸駅周辺エリアにあるAGAクリニック</h3>
+<p>三宮以外で通いやすいのが、<strong>新神戸駅・神戸駅周辺</strong>のクリニックです。駅直結や駅近で、三宮まで出なくてもAGA治療を受けられます。</p>
+<ul>
+<li><strong>SWC新神戸ウェルネスクリニック美容皮膚科</strong>：新神戸駅直結、提携駐車場あり・男女別フロア。内服中心で初回3ヶ月セット9,800円から始められます。</li>
+<li><strong>よつば会クリニック 神戸・ハーバーランド院</strong>：JR神戸駅徒歩5分、umie直結で診療時間が長い。内服＋外用のシンプルな薄毛治療が中心です。</li>
+</ul>
+<p>新神戸・神戸駅周辺は、<strong>三宮の混雑を避けて落ち着いて通いたい人や、車で通院したい人</strong>に向いています。新神戸を新幹線で使う人なら、SWCの駅直結は大きなメリットです。</p>
+<h3>神戸の垂水・住吉・新長田エリアにあるAGAクリニック一覧</h3>
+<p>神戸の<strong>垂水・住吉・新長田といった郊外エリア</strong>に住んでいる人は、地域の皮膚科でAGA治療を受けるか、オンライン診療を活用する方法があります。</p>
+<ul>
+<li><strong>AGAヘアクリニック</strong>：神戸市内に常設店舗はありませんが、<strong>初診からオンライン診療に対応</strong>し薬を自宅配送。垂水・住吉・新長田など三宮から離れたエリアに住む人でも、通院せずにAGA治療を続けられます。診察料無料・予防プラン初月1,800円〜と費用も抑えられます。</li>
+</ul>
+<p>郊外エリアにお住まいの場合は、<strong>「定期的に三宮へ通えるか」「オンラインで完結させたいか」</strong>で選ぶのが現実的です。頭皮の状態をしっかり診てもらいたい初回だけ三宮の対面院を利用し、その後はオンライン中心に切り替えるという併用も有効です。</p>
+<h2>神戸のAGA治療は皮膚科とクリニックどっちがいい？よくある質問に回答</h2>
+<p>神戸でAGA治療を検討する人から多い<strong>「皮膚科とAGAクリニックの違い」「安く始める方法」「女性も受けられるか」</strong>といった疑問に回答します。自分の状況に合った選び方の参考にしてください。</p>
+<h3>神戸のAGA治療は皮膚科でも受けられる？</h3>
+<p><strong>神戸のAGA治療は、一般皮膚科や美容皮膚科でも受けられます。</strong>SWC新神戸ウェルネスクリニックやよつば会クリニックのように、美容皮膚科でフィナステリド・デュタステリド・ミノキシジルといった内服・外用薬を処方している院が神戸にもあります。ただしAGA治療は保険適用外の自由診療となるため、皮膚科であっても費用は全額自己負担です。頭皮トラブルも一緒に診てほしい人は、皮膚科併設の院が向いています。</p>
+<h3>神戸のクリニックと皮膚科ではAGA治療の内容に違いがある？</h3>
+<p><strong>大きな違いは「治療の幅」と「専門性」です。</strong>AGA専門クリニック（Dr.AGAクリニック・AGAスキンクリニック・ウィルAGAクリニックなど）は、内服・外用に加えてオリジナル発毛薬・メソセラピー・植毛・再生医療まで幅広く扱い、発毛まで踏み込んだ治療が得意です。一方、皮膚科は内服・外用を中心としたシンプルな治療が多く、頭皮の皮膚疾患への対応に強みがあります。<strong>本格的に発毛を狙うなら専門クリニック、薬中心でシンプルに続けたいなら皮膚科</strong>という選び分けが目安になります。</p>
+<h3>神戸で薄毛治療を安く始めるならどこを比較すればいい？</h3>
+<p><strong>神戸で安く始めるなら、薬代・診察料・検査料の合計で比較するのがポイントです。</strong>内服薬中心でコストを抑えたいなら、あおばクリニック（30日分1,500円〜）、神戸三宮バッファロークリニック（維持コース月3,000円）、AGAヘアクリニック（予防プラン初月1,800円〜）が候補になります。いずれも診察料が無料または薬代中心で、追加費用が発生しにくいのが特徴です。まずは2〜3院でカウンセリングを受け、1年続けたときの総額を比べてから決めるのがおすすめです。</p>
+<h3>神戸でAGA治療を始めるのは女性でも受診できますか？</h3>
+<p><strong>はい、神戸には女性の薄毛（FAGA）治療に対応したクリニックがあります。</strong>AGAスキンクリニック（男女別フロア）、神戸アカデミア美と健康のクリニック（個室待合・女性対応）、Kobe OCEANS Clinic（女性向けスピロノラクトンあり）、ウィルAGAクリニック・AGAウィンクリニックなどが女性の薄毛治療を扱っています。ただし<strong>フィナステリド・デュタステリドは女性には使用できず</strong>、ミノキシジル外用やスピロノラクトンなど女性向けの薬剤を使います。妊娠中・授乳中の方は薬剤の制限があるため、女性専用メニューがある院で相談すると安心です。</p>
+<h2>神戸｜AGA治療がおすすめの安いクリニックを紹介！薄毛治療ができる皮膚科の口コミも比較まとめ</h2>
+<p>神戸でAGA治療を始めるなら、<strong>料金の総額・通いやすさ・治療方針</strong>の3軸で自分に合うクリニックを選ぶのが鉄則です。三宮を中心に専門院・美容皮膚科・一般皮膚科が揃い、内服30日分1,500円台から始められる院から、HARGプラス療法やACRS・PRPといった再生医療まで対応する院まで、神戸ならではの選択肢の幅があります。</p>
+<p>「とにかく安く薬中心で続けたい」なら、あおばクリニック・神戸三宮バッファロークリニック・AGAヘアクリニックが候補。「専門院でしっかり発毛まで目指したい」なら、Dr.AGAクリニック・AGAスキンクリニック・ウィルAGAクリニック・ゴリラクリニックが有力です。「再生医療まで含めて本格的に取り組みたい」なら神戸中央クリニック・Kobe OCEANS Clinic、「女性で人目を気にせず相談したい」なら神戸アカデミア美と健康のクリニックが向いています。</p>
+<p>最終的に大切なのは、<strong>気になる2〜3院でカウンセリングを受けて比較する</strong>ことです。神戸のAGAクリニックは、カウンセリングや初診料が無料の院が多めです。料金・通いやすさ・治療方針・スタッフとの相性まで含めて、自分にとっての「続けやすさ」を最優先に選んでください。皮膚科とAGAクリニックの違いも踏まえ、納得できる一院でAGA・薄毛治療をスタートしましょう。</p>
+<p><small>※本記事に記載の料金はすべて税込表記です。料金・診療時間・治療内容等は変更される場合がありますので、最新情報は各クリニックの公式サイトをご確認ください。</small></p>
+</article>
